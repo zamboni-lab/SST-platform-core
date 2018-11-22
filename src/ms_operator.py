@@ -25,7 +25,7 @@ def extract_mz_region(spectrum, interval):
 
 if __name__ == '__main__':
 
-    spectra = list(mzxml.read('/Users/andreidm/ETH/projects/feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'))
+    spectra = list(mzxml.read('/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'))
 
     mid_spectrum = spectra[43]  # nice point on chromatogram
 
