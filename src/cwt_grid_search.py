@@ -1,6 +1,4 @@
-
-from src import constants
-from src import ms_operator
+from src import constants, ms_operator
 import numpy
 from scipy import signal
 from matplotlib import pyplot as plt
@@ -10,7 +8,7 @@ import operator
 
 if __name__ == '__main__':
 
-    spectra = list(mzxml.read('/Users/andreidm/ETH/projects/feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'))
+    spectra = list(mzxml.read('/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'))
 
     mid_spectrum = spectra[43]
 
@@ -40,7 +38,7 @@ if __name__ == '__main__':
     print()
     experiments.sort(key=operator.itemgetter(2), reverse=True)
 
-    with open("/Users/andreidm/ETH/projects/feature_extractor/results_mz_600_900.txt", 'a') as file:
+    with open("/Users/andreidm/ETH/projects/ms_feature_extractor/results_mz_600_900.txt", 'a') as file:
 
         for experiment in experiments:
             print(experiment)

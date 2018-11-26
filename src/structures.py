@@ -1,4 +1,5 @@
 
+
 class Peak:
 
     def __init__(self, mz=None):
@@ -7,6 +8,9 @@ class Peak:
 
     def _set_expected_peak_info(self, peak_info):
         """ Extract information about expected peak values from text and set to the class instance. """
+
+        self.is_expected = True
+        self.is_unknown = False
 
         peak_feature_names = peak_info[0]
         peak_feature_values = peak_info[1]
@@ -35,5 +39,14 @@ class Peak:
         pass
 
     def _extract_actual_peak_features(self, mz_region, intensity_region):
+        """ This method calculates peak features, given its location. """
 
         pass
+
+
+class Scan:
+    """ Not sure if it's needed. """
+
+    def __init__(self):
+        pass
+
