@@ -1,6 +1,7 @@
 
 
 class Peak:
+    """ Not sure if it's needed. """
 
     def __init__(self, mz=None):
 

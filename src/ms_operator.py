@@ -46,6 +46,41 @@ def locate_annotated_peak(mz_region, spectrum):
     return accurate_mz_value, accurate_intensity_value
 
 
+def get_corrected_peak_indices(cwt_peak_indices, intensities, step=3, min_intensity=50):
+    """ This method takes results of CWT centroiding (indices of peaks in a spectrum) and corrects them.
+        @ step is number of values to check to the left and to the right from CWT peak index. """
+
+    corrected_peak_indices = []
+
+    for index in cwt_peak_indices:
+        for i in range(1-step, step):
+
+            # check this is a peak
+            if is_peak(index+i, intensities, filter=min_intensity):
+
+                # check if this peak has been already counted
+                if not corrected_peak_indices.count(index+i) > 0:
+                    corrected_peak_indices.append(index+i)
+                else:
+                    pass
+
+    return corrected_peak_indices
+
+
+def is_peak(index, intensities, filter=50):
+    """ This method returns True if ribs of the peak index are both descending.
+        @ filter is minimal intensity value to consider as peak, not noise"""
+
+    if intensities[index] <= filter:
+        return False
+    else:
+        if intensities[index-1] < intensities[index] and intensities[index] > intensities[index+1]:
+            return True
+        else:
+            return False
+
+
+
 if __name__ == '__main__':
 
     spectra = list(mzxml.read('/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'))
