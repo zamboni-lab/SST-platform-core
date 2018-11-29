@@ -37,7 +37,12 @@ if __name__ == '__main__':
 
     start_time = time.time()
 
-    peak_indices = signal.find_peaks_cwt(intensities, numpy.arange(1,32), min_snr=1, noise_perc=55)
+    # peak_indices = signal.find_peaks_cwt(intensities, numpy.arange(1,32), min_snr=1, noise_perc=55)
+
+    # this pair of widths and noise percent allows identification of everything beyond 100 intensity value (visually)
+    # the larger widths the less number of relevant peaks identified
+    # the larger noise percent the more number of redundant peaks identified
+    peak_indices = signal.find_peaks_cwt(intensities, [0.5], min_snr=1, noise_perc=5)
 
     print('\n',time.time() - start_time, "seconds elapsed\n")
 
