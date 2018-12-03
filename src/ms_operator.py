@@ -53,32 +53,48 @@ def get_corrected_peak_indices(cwt_peak_indices, intensities, step=3, min_intens
     corrected_peak_indices = []
 
     for index in cwt_peak_indices:
+
         for i in range(1-step, step):
+            is_corrected = False
 
-            # check this is a peak
-            if is_peak(index+i, intensities, filter=min_intensity):
+            if is_negligible_intensity(index+i, intensities, boundary=min_intensity):
+                pass
 
-                # check if this peak has been already counted
-                if not corrected_peak_indices.count(index+i) > 0:
-                    corrected_peak_indices.append(index+i)
-                else:
-                    pass
+            else:
+                # check this is a peak
+                if is_true_peak(index+i, intensities):
+
+                    # check if this peak has been already counted
+                    if not corrected_peak_indices.count(index+i) > 0:
+                        corrected_peak_indices.append(index+i)
+                        is_corrected = True
+                    else:
+                        pass
+
+                if i == step-1 and not is_corrected:
+                    # append peak index anyway to be inclusive processing peak shoulders
+                    corrected_peak_indices.append(index)
 
     return corrected_peak_indices
 
 
-def is_peak(index, intensities, filter=50):
-    """ This method returns True if ribs of the peak index are both descending.
-        @ filter is minimal intensity value to consider as peak, not noise"""
+def is_negligible_intensity(index, intensities, boundary=50):
+    """ This method returns True if the intensity is too small to consider in peak picking.
+        @ boundary is minimal intensity value to consider as potential peak, not noise"""
 
-    if intensities[index] <= filter:
-        return False
+    if intensities[index] <= boundary:
+        return True
     else:
-        if intensities[index-1] < intensities[index] and intensities[index] > intensities[index+1]:
-            return True
-        else:
-            return False
+        return False
 
+
+def is_true_peak(index, intensities):
+    """ This method returns True if ribs of the peak index are both descending. """
+
+    if intensities[index-1] < intensities[index] and intensities[index] > intensities[index+1]:
+        return True
+    else:
+        return False
 
 
 if __name__ == '__main__':
@@ -101,14 +117,19 @@ if __name__ == '__main__':
     # this pair of widths and noise percent allows identification of everything beyond 100 intensity value (visually)
     # the larger widths the less number of relevant peaks identified
     # the larger noise percent the more number of redundant peaks identified
-    peak_indices = signal.find_peaks_cwt(intensities, [0.5], min_snr=1, noise_perc=5)
+    cwt_peak_indices = signal.find_peaks_cwt(intensities, [0.5], min_snr=1, noise_perc=5)
+
+    corrected_peak_indices = get_corrected_peak_indices(cwt_peak_indices, intensities, step=3, min_intensity=100)
 
     print('\n',time.time() - start_time, "seconds elapsed\n")
 
-    print(peak_indices, mz_region[peak_indices], intensities[peak_indices])
+    # print(cwt_peak_indices, mz_region[cwt_peak_indices], intensities[cwt_peak_indices])
 
-    print("\nTotal number of peaks = ", len(peak_indices))
+    print("\nTotal number of CWT peaks = ", len(cwt_peak_indices))
+    print("\nTotal number of corrected peaks = ", len(corrected_peak_indices))
 
-    plt.plot(mz_region[peak_indices], intensities[peak_indices], 'gx', lw=1)
+    plt.plot(mz_region[cwt_peak_indices], intensities[cwt_peak_indices], 'gx', lw=1)
+
+    plt.plot(mz_region[corrected_peak_indices], intensities[corrected_peak_indices], 'r.', lw=1)
 
     plt.show()
