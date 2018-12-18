@@ -1,5 +1,5 @@
 
-from src.structures import Peak
+from src.stuff.structures import Peak
 
 
 def parse_expected_peaks(file_path):
