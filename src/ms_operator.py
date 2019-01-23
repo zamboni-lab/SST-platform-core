@@ -5,6 +5,8 @@ from matplotlib import pyplot as plt
 from pyteomics import mzxml
 import time
 
+from src import matlab_caller
+
 
 def extract_mz_region(spectrum, interval):
 
@@ -99,7 +101,7 @@ def is_true_peak(index, intensities):
 
 def test_cwt_peak_picking():
     """ This is an old implementation of peak-picking with CWT with peaks correction and plotting.
-        Super long. """
+        Super long (~306 s per scan). Thrashed."""
 
     spectra = list(mzxml.read(
         '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'))
@@ -134,6 +136,28 @@ def test_cwt_peak_picking():
     plt.plot(mz_region[cwt_peak_indices], intensities[cwt_peak_indices], 'gx', lw=1)
 
     plt.plot(mz_region[corrected_peak_indices], intensities[corrected_peak_indices], 'r.', lw=1)
+
+    plt.show()
+
+
+def test_matlab_peak_picking():
+    """ This is another old implementation of peak-picking with CWT of Matlab and plotting.
+        Quite long (~16 s per scan). There is also a problem with matching peak indices from Matlab
+        and actual raw data peaks. Thrashed."""
+
+    # spectra = list(
+    #     mzxml.read('/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'))
+    #
+    # mid_spectrum = spectra[43]  # nice point on chromatogram
+
+    peaks = matlab_caller.call_peak_picking(scriptpath='/Users/andreidm/ETH/projects/fiaminer_peak_picking.m',
+                                            filepath='/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML')
+
+    mz_values = [peak[0] for peak in peaks]
+    intensities = [peak[1] for peak in peaks]
+
+    plt.plot(mid_spectrum['m/z array'], mid_spectrum['intensity array'], lw=1)
+    plt.plot(mz_values, intensities, 'rx', lw=1)
 
     plt.show()
 
