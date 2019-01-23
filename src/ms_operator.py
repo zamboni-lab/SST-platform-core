@@ -97,14 +97,17 @@ def is_true_peak(index, intensities):
         return False
 
 
-if __name__ == '__main__':
+def test_cwt_peak_picking():
+    """ This is an old implementation of peak-picking with CWT with peaks correction and plotting.
+        Super long. """
 
-    spectra = list(mzxml.read('/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'))
+    spectra = list(mzxml.read(
+        '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'))
 
     mid_spectrum = spectra[43]  # nice point on chromatogram
 
     # mz_region, intensities = extract_mz_region(mid_spectrum,[200,400])
-    mz_region, intensities = extract_mz_region(mid_spectrum,[200,250])
+    mz_region, intensities = extract_mz_region(mid_spectrum, [200, 250])
 
     # peak picking
 
@@ -121,7 +124,7 @@ if __name__ == '__main__':
 
     corrected_peak_indices = get_corrected_peak_indices(cwt_peak_indices, intensities, step=3, min_intensity=100)
 
-    print('\n',time.time() - start_time, "seconds elapsed\n")
+    print('\n', time.time() - start_time, "seconds elapsed\n")
 
     # print(cwt_peak_indices, mz_region[cwt_peak_indices], intensities[cwt_peak_indices])
 
@@ -131,5 +134,26 @@ if __name__ == '__main__':
     plt.plot(mz_region[cwt_peak_indices], intensities[cwt_peak_indices], 'gx', lw=1)
 
     plt.plot(mz_region[corrected_peak_indices], intensities[corrected_peak_indices], 'r.', lw=1)
+
+    plt.show()
+
+
+if __name__ == '__main__':
+
+    start_time = time.time()
+
+    spectra = list(mzxml.read('/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'))
+
+    print('\n', time.time() - start_time, "seconds elapsed for reading")
+
+    mid_spectrum = spectra[43]  # nice point on chromatogram
+
+    # peak picking here
+    peaks, properties = signal.find_peaks(mid_spectrum['intensity array'], height=100)
+
+    print('\n',time.time() - start_time, "seconds elapsed in total")
+
+    plt.plot(mid_spectrum['m/z array'], mid_spectrum['intensity array'], lw=1)
+    plt.plot(mid_spectrum['m/z array'][peaks], mid_spectrum['intensity array'][peaks], 'gx', lw=1)
 
     plt.show()
