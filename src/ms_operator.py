@@ -29,15 +29,17 @@ def find_closest_centroids(mz_spectrum, centroids_indexes, expected_peaks_list):
 
     for i in range(len(expected_peaks_list)):
 
-        closest_peak_index, ppm = find_closest_peak_index(mz_spectrum, centroids_indexes, expected_peaks_list[i])
+        closest_peak_index, centroid_ppm = find_closest_peak_index(mz_spectrum, centroids_indexes, expected_peaks_list[i])
 
         if closest_peak_index < 0:
             another_peak = {'present': False, 'mz': None, 'ppm': None, 'index': None}
         else:
             another_peak = {'present': True,
                             'mz': mz_spectrum[closest_peak_index],
-                            'ppm': ppm,
-                            'index': closest_peak_index}
+                            'centroid ppm': centroid_ppm,  # ppm between expected peak and actual peak centroid
+                            'index': closest_peak_index,
+                            'expected mz': expected_peaks_list[i]  # expected (theoretical) mz
+                            }
 
         actual_peaks.append(another_peak)
 
@@ -116,3 +118,44 @@ def get_peak_fitting_region(spectrum, index):
             right_border = index+step
 
     return [left_border, right_border]
+
+
+def get_peak_width_and_predicted_mz(peak_region, spectrum, fitted_model):
+    """ This method calculates peak resolution. """
+
+    # define the intensity of the desired mz range
+    intensity_at_half_height = max(spectrum['intensity array'][peak_region[0]:peak_region[-1] + 1]) / 2
+
+    # find predicted peak mz
+    xc = numpy.linspace(spectrum['m/z array'][peak_region[0]], spectrum['m/z array'][peak_region[-1] + 1], 100)
+    yc = fitted_model.eval(xc)
+
+    predicted_peak_mz = xc[numpy.where(yc == max(yc))]
+
+    # define step to evaluate model to the left and to the right of the peak
+    mz_step = max(
+        abs(predicted_peak_mz - spectrum['intensity array'][peak_region[0]]),
+        abs(predicted_peak_mz - spectrum['intensity array'][peak_region[-1]])
+    )
+
+    i = 1
+    while True:
+
+        # extend region with i mz-steps to look for desired mz value
+        xc = numpy.linspace(predicted_peak_mz - i * mz_step, predicted_peak_mz + i * mz_step, i*100)
+        yc = fitted_model.eval(xc)
+
+        # if current region covers the intensity of the desired mz
+        if min(yc) < intensity_at_half_height:
+
+            residuals = numpy.array(yc) - intensity_at_half_height
+
+            # find mz value of desired intensity
+            half_height_mz_index = xc[residuals[numpy.where(residuals == min(residuals))]]
+
+            half_peak_width = predicted_peak_mz - half_height_mz_index
+
+            return 2 * half_peak_width, predicted_peak_mz
+
+        else:
+            i += 1

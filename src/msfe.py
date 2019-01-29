@@ -5,10 +5,11 @@ from scipy import signal
 from pyteomics import mzxml
 from matplotlib import pyplot as plt
 from src import parser, ms_operator
-from lmfit.models import DampedOscillatorModel, SkewedGaussianModel, SkewedVoigtModel, DonaichModel, GaussianModel
+from src.constants import peak_region_factor as prf
+from lmfit.models import GaussianModel
 
 
-def extract_peak_features(continuous_mz, fitted_intensity):
+def extract_peak_features(continuous_mz, fitted_intensity, fit_info):
     """ This method extracts features related to expected ions of interest and expected mixture chemicals. """
 
     peak_features = {}
@@ -18,13 +19,16 @@ def extract_peak_features(continuous_mz, fitted_intensity):
     return peak_features
 
 
-def get_peak_fit(peak_region, spectrum):
-    """ This method fits the peak with models and returns the best fitted curve. """
+def get_peak_fit(peak_region, spectrum, theoretical_mz):
+    """ This method fits the peak with a model and returns the fitted curve with fit information. """
 
     x, y = spectrum['m/z array'][peak_region[0]:peak_region[-1] + 1], \
            spectrum['intensity array'][peak_region[0]:peak_region[-1] + 1]
 
     if len(x) == len(y) == 3:
+
+        # I should find out whether this happens at all with large expected peaks.
+
         # TODO: implement feature extraction out of raw data and remove ValueError
         raise ValueError("Don't fit function to 3 points. Better calculate features from raw data.")
 
@@ -34,42 +38,36 @@ def get_peak_fit(peak_region, spectrum):
         g_pars = g_model.guess(y, x=x)
         g_out = g_model.fit(y, g_pars, x=x)
 
-        do_model = DampedOscillatorModel()
-        do_pars = do_model.guess(y, x=x)
-        do_out = do_model.fit(y, do_pars, x=x)
+        # define d as peak resolution (i.e. width on the 50% of the height)
+        d, predicted_peak_mz = ms_operator.get_peak_width_and_predicted_mz(peak_region, spectrum, g_out)
 
-        sg_model = SkewedGaussianModel()
-        sg_pars = sg_model.guess(y, x=x)
-        sg_out = sg_model.fit(y, sg_pars, x=x)
+        xc = numpy.linspace(predicted_peak_mz - prf * d, predicted_peak_mz + prf * d, 1000)
+        yc = g_out.eval(xc)
 
-        sv_model = SkewedVoigtModel()
-        sv_pars = sv_model.guess(y, x=x)
-        sv_out = sv_model.fit(y, sv_pars, x=x)
+        # find mass accuracy and ppm
+        mass_accuracy = abs(x[numpy.where(y == min(y))] - predicted_peak_mz)
+        fitted_ppm = (predicted_peak_mz - theoretical_mz) / theoretical_mz * 10 ** 6
 
-        d_model = DonaichModel()
-        d_pars = d_model.guess(y, x=x)
-        d_out = d_model.fit(y, d_pars, x=x)
+        # compose fit information
+        fit_info = {
+            'model': 'gaussian',
+            'gof': g_out.redchi,  # goodness-of-fit is reduced chi-squared
+            'ma': mass_accuracy,  # fitted mass accuracy
+            'fitted ppm': fitted_ppm  # ppm between fitted peak mz and expected (theoretical) mz
+        }
 
-        fitted_models = [g_out, do_out, sg_out, sv_out, d_out]
-        fitting_metrics = [g_out.redchi, do_out.redchi, sg_out.redchi, sv_out.redchi, d_out.redchi]
-
-        best_model = fitted_models[fitting_metrics.index(min(fitting_metrics))]
-
-    xc = numpy.linspace(spectrum['m/z array'][peak_region[0]], spectrum['m/z array'][peak_region[-1]+1], 50)
-    yc = best_model.eval(xc)
-
-    return xc, yc
+        return xc, yc, fit_info
 
 
 def fit_peak_and_extract_features(actual_peak, spectrum):
     """ This method takes index of peak, gets fitting region, fits the pick
         and extracts information out of fitted function. """
 
-    peak_region = ms_operator.get_peak_fitting_region(mid_spectrum, actual_peak['index'])
+    peak_region = ms_operator.get_peak_fitting_region(spectrum, actual_peak['index'])
 
-    fitted_mz, fitted_intensity = get_peak_fit(peak_region, mid_spectrum)
+    fitted_mz, fitted_intensity, fit_info = get_peak_fit(peak_region, spectrum, actual_peak['expected mz'])
 
-    peak_features = extract_peak_features(fitted_mz, fitted_intensity)
+    peak_features = extract_peak_features(fitted_mz, fitted_intensity, fit_info)
 
     return peak_features
 

@@ -8,6 +8,7 @@ from lmfit.models import Pearson7Model
 from lmfit.models import DampedOscillatorModel
 from lmfit.models import SkewedGaussianModel, SkewedVoigtModel, DonaichModel
 from src.ms_operator import get_peak_fitting_region
+from matplotlib import pyplot as plt
 
 
 spectra = list(mzxml.read('/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'))
@@ -22,13 +23,13 @@ with open('/Users/andreidm/ETH/projects/ms_feature_extractor/res/models_race.txt
 
     champions = []
 
-    for k in range(10):
+    for k in range(1):
         # 10 rounds
 
         total_score = [0 for name in models]
         wins = [0 for name in models]
 
-        for i in range(500):
+        for i in range(10):
 
             random_index = random.randint(5,len(peaks)-5)
             random_peak_region = get_peak_fitting_region(mid_spectrum, peaks[random_index])
@@ -106,34 +107,34 @@ with open('/Users/andreidm/ETH/projects/ms_feature_extractor/res/models_race.txt
 
                 wins[scores.index(min(scores))] += 1
 
-                # xc = numpy.linspace(mid_spectrum['m/z array'][random_peak_region[0]],
-                #                     mid_spectrum['m/z array'][random_peak_region[-1]+1],
-                #                     50)
-            #     plt.figure()
-            #     plt.plot(x, y, 'k.', lw=1)
-            #     plt.plot(xc, g_out.eval(x=xc), lw=1, label='Gauss')
-            #     plt.plot(xc, l_out.eval(x=xc), lw=1, label='Lorenz')
-            #     plt.plot(xc, v_out.eval(x=xc), lw=1, label='Voigt')
-            #     plt.plot(xc, p_out.eval(x=xc), lw=1, label='Pearson')
-            #     plt.plot(xc, do_out.eval(x=xc), lw=1, label='Damped Oscillator')
-            #     plt.plot(xc, sg_out.eval(x=xc), lw=1, label='Skewed Gauss')
-            #     plt.plot(xc, sv_out.eval(x=xc), lw=1, label='Skewed Voigt')
-            #     plt.plot(xc, d_out.eval(x=xc), lw=1, label='Donaich')
-            #
-            #     plt.legend()
-        #
-        # plt.show()
+                xc = numpy.linspace(mid_spectrum['m/z array'][random_peak_region[0]],
+                                    mid_spectrum['m/z array'][random_peak_region[-1]+1],
+                                    50)
+                plt.figure()
+                plt.plot(x, y, 'k.', lw=1)
+                plt.plot(xc, g_out.eval(x=xc), lw=1, label='Gauss')
+                plt.plot(xc, l_out.eval(x=xc), lw=1, label='Lorenz')
+                plt.plot(xc, v_out.eval(x=xc), lw=1, label='Voigt')
+                plt.plot(xc, p_out.eval(x=xc), lw=1, label='Pearson')
+                plt.plot(xc, do_out.eval(x=xc), lw=1, label='Damped Oscillator')
+                plt.plot(xc, sg_out.eval(x=xc), lw=1, label='Skewed Gauss')
+                plt.plot(xc, sv_out.eval(x=xc), lw=1, label='Skewed Voigt')
+                plt.plot(xc, d_out.eval(x=xc), lw=1, label='Donaich')
+
+                plt.legend()
+
+        plt.show()
 
         champions.append( (models[total_score.index(min(total_score))], models[wins.index(max(wins))]) )
         total_score = numpy.array(total_score) / 1000000
 
-        file.write(", ".join(map(str, models)) + "\n")
-        file.write(", ".join(map(str, wins)) + " (" + str(sum(wins)) + " out of 500)\n")
-        file.write(", ".join(map(str, total_score)) + "\n")
+        # file.write(", ".join(map(str, models)) + "\n")
+        # file.write(", ".join(map(str, wins)) + " (" + str(sum(wins)) + " out of 500)\n")
+        # file.write(", ".join(map(str, total_score)) + "\n")
 
-        # print(models)
-        # print(wins, ",", sum(wins), "out of 100")
-        # print(numpy.array(total_score) / 1000000)
+        print(models)
+        print(wins, ",", sum(wins), "out of 100")
+        print(numpy.array(total_score) / 1000000)
 
 print()
 for champion_pair in champions:
