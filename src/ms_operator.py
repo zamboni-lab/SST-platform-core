@@ -95,7 +95,8 @@ def locate_annotated_peak(mz_region, spectrum):
 
 
 def get_peak_fitting_region(spectrum, index):
-    """ This method extract the peak region (peak with tails) for a peak of the given index. """
+    """ This method extract the peak region (peak with tails) for a peak of the given index.
+        The region is being prolonged unless the intensity value goes up again. So the tails are always descending. """
 
     left_border = -1
 
@@ -148,12 +149,12 @@ def get_peak_width_and_predicted_mz(peak_region, spectrum, fitted_model):
         # if current region covers the intensity of the desired mz
         if min(yc) < intensity_at_half_height:
 
-            residuals = numpy.array(yc) - intensity_at_half_height
+            residuals = abs(numpy.array(yc) - intensity_at_half_height)
 
             # find mz value of desired intensity
-            half_height_mz_index = xc[residuals[numpy.where(residuals == min(residuals))]]
+            half_height_mz = xc[residuals[numpy.where(residuals == min(residuals))]]
 
-            half_peak_width = predicted_peak_mz - half_height_mz_index
+            half_peak_width = predicted_peak_mz - half_height_mz
 
             return 2 * half_peak_width, predicted_peak_mz
 
