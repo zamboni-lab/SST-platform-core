@@ -69,7 +69,7 @@ def find_closest_peak_index(mz_spectrum, peaks_indexes, expected_peak_mz):
 
 def locate_annotated_peak(mz_region, spectrum):
     """ This method finds the accurate m/z and intensity values
-    for visually chosen peaks and hardcoded m/z region for them. """
+        for visually chosen peaks and hardcoded m/z region for them. """
 
     local_max_intensity = -1
 
@@ -95,7 +95,7 @@ def locate_annotated_peak(mz_region, spectrum):
 
 
 def get_peak_fitting_region(spectrum, index):
-    """ This method extract the peak region (peak with tails) for a peak of the given index.
+    """ This method extracts the peak region indexes (peak with tails) for a peak of the given index.
         The region is being prolonged unless the intensity value goes up again. So the tails are always descending. """
 
     left_border = -1
@@ -160,3 +160,23 @@ def get_peak_width_and_predicted_mz(peak_region, spectrum, fitted_model):
 
         else:
             i += 1
+
+
+def get_integration_arrays(mz_array, intensity_array, left_point_mz, right_point_mz):
+    """ This method gets raw data arrays for integration given the desired boundaries (left and right point). """
+
+    # find boundaries in the raw data to ingrate within
+    mzs = []
+    intensities = []
+
+    for i in range(len(mz_array)):
+
+        if left_point_mz <= mz_array[i] <= right_point_mz:
+
+            mzs.append(mz_array[i])
+            intensities.append(intensity_array[i])
+
+        elif mz_array[i] > right_point_mz:
+            break
+
+    return intensities, mzs

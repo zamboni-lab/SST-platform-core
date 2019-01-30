@@ -14,13 +14,18 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
 
     # TODO
 
-    sp_number, sp_ratios = extract_sp_features(continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))],
+    predicted_peak_mz = continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))]
+
+    # extract information about subsequent (following) peaks after the major one
+    sp_number, sp_ratios = extract_sp_features(predicted_peak_mz,
                                                max(fitted_intensity),
                                                continuous_mz[-1],
                                                spectrum,
                                                centroids_indexes)
 
-    # features description
+    left_tail_auc, right_tail_auc = extract_auc_features(spectrum, continuous_mz, fitted_intensity, predicted_peak_mz)
+
+
     peak_features = {
         # 'intensity': max(fitted_intensity, max(fit_info['raw intensity array'])),
         # # in this case goodness-of-fit does not tell much
@@ -30,12 +35,38 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
         'widths': extract_width_features(continuous_mz, fitted_intensity),  # 20%, 50%, 80% of max intensity
         'subsequent peaks number': sp_number,
         'subsequent peaks ratios': sp_ratios,
-        'left tail auc': None,
-        'right tail auc': None,
+        'left tail auc': left_tail_auc,
+        'right tail auc': right_tail_auc,
         'goodness-of-fit': fit_info['gof']
     }
 
     return peak_features
+
+
+def extract_auc_features(spectrum, continuous_mz, fitted_intensity, predicted_peak_mz):
+    """ This method extracts AUC (area under curve) features between real peak signal and fitted peak values. """
+
+    # get raw peak data for integration within regions of interest
+    l_tail_y, l_tail_x = ms_operator.get_integration_arrays(spectrum['m/z array'], spectrum['intensity array'],continuous_mz[0], predicted_peak_mz)
+    r_tail_y, r_tail_x = ms_operator.get_integration_arrays(spectrum['m/z array'], spectrum['intensity array'],predicted_peak_mz, continuous_mz[-1])
+
+    # integrate raw peak data within boundaries
+    left_raw_data_integral = numpy.trapz(l_tail_y, l_tail_x)
+    right_raw_data_integral = numpy.trapz(r_tail_y, r_tail_x)
+
+    # get predicted peak data for integration within regions of interest
+    l_tail_y, l_tail_x = ms_operator.get_integration_arrays(continuous_mz, fitted_intensity, continuous_mz[0],predicted_peak_mz)
+    r_tail_y, r_tail_x = ms_operator.get_integration_arrays(continuous_mz, fitted_intensity, predicted_peak_mz,continuous_mz[-1])
+
+    # integrate predicted peak data within boundaries
+    left_predicted_data_integral = numpy.trapz(l_tail_y, l_tail_x)
+    right_predicted_data_integral = numpy.trapz(r_tail_y, r_tail_x)
+
+    # calculate features
+    left_tail_auc = left_raw_data_integral - left_predicted_data_integral
+    right_tail_auc = right_raw_data_integral - right_predicted_data_integral
+
+    return left_tail_auc, right_tail_auc
 
 
 def extract_sp_features(major_peak_mz, major_peak_intensity, right_boundary_mz, spectrum, centroids_indexes):
