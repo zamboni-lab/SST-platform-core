@@ -25,19 +25,19 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
 
     left_tail_auc, right_tail_auc = extract_auc_features(spectrum, continuous_mz, fitted_intensity, predicted_peak_mz)
 
-
     peak_features = {
         # 'intensity': max(fitted_intensity, max(fit_info['raw intensity array'])),
         # # in this case goodness-of-fit does not tell much
 
         'intensity': max(fitted_intensity),
-        'mass accuracy': fit_info['ma'],
+        'absolute mass accuracy': fit_info['fit_theory_absolute_ma'],
+        'ppm': fit_info['fit_theory_ppm'],
         'widths': extract_width_features(continuous_mz, fitted_intensity),  # 20%, 50%, 80% of max intensity
         'subsequent peaks number': sp_number,
         'subsequent peaks ratios': sp_ratios,
         'left tail auc': left_tail_auc,
         'right tail auc': right_tail_auc,
-        'goodness-of-fit': fit_info['gof']
+        'goodness-of-fit': fit_info['goodness-of-fit']
     }
 
     return peak_features
@@ -131,18 +131,27 @@ def get_peak_fit(peak_region, spectrum, theoretical_mz):
         xc = numpy.linspace(predicted_peak_mz - prf * d, predicted_peak_mz + prf * d, 1000)
         yc = g_out.eval(xc)
 
-        # find mass accuracy and ppm
-        mass_accuracy = abs(x[numpy.where(y == min(y))] - predicted_peak_mz)
-        fitted_ppm = (predicted_peak_mz - theoretical_mz) / theoretical_mz * 10 ** 6
+        # now compose fit information
 
-        # compose fit information
+        # find absolute mass accuracy and ppm for signal related to fit
+        signal_fit_mass_diff = x[numpy.where(y == max(y))] - predicted_peak_mz
+        signal_fit_ppm = signal_fit_mass_diff / predicted_peak_mz * 10 ** 6
+
+        # find absolute mass accuracy and ppm for fit related to expected (theoretical) value
+        fit_theory_mass_diff = predicted_peak_mz - theoretical_mz
+        fit_theory_ppm = fit_theory_mass_diff / theoretical_mz * 10 ** 6
+
         fit_info = {
             'model': 'gaussian',
-            'gof': g_out.redchi,  # goodness-of-fit is reduced chi-squared
-            'ma': mass_accuracy,  # fitted mass accuracy
-            'fitted ppm': fitted_ppm,  # ppm between fitted peak mz and expected (theoretical) mz
+            'goodness-of-fit': g_out.redchi,  # goodness-of-fit is reduced chi-squared
+            'fit_theory_absolute_ma': fit_theory_mass_diff,  # fitted absolute mass accuracy
+            'fit_theory_ppm': fit_theory_ppm,  # ppm between fitted peak mz and expected (theoretical) mz
             'resolution': d,
-            'raw intensity array': y
+            'raw intensity array': y,
+
+            # probably redundant information
+            'signal_fit_absolute_ma': signal_fit_mass_diff,
+            'signal_fit_ppm': signal_fit_ppm
         }
 
         return xc, yc, fit_info
@@ -178,19 +187,20 @@ if __name__ == '__main__':
     mid_spectrum = spectra[43]  # nice point on chromatogram
 
     # peak picking here
-    peaks_indexes, properties = signal.find_peaks(mid_spectrum['intensity array'], height=100)
+    centroids_indexes, properties = signal.find_peaks(mid_spectrum['intensity array'], height=100)
 
     example_file = "/Users/andreidm/ETH/projects/ms_feature_extractor/data/expected_peaks_example.txt"
-    expected_mzs, expected_intensities = parser.parse_expected_peaks(example_file)
+    expected_ions_info = parser.parse_expected_ions(example_file)
 
-    actual_peaks = ms_operator.find_closest_centroids(mid_spectrum['m/z array'], peaks_indexes, expected_mzs)
+    actual_peaks = ms_operator.find_closest_centroids(mid_spectrum['m/z array'], centroids_indexes, expected_ions_info)
 
-    peaks_feature_matrix = []
+    independent_peaks_features = []
     for i in range(len(actual_peaks)):
 
         if actual_peaks[i]['present']:
 
-            peak_features = fit_peak_and_extract_features(actual_peaks[i], mid_spectrum, peaks_indexes)
-            peaks_feature_matrix.append(peak_features)
+            peak_features = fit_peak_and_extract_features(actual_peaks[i], mid_spectrum, centroids_indexes)
+
+            independent_peaks_features.append(peak_features)
 
     print('\n', time.time() - start_time, "seconds elapsed in total")

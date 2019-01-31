@@ -21,8 +21,10 @@ def extract_mz_region(spectrum, mz_interval):
     return numpy.array(mz_values), numpy.array(intensities)
 
 
-def find_closest_centroids(mz_spectrum, centroids_indexes, expected_peaks_list):
+def find_closest_centroids(mz_spectrum, centroids_indexes, expected_ions_info):
     """ This method looks for all the expected peaks in the list of centroids. """
+
+    expected_peaks_list = expected_ions_info['expected mzs']
 
     # actual peaks out of expected ones
     actual_peaks = []
