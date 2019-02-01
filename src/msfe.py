@@ -6,6 +6,8 @@ from pyteomics import mzxml
 from matplotlib import pyplot as plt
 from src import parser, ms_operator
 from src.constants import peak_region_factor as prf
+from src.constants import peak_widths_levels_of_interest as widths_levels
+from src.constants import minimal_peak_intensity
 from lmfit.models import GaussianModel
 
 
@@ -13,10 +15,6 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
     """ This method extracts features related to expected ions of interest and expected mixture chemicals. """
 
     expected_intensity = actual_peak_info['expected intensity']
-
-    # TODO: calculate isotopic accuracy from actual peak info with fitted mzs and intesities
-    # if isotopes and fragments are not empty lists,
-    # then find closest mz in continuous mz, take the fitted intensity of this mz, and calculate ratio with
 
     predicted_peak_mz = continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))]
 
@@ -98,7 +96,7 @@ def extract_width_features(continuous_mz, fitted_intensity):
     """ This method extract widths of different levels of the peak height. """
 
     widths = []
-    for percent in [0.2, 0.5, 0.8]:
+    for percent in widths_levels:
         # intensity on the desired level
         intensity = max(fitted_intensity) * percent
         residuals = abs(fitted_intensity - intensity)
@@ -193,6 +191,88 @@ def extract_unexpected_noise_features():
     pass
 
 
+def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_fits):
+    """ This method looks for the isotope in the list of peaks fits, gets its predicted intensity and mz,
+        and calculates features using the major peak fit (major peak). """
+
+    major_peak_fitted_intensity = peak_fits[major_peak_index]['intensity']
+    major_peak_continuous_mz = peak_fits[major_peak_index]['mz']
+
+    major_peak_max_intensity = max(major_peak_fitted_intensity)
+    major_peak_mz = major_peak_continuous_mz[numpy.where(major_peak_fitted_intensity == major_peak_max_intensity)]
+
+    isotope_intensity_ratios = []
+    isotope_mass_diff_values = []
+
+    for j in range(len(actual_peaks_info['expected isotopes'])):
+
+        # find each isotope in the peak fits list
+        for k in range(len(peak_fits)):
+            if peak_fits[k]['expected mz'] == actual_peaks_info['expected isotopes'][j]:
+
+                # ratio between isotope intensity and its major ions intensity
+                max_isotope_intensity = max(peak_fits[k]['intensity'])
+                ratio = max_isotope_intensity / major_peak_max_intensity
+
+                # m/z diff between isotope and its major ion (how far is the isotope)
+                isotope_mz = peak_fits[k]['mz'][numpy.where(peak_fits[k]['intensity'] == max_isotope_intensity)]
+                mass_diff = isotope_mz - major_peak_mz
+
+                isotope_intensity_ratios.append(ratio)
+                isotope_mass_diff_values.append(mass_diff)
+
+                break
+
+    isotopic_features = {
+        'isotopes mzs': actual_peaks_info['expected isotopes'],  # in case id is needed
+        'intensity ratios': isotope_intensity_ratios,
+        'mass diff values': isotope_mass_diff_values
+    }
+
+    return isotopic_features
+
+
+def find_fragment_and_extract_features(major_peak_index, actual_peaks_info, peak_fits):
+    """ This method looks for the fragment in the list of peaks fits, gets its predicted intensity and mz,
+        and calculates features using the major peak fit (major peak). """
+
+    major_peak_fitted_intensity = peak_fits[major_peak_index]['intensity']
+    major_peak_continuous_mz = peak_fits[major_peak_index]['mz']
+
+    major_peak_max_intensity = max(major_peak_fitted_intensity)
+    major_peak_mz = major_peak_continuous_mz[numpy.where(major_peak_fitted_intensity == major_peak_max_intensity)]
+
+    fragment_intensity_ratios = []
+    fragment_mass_diff_values = []
+
+    for j in range(len(actual_peaks_info['expected fragments'])):
+
+        # find each fragment in the peak fits list
+        for k in range(len(peak_fits)):
+            if peak_fits[k]['expected mz'] == actual_peaks_info['expected fragments'][j]:
+
+                # ratio between fragment intensity and its major ions intensity
+                max_fragment_intensity = max(peak_fits[k]['intensity'])
+                ratio = max_fragment_intensity / major_peak_max_intensity
+
+                # m/z diff between fragment and its major ion (how far is the fragment)
+                fragment_mz = peak_fits[k]['mz'][numpy.where(peak_fits[k]['intensity'] == max_fragment_intensity)]
+                mass_diff = major_peak_mz - fragment_mz
+
+                fragment_intensity_ratios.append(ratio)
+                fragment_mass_diff_values.append(mass_diff)
+
+                break
+
+    fragmentation_features = {
+        'isotopes mzs': actual_peaks_info['expected fragments'],  # in case id is needed
+        'intensity ratios': fragment_intensity_ratios,
+        'mass diff values': fragment_mass_diff_values
+    }
+
+    return fragmentation_features
+
+
 if __name__ == '__main__':
 
     start_time = time.time()
@@ -205,7 +285,7 @@ if __name__ == '__main__':
     mid_spectrum = spectra[43]  # nice point on chromatogram
 
     # peak picking here
-    centroids_indexes, properties = signal.find_peaks(mid_spectrum['intensity array'], height=100)
+    centroids_indexes, properties = signal.find_peaks(mid_spectrum['intensity array'], height=minimal_peak_intensity)
 
     example_file = "/Users/andreidm/ETH/projects/ms_feature_extractor/data/expected_peaks_example.txt"
     expected_ions_info = parser.parse_expected_ions(example_file)
@@ -226,6 +306,7 @@ if __name__ == '__main__':
             independent_peak_fits.append(peak_fit)
 
         else:
+            # save the same dimensionality with actual peaks structure
             independent_peaks_features.append({})
             independent_peak_fits.append({})
 
@@ -233,21 +314,17 @@ if __name__ == '__main__':
     for i in range(len(actual_peaks)):
 
         if actual_peaks[i]['present']:
-            if actual_peaks[i]['expected isotopes'] != []:
+            if len(actual_peaks[i]['expected isotopes']) > 0:
+                isotopic_features = find_isotope_and_extract_features(i, actual_peaks, independent_peak_fits)
 
-                # TODO for each isotope:
-                # TODO find its mz in independent peak fits
-                # TODO get predicted intensity and mz there
-                # TODO and calculate features using ith independent peak fit (major peak)
-                # TODO then add features to major peaks features
+            elif len(actual_peaks[i]['expected fragments']) > 0:
+                fragmentation_features = find_fragment_and_extract_features(i, actual_peaks, independent_peak_fits)
 
-                pass
-            elif actual_peaks[i]['expected fragments'] != []:
-
-                # TODO the same but for fragments
-
-                pass
             else:
                 pass
+
+    # merge isotopic and fragmentation features with independent peaks features
+
+    # TODO
 
     print('\n', time.time() - start_time, "seconds elapsed in total")
