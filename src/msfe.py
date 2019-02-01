@@ -9,10 +9,14 @@ from src.constants import peak_region_factor as prf
 from lmfit.models import GaussianModel
 
 
-def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, centroids_indexes):
+def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, centroids_indexes, actual_peak_info):
     """ This method extracts features related to expected ions of interest and expected mixture chemicals. """
 
-    # TODO
+    expected_intensity = actual_peak_info['expected intensity']
+
+    # TODO: calculate isotopic accuracy from actual peak info with fitted mzs and intesities
+    # if isotopes and fragments are not empty lists,
+    # then find closest mz in continuous mz, take the fitted intensity of this mz, and calculate ratio with
 
     predicted_peak_mz = continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))]
 
@@ -30,6 +34,8 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
         # # in this case goodness-of-fit does not tell much
 
         'intensity': max(fitted_intensity),
+        'expected intensity diff': max(fitted_intensity) - expected_intensity,
+        'expected intensity ratio': expected_intensity / max(fitted_intensity),
         'absolute mass accuracy': fit_info['fit_theory_absolute_ma'],
         'ppm': fit_info['fit_theory_ppm'],
         'widths': extract_width_features(continuous_mz, fitted_intensity),  # 20%, 50%, 80% of max intensity
@@ -37,6 +43,7 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
         'subsequent peaks ratios': sp_ratios,
         'left tail auc': left_tail_auc,
         'right tail auc': right_tail_auc,
+        'symmetry': (left_tail_auc + right_tail_auc) / (2 * max(left_tail_auc, right_tail_auc)),
         'goodness-of-fit': fit_info['goodness-of-fit']
     }
 
@@ -128,7 +135,7 @@ def get_peak_fit(peak_region, spectrum, theoretical_mz):
         # define d as peak resolution (i.e. width on the 50% of the height)
         d, predicted_peak_mz = ms_operator.get_peak_width_and_predicted_mz(peak_region, spectrum, g_out)
 
-        xc = numpy.linspace(predicted_peak_mz - prf * d, predicted_peak_mz + prf * d, 1000)
+        xc = numpy.linspace(predicted_peak_mz - prf * d, predicted_peak_mz + prf * d, 5000)
         yc = g_out.eval(xc)
 
         # now compose fit information
@@ -165,13 +172,24 @@ def fit_peak_and_extract_features(actual_peak, spectrum, centroids_indexes):
 
     fitted_mz, fitted_intensity, fit_info = get_peak_fit(peak_region_indexes, spectrum, actual_peak['expected mz'])
 
-    peak_features = extract_peak_features(fitted_mz, fitted_intensity, fit_info, spectrum, centroids_indexes)
+    peak_features = extract_peak_features(fitted_mz, fitted_intensity, fit_info,
+                                          spectrum, centroids_indexes, actual_peak)
 
-    return peak_features
+    peak_fit = {
+        'expected mz': actual_peak['expected mz'],  # this is an id of the peak
+        'mz': fitted_mz,
+        'intensity': fitted_intensity,
+        'info': fit_info
+    }
+
+    return peak_fit, peak_features
 
 
 def extract_unexpected_noise_features():
     """ This method extracts features related to unexpected noise of instrumental and chemical nature. """
+
+    # TODO
+
     pass
 
 
@@ -195,12 +213,41 @@ if __name__ == '__main__':
     actual_peaks = ms_operator.find_closest_centroids(mid_spectrum['m/z array'], centroids_indexes, expected_ions_info)
 
     independent_peaks_features = []
+    independent_peak_fits = []  # there is a need to store temporarily peak fitting results
+
+    # extract peaks features independently
     for i in range(len(actual_peaks)):
 
         if actual_peaks[i]['present']:
 
-            peak_features = fit_peak_and_extract_features(actual_peaks[i], mid_spectrum, centroids_indexes)
+            peak_fit, peak_features = fit_peak_and_extract_features(actual_peaks[i], mid_spectrum, centroids_indexes)
 
             independent_peaks_features.append(peak_features)
+            independent_peak_fits.append(peak_fit)
+
+        else:
+            independent_peaks_features.append({})
+            independent_peak_fits.append({})
+
+    # extract features related to ions isotopic abundance and fragmentation
+    for i in range(len(actual_peaks)):
+
+        if actual_peaks[i]['present']:
+            if actual_peaks[i]['expected isotopes'] != []:
+
+                # TODO for each isotope:
+                # TODO find its mz in independent peak fits
+                # TODO get predicted intensity and mz there
+                # TODO and calculate features using ith independent peak fit (major peak)
+                # TODO then add features to major peaks features
+
+                pass
+            elif actual_peaks[i]['expected fragments'] != []:
+
+                # TODO the same but for fragments
+
+                pass
+            else:
+                pass
 
     print('\n', time.time() - start_time, "seconds elapsed in total")

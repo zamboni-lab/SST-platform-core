@@ -25,6 +25,7 @@ def find_closest_centroids(mz_spectrum, centroids_indexes, expected_ions_info):
     """ This method looks for all the expected peaks in the list of centroids. """
 
     expected_peaks_list = expected_ions_info['expected mzs']
+    expected_intensities_list = expected_ions_info['expected intensities']
 
     # actual peaks out of expected ones
     actual_peaks = []
@@ -33,19 +34,47 @@ def find_closest_centroids(mz_spectrum, centroids_indexes, expected_ions_info):
 
         closest_peak_index, centroid_ppm = find_closest_peak_index(mz_spectrum, centroids_indexes, expected_peaks_list[i])
 
+        isotopes, fragments = find_expected_isotopes_and_fragments(expected_peaks_list[i],
+                                                                   expected_ions_info['isotopes mzs'],
+                                                                   expected_ions_info['fragments mzs'])
+
         if closest_peak_index < 0:
-            another_peak = {'present': False, 'mz': None, 'ppm': None, 'index': None}
+            another_peak = {'present': False}
         else:
-            another_peak = {'present': True,
-                            'mz': mz_spectrum[closest_peak_index],
-                            'centroid ppm': centroid_ppm,  # ppm between expected peak and actual peak centroid
-                            'index': closest_peak_index,
-                            'expected mz': expected_peaks_list[i]  # expected (theoretical) mz
-                            }
+            another_peak = {
+                'present': True,
+                'expected mz': expected_peaks_list[i],  # expected (theoretical) mz
+                'expected intensity': expected_intensities_list[i],  # expected (theoretical) ion abundance
+                'mz': mz_spectrum[closest_peak_index],  # measured mz
+                'index': closest_peak_index,
+                'expected isotopes': isotopes,  # expected (theoretical) isotopes related to this ion (incl. itself)
+                'expected fragments': fragments,  # expected (theoretical) fragments related to this ion (incl. itself)
+                'centroid ppm': centroid_ppm  # ppm between expected peak and actual peak centroid
+            }
 
         actual_peaks.append(another_peak)
 
     return actual_peaks
+
+
+def find_expected_isotopes_and_fragments(expected_peak_mz, isotopes_mz_lists, fragments_mz_lists):
+    """ This method returns a list of expected isotopes and a list of expected fragments if there are any. """
+
+    isotopes, fragments = [], []
+
+    for isotope_list in isotopes_mz_lists:
+        # if this is a major ion having the other isotopes
+        if expected_peak_mz == isotope_list[0]:
+            # add to the list the other isotopes
+            isotopes = isotope_list[1:len(isotope_list)]
+
+    for fragments_list in fragments_mz_lists:
+        # if this is a major ion having potential fragments (may be fragmented)
+        if expected_peak_mz == fragments_list[0]:
+            # add to the list these potential fragments
+            fragments = fragments_list[1:len(fragments_list)]
+
+    return isotopes, fragments
 
 
 def find_closest_peak_index(mz_spectrum, peaks_indexes, expected_peak_mz):

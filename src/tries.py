@@ -3,11 +3,10 @@ import numpy, time
 from scipy import signal
 from pyteomics import mzxml
 from matplotlib import pyplot as plt
-from src.parser import parse_expected_peaks
 from src import ms_operator
 from src.constants import parser_comment_symbol as sharp
 from src.constants import parser_description_symbols as brackets
 
 
-
-print()
+if 1 in [1,2]:
+    print(1)
