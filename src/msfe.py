@@ -8,6 +8,7 @@ from src import parser, ms_operator
 from src.constants import peak_region_factor as prf
 from src.constants import peak_widths_levels_of_interest as widths_levels
 from src.constants import minimal_peak_intensity
+from src.constants import maximum_number_of_subsequent_peaks_to_consider as max_sp_number
 from lmfit.models import GaussianModel
 
 
@@ -19,12 +20,9 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
     predicted_peak_mz = continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))]
 
     # extract information about subsequent (following) peaks after the major one
-    # TODO: guarantee that sp_ratios is always of the same size (to keep the feature matrix of the same size)
-    sp_number, sp_ratios = extract_sp_features(predicted_peak_mz,
-                                               max(fitted_intensity),
-                                               continuous_mz[-1],
-                                               spectrum,
-                                               centroids_indexes)
+
+    sp_ratios = extract_sp_features(predicted_peak_mz, max(fitted_intensity), continuous_mz[-1], spectrum,
+                                    centroids_indexes)
 
     left_tail_auc, right_tail_auc = extract_auc_features(spectrum, continuous_mz, fitted_intensity, predicted_peak_mz)
 
@@ -38,7 +36,7 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
         'absolute mass accuracy': fit_info['fit_theory_absolute_ma'],
         'ppm': fit_info['fit_theory_ppm'],
         'widths': extract_width_features(continuous_mz, fitted_intensity),  # 20%, 50%, 80% of max intensity
-        'subsequent peaks number': sp_number,
+        'subsequent peaks number': max_sp_number,
         'subsequent peaks ratios': sp_ratios,
         'left tail auc': left_tail_auc,
         'right tail auc': right_tail_auc,
@@ -76,7 +74,7 @@ def extract_auc_features(spectrum, continuous_mz, fitted_intensity, predicted_pe
 
 
 def extract_sp_features(major_peak_mz, major_peak_intensity, right_boundary_mz, spectrum, centroids_indexes):
-    """ This method extracts features of the following lower peaks after the major peak. """
+    """ This method extracts features of the following (subsequent) lower peaks after the major peak. """
 
     sp_number, sp_ratios = 0, []
 
@@ -90,7 +88,20 @@ def extract_sp_features(major_peak_mz, major_peak_intensity, right_boundary_mz, 
         elif spectrum['m/z array'][index] > right_boundary_mz:
             break
 
-    return sp_number, sp_ratios
+    # always keep sp_ratios of the same size
+    if sp_number < max_sp_number:
+        # if there is less than a fixed size, then extend with null values
+        ratios_extension = [-1 for value in range(max_sp_number-sp_number)]
+        sp_ratios.extend(ratios_extension)
+
+    elif sp_number > max_sp_number:
+        # if there is more than a fixed size, then cut first fixed number
+        sp_ratios = sp_ratios[0:max_sp_number]
+
+    else:
+        pass
+
+    return sp_ratios
 
 
 def extract_width_features(continuous_mz, fitted_intensity):
@@ -184,7 +195,7 @@ def fit_peak_and_extract_features(actual_peak, spectrum, centroids_indexes):
     return peak_fit, peak_features
 
 
-def extract_unexpected_noise_features():
+def extract_non_expected_noise_features():
     """ This method extracts features related to unexpected noise of instrumental and chemical nature. """
 
     # TODO
@@ -289,7 +300,7 @@ def get_null_peak_features():
         'ppm': -1,
         'widths': [-1, -1, -1],  # 20%, 50%, 80% of max intensity
         'subsequent peaks number': -1,
-        'subsequent peaks ratios': [],  # TODO: to add as many -1s as sp_rations length is fixed
+        'subsequent peaks ratios': [-1 for value in range(max_sp_number)],
         'left tail auc': -1,
         'right tail auc': -1,
         'symmetry': -1,
@@ -404,8 +415,10 @@ if __name__ == '__main__':
             else:
                 pass
 
-    # merge isotopic and fragmentation features with independent peaks features
+    # extract non-expected features from a scan
+    # TODO
 
+    # merge isotopic and fragmentation features with independent peaks features
     # TODO
 
     print('\n', time.time() - start_time, "seconds elapsed in total")
