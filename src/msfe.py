@@ -19,6 +19,7 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
     predicted_peak_mz = continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))]
 
     # extract information about subsequent (following) peaks after the major one
+    # TODO: guarantee that sp_ratios is always of the same size (to keep the feature matrix of the same size)
     sp_number, sp_ratios = extract_sp_features(predicted_peak_mz,
                                                max(fitted_intensity),
                                                continuous_mz[-1],
@@ -204,11 +205,11 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
     isotope_intensity_ratios = []
     isotope_mass_diff_values = []
 
-    for j in range(len(actual_peaks_info['expected isotopes'])):
+    for j in range(len(actual_peaks_info[major_peak_index]['expected isotopes'])):
 
         # find each isotope in the peak fits list
         for k in range(len(peak_fits)):
-            if peak_fits[k]['expected mz'] == actual_peaks_info['expected isotopes'][j]:
+            if peak_fits[k]['expected mz'] == actual_peaks_info[major_peak_index]['expected isotopes'][j]:
 
                 # ratio between isotope intensity and its major ions intensity
                 max_isotope_intensity = max(peak_fits[k]['intensity'])
@@ -224,7 +225,7 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
                 break
 
     isotopic_features = {
-        'isotopes mzs': actual_peaks_info['expected isotopes'],  # in case id is needed
+        'isotopes mzs': actual_peaks_info[major_peak_index]['expected isotopes'],  # in case id is needed
         'intensity ratios': isotope_intensity_ratios,
         'mass diff values': isotope_mass_diff_values
     }
@@ -245,11 +246,11 @@ def find_fragment_and_extract_features(major_peak_index, actual_peaks_info, peak
     fragment_intensity_ratios = []
     fragment_mass_diff_values = []
 
-    for j in range(len(actual_peaks_info['expected fragments'])):
+    for j in range(len(actual_peaks_info[major_peak_index]['expected fragments'])):
 
         # find each fragment in the peak fits list
         for k in range(len(peak_fits)):
-            if peak_fits[k]['expected mz'] == actual_peaks_info['expected fragments'][j]:
+            if peak_fits[k]['expected mz'] == actual_peaks_info[major_peak_index]['expected fragments'][j]:
 
                 # ratio between fragment intensity and its major ions intensity
                 max_fragment_intensity = max(peak_fits[k]['intensity'])
@@ -265,12 +266,76 @@ def find_fragment_and_extract_features(major_peak_index, actual_peaks_info, peak
                 break
 
     fragmentation_features = {
-        'isotopes mzs': actual_peaks_info['expected fragments'],  # in case id is needed
+        'fragments mzs': actual_peaks_info[major_peak_index]['expected fragments'],  # in case id is needed
         'intensity ratios': fragment_intensity_ratios,
         'mass diff values': fragment_mass_diff_values
     }
 
     return fragmentation_features
+
+
+def get_null_peak_features():
+    """ Compose the empty dictionary with peak features
+        to keep the whole features matrix of the same dimensionality. """
+
+    missing_peak_features = {
+        # 'intensity': max(fitted_intensity, max(fit_info['raw intensity array'])),
+        # # in this case goodness-of-fit does not tell much
+
+        'intensity': -1,
+        'expected intensity diff': -1,
+        'expected intensity ratio': -1,
+        'absolute mass accuracy': -1,
+        'ppm': -1,
+        'widths': [-1, -1, -1],  # 20%, 50%, 80% of max intensity
+        'subsequent peaks number': -1,
+        'subsequent peaks ratios': [],  # TODO: to add as many -1s as sp_rations length is fixed
+        'left tail auc': -1,
+        'right tail auc': -1,
+        'symmetry': -1,
+        'goodness-of-fit': -1
+    }
+
+    return missing_peak_features
+
+
+def get_null_peak_fit(actual_peak):
+    """ Compose the empty dictionary with peak fit for a missing peak to keep dimensionality of the data structure. """
+
+    missing_peak_fit = {
+        'expected mz': actual_peak['expected mz'],  # this is an id of the peak
+        'mz': -1,
+        'intensity': -1,
+        'info': {}
+    }
+
+    return missing_peak_fit
+
+
+def get_null_isotopic_features(actual_peak_info):
+    """ Compose the empty dictionary with isotopic features for a missing peak
+        to keep the whole features matrix of the same dimensionality. """
+
+    missing_isotopic_features = {
+        'isotopes mzs': actual_peak_info['expected isotopes'],  # in case id is needed
+        'intensity ratios': [-1 for value in actual_peak_info['expected isotopes']],
+        'mass diff values': [-1 for value in actual_peak_info['expected isotopes']]
+    }
+
+    return missing_isotopic_features
+
+
+def get_null_fragmentation_features(actual_peak_info):
+    """ Compose the empty dictionary with isotopic features for a missing peak
+        to keep the whole features matrix of the same dimensionality. """
+
+    missing_fragmentation_features = {
+        'fragments mzs': actual_peak_info['expected fragments'],  # in case id is needed
+        'intensity ratios': [-1 for value in actual_peak_info['expected fragments']],
+        'mass diff values': [-1 for value in actual_peak_info['expected fragments']]
+    }
+
+    return missing_fragmentation_features
 
 
 if __name__ == '__main__':
@@ -307,8 +372,13 @@ if __name__ == '__main__':
 
         else:
             # save the same dimensionality with actual peaks structure
-            independent_peaks_features.append({})
-            independent_peak_fits.append({})
+            # ans keep the size of the feature matrix constant
+
+            null_peak_features = get_null_peak_features()
+            null_peak_fit = get_null_peak_fit(actual_peaks[i])
+
+            independent_peaks_features.append(null_peak_features)
+            independent_peak_fits.append(null_peak_fit)
 
     # extract features related to ions isotopic abundance and fragmentation
     for i in range(len(actual_peaks)):
@@ -319,6 +389,17 @@ if __name__ == '__main__':
 
             elif len(actual_peaks[i]['expected fragments']) > 0:
                 fragmentation_features = find_fragment_and_extract_features(i, actual_peaks, independent_peak_fits)
+
+            else:
+                pass
+
+        else:
+            # fill the data structure with null values
+            if len(actual_peaks[i]['expected isotopes']) > 0:
+                isotopic_features = get_null_isotopic_features(actual_peaks[i])
+
+            elif len(actual_peaks[i]['expected fragments']) > 0:
+                fragmentation_features = get_null_fragmentation_features(actual_peaks[i])
 
             else:
                 pass
