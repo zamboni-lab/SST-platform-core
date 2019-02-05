@@ -7,6 +7,6 @@ from src import ms_operator
 from src.constants import parser_comment_symbol as sharp
 from src.constants import parser_description_symbols as brackets
 
+a = [0, 0, 0, 0, 0, 1, 1, 1, 2, 2]
 
-if 1 in [1,2]:
-    print(1)
+print(sorted(a, reverse=True))

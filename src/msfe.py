@@ -9,6 +9,8 @@ from src.constants import peak_region_factor as prf
 from src.constants import peak_widths_levels_of_interest as widths_levels
 from src.constants import minimal_peak_intensity
 from src.constants import maximum_number_of_subsequent_peaks_to_consider as max_sp_number
+from src.constants import mz_frame_size, number_of_frames
+from src.constants import number_of_top_noisy_peaks_to_consider as n_top_guys
 from lmfit.models import GaussianModel
 
 
@@ -195,12 +197,43 @@ def fit_peak_and_extract_features(actual_peak, spectrum, centroids_indexes):
     return peak_fit, peak_features
 
 
-def extract_non_expected_noise_features():
+def extract_non_expected_noise_features_from_frame(mz_frame, spectrum, centroids_indexes):
+    """ This method extracts non-expected features of a given frame. """
+
+    frame_peaks_intensities = []
+
+    i = 0
+    while mz_frame[0] < spectrum['m/z array'][centroids_indexes[i]] < mz_frame[1]:
+        frame_peaks_intensities.append(spectrum['intensity array'][centroids_indexes[i]])
+        i += 1
+
+    frame_features = {
+        'number of peaks': len(frame_peaks_intensities),
+        'intensity sum': sum(frame_peaks_intensities),
+        'top peaks intensities': sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys]
+    }
+
+    return frame_features
+
+
+def form_frames_and_extract_features(spectrum, centroids_indexes):
     """ This method extracts features related to unexpected noise of instrumental and chemical nature. """
 
-    # TODO
+    non_expected_features = []
 
-    pass
+    # define mz ranges to extract features from
+    ranges = [i * mz_frame_size for i in range(number_of_frames)]
+
+    frames = []
+    for i in range(number_of_frames-1):
+        frames.append([ranges[i], ranges[i + 1]])
+
+    # for each frame extract features
+    for frame in frames:
+        frame_features = extract_non_expected_noise_features_from_frame(frame, spectrum, centroids_indexes)
+        non_expected_features.append(frame_features)
+
+    return non_expected_features
 
 
 def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_fits):
@@ -416,7 +449,7 @@ if __name__ == '__main__':
                 pass
 
     # extract non-expected features from a scan
-    # TODO
+    non_expected_features = form_frames_and_extract_features(mid_spectrum, centroids_indexes)
 
     # merge isotopic and fragmentation features with independent peaks features
     # TODO
