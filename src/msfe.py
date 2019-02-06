@@ -11,6 +11,7 @@ from src.constants import minimal_peak_intensity
 from src.constants import maximum_number_of_subsequent_peaks_to_consider as max_sp_number
 from src.constants import mz_frame_size, number_of_frames
 from src.constants import number_of_top_noisy_peaks_to_consider as n_top_guys
+from src.constants import frame_intensity_percentiles
 from lmfit.models import GaussianModel
 
 
@@ -210,7 +211,8 @@ def extract_non_expected_noise_features_from_frame(mz_frame, spectrum, centroids
     frame_features = {
         'number of peaks': len(frame_peaks_intensities),
         'intensity sum': sum(frame_peaks_intensities),
-        'top peaks intensities': sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys]
+        'top peaks intensities': sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys],
+        'percentiles': numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)
     }
 
     return frame_features

@@ -20,3 +20,4 @@ mz_frame_size = 50  # for frames [0, 50], [50, 100], ...
 number_of_frames = 11
 
 number_of_top_noisy_peaks_to_consider = 5
+frame_intensity_percentiles = [25, 50, 75]

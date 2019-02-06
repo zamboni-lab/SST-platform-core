@@ -9,4 +9,4 @@ from src.constants import parser_description_symbols as brackets
 
 a = [0, 0, 0, 0, 0, 1, 1, 1, 2, 2]
 
-print(sorted(a, reverse=True))
+print(numpy.percentile(a,[25,50, 75, 100]))
