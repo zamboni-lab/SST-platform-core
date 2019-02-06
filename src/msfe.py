@@ -363,7 +363,7 @@ def get_null_isotopic_features(actual_peak_info):
         to keep the whole features matrix of the same dimensionality. """
 
     missing_isotopic_features = {
-        'isotopes mzs': actual_peak_info['expected isotopes'],  # in case id is needed
+        # 'isotopes mzs': actual_peak_info['expected isotopes'],  # in case id is needed
         'intensity ratios': [-1 for value in actual_peak_info['expected isotopes']],
         'mass diff values': [-1 for value in actual_peak_info['expected isotopes']]
     }
@@ -376,12 +376,37 @@ def get_null_fragmentation_features(actual_peak_info):
         to keep the whole features matrix of the same dimensionality. """
 
     missing_fragmentation_features = {
-        'fragments mzs': actual_peak_info['expected fragments'],  # in case id is needed
+        # 'fragments mzs': actual_peak_info['expected fragments'],  # in case id is needed
         'intensity ratios': [-1 for value in actual_peak_info['expected fragments']],
         'mass diff values': [-1 for value in actual_peak_info['expected fragments']]
     }
 
     return missing_fragmentation_features
+
+
+def merge_features(all_independent_features, all_isotopic_features, all_fragmentation_features, all_non_expected_features):
+    """ This method combines all the different features
+        and effectively builds one row (out of one scan) for the feature matrix. """
+
+    scan_features = []
+
+    for peak_features in all_independent_features:
+        for feature_name in list(peak_features.keys()):
+            scan_features.extend(peak_features[feature_name])
+
+    for isotope_features in all_isotopic_features:
+        for feature_name in list(isotope_features.keys()):
+            scan_features.extend(isotope_features[feature_name])
+
+    for fragments_features in all_fragmentation_features:
+        for feature_name in list(fragments_features.keys()):
+            scan_features.extend(fragments_features[feature_name])
+
+    for frame_features in all_non_expected_features:
+        for feature_name in list(frame_features.keys()):
+            scan_features.extend(frame_features[feature_name])
+
+    return scan_features
 
 
 if __name__ == '__main__':
@@ -426,6 +451,9 @@ if __name__ == '__main__':
             independent_peaks_features.append(null_peak_features)
             independent_peak_fits.append(null_peak_fit)
 
+    isotopic_features = []
+    fragmentation_features = []
+
     # extract features related to ions isotopic abundance and fragmentation
     for i in range(len(actual_peaks)):
 
@@ -435,7 +463,6 @@ if __name__ == '__main__':
 
             elif len(actual_peaks[i]['expected fragments']) > 0:
                 fragmentation_features = find_fragment_and_extract_features(i, actual_peaks, independent_peak_fits)
-
             else:
                 pass
 
@@ -446,14 +473,14 @@ if __name__ == '__main__':
 
             elif len(actual_peaks[i]['expected fragments']) > 0:
                 fragmentation_features = get_null_fragmentation_features(actual_peaks[i])
-
             else:
                 pass
 
     # extract non-expected features from a scan
     non_expected_features = form_frames_and_extract_features(mid_spectrum, centroids_indexes)
 
-    # merge isotopic and fragmentation features with independent peaks features
-    # TODO
+    # merge independent, isotopic, fragmentation and non-expected features
+    scan_features = merge_features(independent_peaks_features, isotopic_features,
+                                   fragmentation_features, non_expected_features)
 
     print('\n', time.time() - start_time, "seconds elapsed in total")
