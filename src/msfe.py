@@ -12,6 +12,7 @@ from src.constants import maximum_number_of_subsequent_peaks_to_consider as max_
 from src.constants import mz_frame_size, number_of_frames
 from src.constants import number_of_top_noisy_peaks_to_consider as n_top_guys
 from src.constants import frame_intensity_percentiles, expected_peaks_file_path, main_features_scans_indexes
+from src.constants import background_features_scans_indexes
 from lmfit.models import GaussianModel
 
 
@@ -409,8 +410,20 @@ def merge_features(all_independent_features, all_isotopic_features, all_fragment
     return scan_features
 
 
-def extract_features_from_scan(spectrum):
-    """ This method extracts all the features from one scan of a given index. """
+def extract_background_features_from_scan(spectrum):
+    """ This method extracts baseline (related to instrument noise) features from one scan. """
+
+    # peak picking here
+    # TODO: check that minimal peak intensity is the same with main feature extraction (should be less here?)
+    centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=minimal_peak_intensity)
+
+    bg_features = form_frames_and_extract_features(spectrum, centroids_indexes)
+
+    return bg_features
+
+
+def extract_main_features_from_scan(spectrum):
+    """ This method extracts all the features from one scan. """
 
     # peak picking here
     centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=minimal_peak_intensity)
@@ -491,9 +504,16 @@ if __name__ == '__main__':
 
     feature_matrix = []
 
-    # fill in the feature matrix
+    # fill in the feature matrix with main features
     for scan_index in main_features_scans_indexes:
-        scan_features = extract_features_from_scan(spectra[scan_index])
+        scan_features = extract_main_features_from_scan(spectra[scan_index])
         feature_matrix.append(scan_features)
+
+    # fill in the feature matrix with features related to instrument noise (different scans)
+    for scan_index in background_features_scans_indexes:
+        scan_features = extract_background_features_from_scan(spectra[scan_index])
+        feature_matrix.append(scan_features)
+
+
 
     print('\n', time.time() - start_time, "seconds elapsed in total")

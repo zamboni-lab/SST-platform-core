@@ -13,7 +13,7 @@ expected_peaks_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/da
 # scan number 43 is a good example for current testing mzXML file
 main_features_scans_indexes = [43]  # indexes for independent, isotopic, fragmentation, non-expected features extraction
 
-baseline_features_scans_indexes = []  # scans indexes used for instrument or chemical noise features extraction
+background_features_scans_indexes = []  # scans indexes used for instrument noise features extraction
 
 peak_widths_levels_of_interest = [0.2, 0.5, 0.8]
 
