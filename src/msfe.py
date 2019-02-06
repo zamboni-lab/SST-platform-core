@@ -11,7 +11,7 @@ from src.constants import minimal_peak_intensity
 from src.constants import maximum_number_of_subsequent_peaks_to_consider as max_sp_number
 from src.constants import mz_frame_size, number_of_frames
 from src.constants import number_of_top_noisy_peaks_to_consider as n_top_guys
-from src.constants import frame_intensity_percentiles
+from src.constants import frame_intensity_percentiles, expected_peaks_file_path, main_features_scans_indexes
 from lmfit.models import GaussianModel
 
 
@@ -409,24 +409,17 @@ def merge_features(all_independent_features, all_isotopic_features, all_fragment
     return scan_features
 
 
-if __name__ == '__main__':
-
-    start_time = time.time()
-
-    good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
-    spectra = list(mzxml.read(good_example))
-
-    print('\n', time.time() - start_time, "seconds elapsed for reading")
-
-    mid_spectrum = spectra[43]  # nice point on chromatogram
+def extract_features_from_scan(spectrum):
+    """ This method extracts all the features from one scan of a given index. """
 
     # peak picking here
-    centroids_indexes, properties = signal.find_peaks(mid_spectrum['intensity array'], height=minimal_peak_intensity)
+    centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=minimal_peak_intensity)
 
-    example_file = "/Users/andreidm/ETH/projects/ms_feature_extractor/data/expected_peaks_example.txt"
-    expected_ions_info = parser.parse_expected_ions(example_file)
+    # parse expected peaks info
+    expected_ions_info = parser.parse_expected_ions(expected_peaks_file_path)
 
-    actual_peaks = ms_operator.find_closest_centroids(mid_spectrum['m/z array'], centroids_indexes, expected_ions_info)
+    # get information about actual peaks in the spectrum in relation to expected ones and centroiding results
+    actual_peaks = ms_operator.find_closest_centroids(spectrum['m/z array'], centroids_indexes, expected_ions_info)
 
     independent_peaks_features = []
     independent_peak_fits = []  # there is a need to store temporarily peak fitting results
@@ -436,7 +429,7 @@ if __name__ == '__main__':
 
         if actual_peaks[i]['present']:
 
-            peak_fit, peak_features = fit_peak_and_extract_features(actual_peaks[i], mid_spectrum, centroids_indexes)
+            peak_fit, peak_features = fit_peak_and_extract_features(actual_peaks[i], spectrum, centroids_indexes)
 
             independent_peaks_features.append(peak_features)
             independent_peak_fits.append(peak_fit)
@@ -477,10 +470,30 @@ if __name__ == '__main__':
                 pass
 
     # extract non-expected features from a scan
-    non_expected_features = form_frames_and_extract_features(mid_spectrum, centroids_indexes)
+    non_expected_features = form_frames_and_extract_features(spectrum, centroids_indexes)
 
     # merge independent, isotopic, fragmentation and non-expected features
     scan_features = merge_features(independent_peaks_features, isotopic_features,
                                    fragmentation_features, non_expected_features)
+
+    return scan_features
+
+
+if __name__ == '__main__':
+
+    start_time = time.time()
+
+    # TODO process all the files from a folder (unless the file is fetched from database and received as a message)
+    good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
+    spectra = list(mzxml.read(good_example))
+
+    print('\n', time.time() - start_time, "seconds elapsed for reading")
+
+    feature_matrix = []
+
+    # fill in the feature matrix
+    for scan_index in main_features_scans_indexes:
+        scan_features = extract_features_from_scan(spectra[scan_index])
+        feature_matrix.append(scan_features)
 
     print('\n', time.time() - start_time, "seconds elapsed in total")
