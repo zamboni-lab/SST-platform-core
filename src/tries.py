@@ -6,4 +6,3 @@ from matplotlib import pyplot as plt
 from src import ms_operator
 from src.constants import parser_comment_symbol as sharp
 from src.constants import parser_description_symbols as brackets
-

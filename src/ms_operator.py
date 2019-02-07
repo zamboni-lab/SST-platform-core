@@ -39,7 +39,7 @@ def find_closest_centroids(mz_spectrum, centroids_indexes, expected_ions_info):
                                                                    expected_ions_info['fragments mzs'])
 
         if closest_peak_index < 0:
-            another_peak = {'present': False}
+            another_peak = {'present': False, 'expected mz': expected_peaks_list[i]}
         else:
             another_peak = {
                 'present': True,
@@ -160,7 +160,7 @@ def get_peak_width_and_predicted_mz(peak_region, spectrum, fitted_model):
 
     # find predicted peak mz
     xc = numpy.linspace(spectrum['m/z array'][peak_region[0]], spectrum['m/z array'][peak_region[-1] + 1], 100)
-    yc = fitted_model.eval(xc)
+    yc = fitted_model.eval(x=xc)
 
     predicted_peak_mz = xc[numpy.where(yc == max(yc))]
 
@@ -175,7 +175,7 @@ def get_peak_width_and_predicted_mz(peak_region, spectrum, fitted_model):
 
         # extend region with i mz-steps to look for desired mz value
         xc = numpy.linspace(predicted_peak_mz - i * mz_step, predicted_peak_mz + i * mz_step, i*100)
-        yc = fitted_model.eval(xc)
+        yc = fitted_model.eval(x=xc)
 
         # if current region covers the intensity of the desired mz
         if min(yc) < intensity_at_half_height:
@@ -183,7 +183,7 @@ def get_peak_width_and_predicted_mz(peak_region, spectrum, fitted_model):
             residuals = abs(numpy.array(yc) - intensity_at_half_height)
 
             # find mz value of desired intensity
-            half_height_mz = xc[residuals[numpy.where(residuals == min(residuals))]]
+            half_height_mz = xc[numpy.where(residuals == min(residuals))]
 
             half_peak_width = predicted_peak_mz - half_height_mz
 

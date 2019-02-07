@@ -148,9 +148,11 @@ def get_peak_fit(peak_region, spectrum, theoretical_mz):
 
         # define d as peak resolution (i.e. width on the 50% of the height)
         d, predicted_peak_mz = ms_operator.get_peak_width_and_predicted_mz(peak_region, spectrum, g_out)
+        # TODO: figure out why d is returned as an array
+
 
         xc = numpy.linspace(predicted_peak_mz - prf * d, predicted_peak_mz + prf * d, 5000)
-        yc = g_out.eval(xc)
+        yc = g_out.eval(x=xc)
 
         # now compose fit information
 
@@ -497,7 +499,8 @@ if __name__ == '__main__':
     start_time = time.time()
 
     # TODO process all the files from a folder (unless the file is fetched from database and received as a message)
-    good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
+    # good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
+    good_example = '/Users/dmitrav/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
     spectra = list(mzxml.read(good_example))
 
     print('\n', time.time() - start_time, "seconds elapsed for reading")

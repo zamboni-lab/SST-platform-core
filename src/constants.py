@@ -8,7 +8,8 @@ parser_description_symbols = '()'
 
 minimal_peak_intensity = 100
 
-expected_peaks_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/data/expected_peaks_example.txt"
+# expected_peaks_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/data/expected_peaks_example.txt"
+expected_peaks_file_path = "/Users/dmitrav/ETH/projects/ms_feature_extractor/data/expected_peaks_example.txt"
 
 # scan number 43 is a good example for current testing mzXML file
 main_features_scans_indexes = [43]  # indexes for independent, isotopic, fragmentation, non-expected features extraction
