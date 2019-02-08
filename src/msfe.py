@@ -289,7 +289,7 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
                 ratio = max_isotope_intensity / major_peak_max_intensity
 
                 # m/z diff between isotope and its major ion (how far is the isotope)
-                isotope_mz = peak_fits[k]['mz'][numpy.where(peak_fits[k]['intensity'] == max_isotope_intensity)]
+                isotope_mz = float(peak_fits[k]['mz'][numpy.where(peak_fits[k]['intensity'] == max_isotope_intensity)])
                 mass_diff = isotope_mz - major_peak_mz
 
                 isotope_intensity_ratios.append(ratio)
@@ -419,32 +419,78 @@ def merge_features(all_independent_features, all_isotopic_features, all_fragment
 
     for peak_features in all_independent_features:
         for feature_name in list(peak_features.keys()):
-            scan_features.extend(peak_features[feature_name])
+
+            if isinstance(peak_features[feature_name], int) or isinstance(peak_features[feature_name], float):
+                scan_features.append(peak_features[feature_name])
+            elif isinstance(peak_features[feature_name], list):
+                scan_features.extend(peak_features[feature_name])
+            elif isinstance(peak_features[feature_name], numpy.ndarray):
+                scan_features.extend(list(peak_features[feature_name]))
+            else:
+                raise ValueError("Unknown independent feature type")
 
     for isotope_features in all_isotopic_features:
         for feature_name in list(isotope_features.keys()):
-            scan_features.extend(isotope_features[feature_name])
+
+            if isinstance(isotope_features[feature_name], int) or isinstance(isotope_features[feature_name], float):
+                scan_features.append(isotope_features[feature_name])
+            elif isinstance(isotope_features[feature_name], list):
+                scan_features.extend(isotope_features[feature_name])
+            elif isinstance(isotope_features[feature_name], numpy.ndarray):
+                scan_features.extend(list(isotope_features[feature_name]))
+            else:
+                raise ValueError("Unknown isotope feature type")
 
     for fragments_features in all_fragmentation_features:
         for feature_name in list(fragments_features.keys()):
-            scan_features.extend(fragments_features[feature_name])
+
+            if isinstance(fragments_features[feature_name], int) or isinstance(fragments_features[feature_name], float):
+                scan_features.append(fragments_features[feature_name])
+            elif isinstance(fragments_features[feature_name], list):
+                scan_features.extend(fragments_features[feature_name])
+            elif isinstance(fragments_features[feature_name], numpy.ndarray):
+                scan_features.extend(list(fragments_features[feature_name]))
+            else:
+                raise ValueError("Unknown fragmentation feature type")
 
     for frame_features in all_non_expected_features:
         for feature_name in list(frame_features.keys()):
-            scan_features.extend(frame_features[feature_name])
+
+            if isinstance(frame_features[feature_name], int) or isinstance(frame_features[feature_name], float):
+                scan_features.append(frame_features[feature_name])
+            elif isinstance(frame_features[feature_name], list):
+                scan_features.extend(frame_features[feature_name])
+            elif isinstance(frame_features[feature_name], numpy.ndarray):
+                scan_features.extend(list(frame_features[feature_name]))
+            else:
+                raise ValueError("Unknown non-expected feature type")
 
     return scan_features
 
 
 def extract_background_features_from_scan(spectrum):
-    """ This method extracts baseline (related to instrument noise) features from one scan. """
+    """ This method extracts background (related to instrument noise) features from one scan. """
+
+    scan_features = []
 
     # peak picking here
     centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=minimal_peak_intensity)
 
-    bg_features = form_frames_and_extract_features(spectrum, centroids_indexes)
+    all_background_features = form_frames_and_extract_features(spectrum, centroids_indexes)
 
-    return bg_features
+    for frame_features in all_background_features:
+        for feature_name in list(frame_features.keys()):
+
+            if isinstance(frame_features[feature_name], int) or isinstance(frame_features[feature_name], float):
+                scan_features.append(frame_features[feature_name])
+            elif isinstance(frame_features[feature_name], list):
+                scan_features.extend(frame_features[feature_name])
+            elif isinstance(frame_features[feature_name], numpy.ndarray):
+                scan_features.extend(list(frame_features[feature_name]))
+            else:
+                raise ValueError("Unknown background feature type")
+
+    return scan_features
 
 
 def extract_main_features_from_scan(spectrum):
@@ -482,28 +528,32 @@ def extract_main_features_from_scan(spectrum):
             independent_peaks_features.append(null_peak_features)
             independent_peak_fits.append(null_peak_fit)
 
-    isotopic_features = []
-    fragmentation_features = []
+    isotopic_peaks_features = []
+    fragmentation_peaks_features = []
 
     # extract features related to ions isotopic abundance and fragmentation
     for i in range(len(actual_peaks)):
 
         if actual_peaks[i]['present']:
             if len(actual_peaks[i]['expected isotopes']) > 0:
-                isotopic_features = find_isotope_and_extract_features(i, actual_peaks, independent_peak_fits)
+                isotope_features = find_isotope_and_extract_features(i, actual_peaks, independent_peak_fits)
+                isotopic_peaks_features.append(isotope_features)
 
             elif len(actual_peaks[i]['expected fragments']) > 0:
                 fragmentation_features = find_fragment_and_extract_features(i, actual_peaks, independent_peak_fits)
+                fragmentation_peaks_features.append(fragmentation_features)
             else:
                 pass
 
         else:
             # fill the data structure with null values
             if len(actual_peaks[i]['expected isotopes']) > 0:
-                isotopic_features = get_null_isotopic_features(actual_peaks[i])
+                isotope_features = get_null_isotopic_features(actual_peaks[i])
+                isotopic_peaks_features.append(isotope_features)
 
             elif len(actual_peaks[i]['expected fragments']) > 0:
                 fragmentation_features = get_null_fragmentation_features(actual_peaks[i])
+                fragmentation_peaks_features.append(fragmentation_features)
             else:
                 pass
 
@@ -511,8 +561,8 @@ def extract_main_features_from_scan(spectrum):
     non_expected_features = form_frames_and_extract_features(spectrum, centroids_indexes)
 
     # merge independent, isotopic, fragmentation and non-expected features
-    scan_features = merge_features(independent_peaks_features, isotopic_features,
-                                   fragmentation_features, non_expected_features)
+    scan_features = merge_features(independent_peaks_features, isotopic_peaks_features,
+                                   fragmentation_peaks_features, non_expected_features)
 
     return scan_features
 
@@ -539,7 +589,5 @@ if __name__ == '__main__':
     for scan_index in background_features_scans_indexes:
         scan_features = extract_background_features_from_scan(spectra[scan_index])
         feature_matrix.append(scan_features)
-
-
 
     print('\n', time.time() - start_time, "seconds elapsed in total")

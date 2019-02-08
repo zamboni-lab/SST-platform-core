@@ -6,3 +6,7 @@ from matplotlib import pyplot as plt
 from src import ms_operator
 from src.constants import parser_comment_symbol as sharp
 from src.constants import parser_description_symbols as brackets
+
+a = numpy.array([1,2,3])
+
+print(isinstance(a, numpy.ndarray))
