@@ -118,7 +118,7 @@ def extract_width_features(continuous_mz, fitted_intensity):
         residuals = abs(fitted_intensity - intensity)
 
         # find mz value of desired intensity
-        mz = continuous_mz[residuals[numpy.where(residuals == min(residuals))]]
+        mz = continuous_mz[numpy.where(residuals == min(residuals))]
 
         width = 2 * (continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))] - mz)  # symmetry -> * 2
 
@@ -149,7 +149,6 @@ def get_peak_fit(peak_region, spectrum, theoretical_mz):
         # define d as peak resolution (i.e. width on the 50% of the height)
         d, predicted_peak_mz = ms_operator.get_peak_width_and_predicted_mz(peak_region, spectrum, g_out)
         # TODO: figure out why d is returned as an array
-
 
         xc = numpy.linspace(predicted_peak_mz - prf * d, predicted_peak_mz + prf * d, 5000)
         yc = g_out.eval(x=xc)
@@ -201,8 +200,8 @@ def fit_peak_and_extract_features(actual_peak, spectrum, centroids_indexes):
     return peak_fit, peak_features
 
 
-def extract_non_expected_noise_features_from_frame(mz_frame, spectrum, centroids_indexes):
-    """ This method extracts non-expected features of a given frame. """
+def extract_noise_features_from_frame(mz_frame, spectrum, centroids_indexes):
+    """ This method extracts either non-expected or background (instrument noise) features of a given frame. """
 
     frame_peaks_intensities = []
 
@@ -211,12 +210,37 @@ def extract_non_expected_noise_features_from_frame(mz_frame, spectrum, centroids
         frame_peaks_intensities.append(spectrum['intensity array'][centroids_indexes[i]])
         i += 1
 
-    frame_features = {
-        'number of peaks': len(frame_peaks_intensities),
-        'intensity sum': sum(frame_peaks_intensities),
-        'top peaks intensities': sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys],
-        'percentiles': numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)
-    }
+    if len(frame_peaks_intensities) > n_top_guys:
+        frame_features = {
+            'number of peaks': len(frame_peaks_intensities),
+            'intensity sum': sum(frame_peaks_intensities),
+            'top peaks intensities': sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys],
+            'percentiles': numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)
+        }
+
+    elif 0 < len(frame_peaks_intensities) < n_top_guys:
+
+        top_peaks_intensities = sorted(frame_peaks_intensities, reverse=True)
+
+        # add null features to keep the dimensionality of the feature matrix
+        while len(top_peaks_intensities) < n_top_guys:
+            top_peaks_intensities.append(-1)
+
+        frame_features = {
+            'number of peaks': len(frame_peaks_intensities),
+            'intensity sum': sum(frame_peaks_intensities),
+            'top peaks intensities': top_peaks_intensities,
+            'percentiles': numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)
+        }
+
+    else:
+        # fill with null features to keep the dimensionality of the feature matrix
+        frame_features = {
+            'number of peaks': -1,
+            'intensity sum': -1,
+            'top peaks intensities': [-1 for guy in range(n_top_guys)],
+            'percentiles': [-1 for percentile in frame_intensity_percentiles]
+        }
 
     return frame_features
 
@@ -235,7 +259,7 @@ def form_frames_and_extract_features(spectrum, centroids_indexes):
 
     # for each frame extract features
     for frame in frames:
-        frame_features = extract_non_expected_noise_features_from_frame(frame, spectrum, centroids_indexes)
+        frame_features = extract_noise_features_from_frame(frame, spectrum, centroids_indexes)
         non_expected_features.append(frame_features)
 
     return non_expected_features
@@ -416,7 +440,6 @@ def extract_background_features_from_scan(spectrum):
     """ This method extracts baseline (related to instrument noise) features from one scan. """
 
     # peak picking here
-    # TODO: check that minimal peak intensity is the same with main feature extraction (should be less here?)
     centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=minimal_peak_intensity)
 
     bg_features = form_frames_and_extract_features(spectrum, centroids_indexes)
@@ -499,8 +522,8 @@ if __name__ == '__main__':
     start_time = time.time()
 
     # TODO process all the files from a folder (unless the file is fetched from database and received as a message)
-    # good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
-    good_example = '/Users/dmitrav/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
+    good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
+    # good_example = '/Users/dmitrav/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
     spectra = list(mzxml.read(good_example))
 
     print('\n', time.time() - start_time, "seconds elapsed for reading")

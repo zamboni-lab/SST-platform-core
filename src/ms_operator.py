@@ -39,14 +39,19 @@ def find_closest_centroids(mz_spectrum, centroids_indexes, expected_ions_info):
                                                                    expected_ions_info['fragments mzs'])
 
         if closest_peak_index < 0:
-            another_peak = {'present': False, 'expected mz': expected_peaks_list[i]}
+            another_peak = {
+                'present': False,
+                'expected mz': expected_peaks_list[i],
+                'expected isotopes': isotopes, # expected (theoretical) isotopes related to this ion (incl. itself)
+                'expected fragments': fragments, # expected (theoretical) fragments related to this ion (incl. itself)
+            }
         else:
             another_peak = {
                 'present': True,
                 'expected mz': expected_peaks_list[i],  # expected (theoretical) mz
                 'expected intensity': expected_intensities_list[i],  # expected (theoretical) ion abundance
-                'mz': mz_spectrum[closest_peak_index],  # measured mz
-                'index': closest_peak_index,
+                'mz': mz_spectrum[centroids_indexes[closest_peak_index]],  # measured mz
+                'index': centroids_indexes[closest_peak_index],
                 'expected isotopes': isotopes,  # expected (theoretical) isotopes related to this ion (incl. itself)
                 'expected fragments': fragments,  # expected (theoretical) fragments related to this ion (incl. itself)
                 'centroid ppm': centroid_ppm  # ppm between expected peak and actual peak centroid
@@ -166,8 +171,8 @@ def get_peak_width_and_predicted_mz(peak_region, spectrum, fitted_model):
 
     # define step to evaluate model to the left and to the right of the peak
     mz_step = max(
-        abs(predicted_peak_mz - spectrum['intensity array'][peak_region[0]]),
-        abs(predicted_peak_mz - spectrum['intensity array'][peak_region[-1]])
+        abs(predicted_peak_mz - spectrum['m/z array'][peak_region[0]]),
+        abs(predicted_peak_mz - spectrum['m/z array'][peak_region[-1]])
     )
 
     i = 1
