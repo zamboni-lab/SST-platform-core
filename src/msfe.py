@@ -284,18 +284,28 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
         for k in range(len(peak_fits)):
             if peak_fits[k]['expected mz'] == actual_peaks_info[major_peak_index]['expected isotopes'][j]:
 
-                # ratio between isotope intensity and its major ions intensity
-                max_isotope_intensity = max(peak_fits[k]['intensity'])
-                ratio = max_isotope_intensity / major_peak_max_intensity
+                # if the peak was present and was fitted actually
+                if peak_fits[k]['mz'] > 0:
 
-                # m/z diff between isotope and its major ion (how far is the isotope)
-                isotope_mz = float(peak_fits[k]['mz'][numpy.where(peak_fits[k]['intensity'] == max_isotope_intensity)])
-                mass_diff = isotope_mz - major_peak_mz
+                    # ratio between isotope intensity and its major ions intensity
+                    max_isotope_intensity = max(peak_fits[k]['intensity'])
+                    ratio = max_isotope_intensity / major_peak_max_intensity
 
-                isotope_intensity_ratios.append(ratio)
-                isotope_mass_diff_values.append(mass_diff)
+                    # m/z diff between isotope and its major ion (how far is the isotope)
+                    isotope_mz = float(peak_fits[k]['mz'][numpy.where(peak_fits[k]['intensity'] == max_isotope_intensity)])
+                    mass_diff = isotope_mz - major_peak_mz
 
-                break
+                    isotope_intensity_ratios.append(ratio)
+                    isotope_mass_diff_values.append(mass_diff)
+
+                    break
+
+                else:
+                    # otherwise it means that this expected isotope is missing actually
+                    isotope_intensity_ratios.append(-1)
+                    isotope_mass_diff_values.append(-1)
+
+                    break
 
     isotopic_features = {
         'isotopes mzs': actual_peaks_info[major_peak_index]['expected isotopes'],  # in case id is needed
@@ -325,18 +335,28 @@ def find_fragment_and_extract_features(major_peak_index, actual_peaks_info, peak
         for k in range(len(peak_fits)):
             if peak_fits[k]['expected mz'] == actual_peaks_info[major_peak_index]['expected fragments'][j]:
 
-                # ratio between fragment intensity and its major ions intensity
-                max_fragment_intensity = max(peak_fits[k]['intensity'])
-                ratio = max_fragment_intensity / major_peak_max_intensity
+                # if the peak was present and was fitted actually
+                if peak_fits[k]['mz'] > 0:
 
-                # m/z diff between fragment and its major ion (how far is the fragment)
-                fragment_mz = peak_fits[k]['mz'][numpy.where(peak_fits[k]['intensity'] == max_fragment_intensity)]
-                mass_diff = major_peak_mz - fragment_mz
+                    # ratio between fragment intensity and its major ions intensity
+                    max_fragment_intensity = max(peak_fits[k]['intensity'])
+                    ratio = max_fragment_intensity / major_peak_max_intensity
 
-                fragment_intensity_ratios.append(ratio)
-                fragment_mass_diff_values.append(mass_diff)
+                    # m/z diff between fragment and its major ion (how far is the fragment)
+                    fragment_mz = peak_fits[k]['mz'][numpy.where(peak_fits[k]['intensity'] == max_fragment_intensity)]
+                    mass_diff = major_peak_mz - fragment_mz
 
-                break
+                    fragment_intensity_ratios.append(ratio)
+                    fragment_mass_diff_values.append(mass_diff)
+
+                    break
+
+                else:
+                    # otherwise it means that this expected isotope is missing actually
+                    fragment_intensity_ratios.append(-1)
+                    fragment_mass_diff_values.append(-1)
+
+                    break
 
     fragmentation_features = {
         'fragments mzs': actual_peaks_info[major_peak_index]['expected fragments'],  # in case id is needed
