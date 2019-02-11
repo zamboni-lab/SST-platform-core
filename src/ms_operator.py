@@ -90,6 +90,12 @@ def find_closest_peak_index(mz_spectrum, peaks_indexes, expected_peak_mz):
     while mz_spectrum[peaks_indexes[closest_index]] < expected_peak_mz:
         closest_index += 1
 
+    # to avoid violating allowed ppm error for over-saturated peaks
+    # TODO: 1) pass list of intensities to this function,
+    # TODO: 2) when the closest index is found, check the neighboring intensity values,
+    # TODO: 3) get the first mz index of the similar neighboring intensity values if there are any
+    # TODO: 3) OR get the closest mz index to the expected one
+
     previous_peak_ppm = abs(mz_spectrum[peaks_indexes[closest_index-1]] - expected_peak_mz) / expected_peak_mz * 10 ** 6
     next_peak_ppm = abs(mz_spectrum[peaks_indexes[closest_index]] - expected_peak_mz) / expected_peak_mz * 10 ** 6
 
@@ -164,11 +170,10 @@ def get_peak_width_and_predicted_mz(peak_region, spectrum, fitted_model):
     intensity_at_half_height = max(spectrum['intensity array'][peak_region[0]:peak_region[-1] + 1]) / 2
 
     # find predicted peak mz
-    xc = numpy.linspace(spectrum['m/z array'][peak_region[0]], spectrum['m/z array'][peak_region[-1] + 1], 100)
+    xc = numpy.linspace(spectrum['m/z array'][peak_region[0]], spectrum['m/z array'][peak_region[-1]], 100)
     yc = fitted_model.eval(x=xc)
 
-    predicted_peak_mz = xc[numpy.where(yc == max(yc))]
-
+    predicted_peak_mz = float(xc[numpy.where(yc == max(yc))])
     # define step to evaluate model to the left and to the right of the peak
     mz_step = max(
         abs(predicted_peak_mz - spectrum['m/z array'][peak_region[0]]),
@@ -188,9 +193,9 @@ def get_peak_width_and_predicted_mz(peak_region, spectrum, fitted_model):
             residuals = abs(numpy.array(yc) - intensity_at_half_height)
 
             # find mz value of desired intensity
-            half_height_mz = xc[numpy.where(residuals == min(residuals))]
+            half_height_mz = float(xc[numpy.where(residuals == min(residuals))])
 
-            half_peak_width = predicted_peak_mz - half_height_mz
+            half_peak_width = abs(predicted_peak_mz - half_height_mz)
 
             return 2 * half_peak_width, predicted_peak_mz
 

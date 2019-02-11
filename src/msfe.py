@@ -21,7 +21,7 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
 
     expected_intensity = actual_peak_info['expected intensity']
 
-    predicted_peak_mz = continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))]
+    predicted_peak_mz = float(continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))])
 
     # extract information about subsequent (following) peaks after the major one
 
@@ -120,7 +120,7 @@ def extract_width_features(continuous_mz, fitted_intensity):
         # find mz value of desired intensity
         mz = continuous_mz[numpy.where(residuals == min(residuals))]
 
-        width = 2 * (continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))] - mz)  # symmetry -> * 2
+        width = float(2 * abs((continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))] - mz)))  # symmetry -> * 2
 
         widths.append(width)
 
@@ -148,7 +148,6 @@ def get_peak_fit(peak_region, spectrum, theoretical_mz):
 
         # define d as peak resolution (i.e. width on the 50% of the height)
         d, predicted_peak_mz = ms_operator.get_peak_width_and_predicted_mz(peak_region, spectrum, g_out)
-        # TODO: figure out why d is returned as an array
 
         xc = numpy.linspace(predicted_peak_mz - prf * d, predicted_peak_mz + prf * d, 5000)
         yc = g_out.eval(x=xc)
@@ -156,7 +155,7 @@ def get_peak_fit(peak_region, spectrum, theoretical_mz):
         # now compose fit information
 
         # find absolute mass accuracy and ppm for signal related to fit
-        signal_fit_mass_diff = x[numpy.where(y == max(y))] - predicted_peak_mz
+        signal_fit_mass_diff = float(x[numpy.where(y == max(y))] - predicted_peak_mz)
         signal_fit_ppm = signal_fit_mass_diff / predicted_peak_mz * 10 ** 6
 
         # find absolute mass accuracy and ppm for fit related to expected (theoretical) value
@@ -273,7 +272,7 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
     major_peak_continuous_mz = peak_fits[major_peak_index]['mz']
 
     major_peak_max_intensity = max(major_peak_fitted_intensity)
-    major_peak_mz = major_peak_continuous_mz[numpy.where(major_peak_fitted_intensity == major_peak_max_intensity)]
+    major_peak_mz = float(major_peak_continuous_mz[numpy.where(major_peak_fitted_intensity == major_peak_max_intensity)])
 
     isotope_intensity_ratios = []
     isotope_mass_diff_values = []
@@ -285,7 +284,7 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
             if peak_fits[k]['expected mz'] == actual_peaks_info[major_peak_index]['expected isotopes'][j]:
 
                 # if the peak was present and was fitted actually
-                if peak_fits[k]['mz'] > 0:
+                if peak_fits[k]['mz'][0] != -1:
 
                     # ratio between isotope intensity and its major ions intensity
                     max_isotope_intensity = max(peak_fits[k]['intensity'])
@@ -324,7 +323,7 @@ def find_fragment_and_extract_features(major_peak_index, actual_peaks_info, peak
     major_peak_continuous_mz = peak_fits[major_peak_index]['mz']
 
     major_peak_max_intensity = max(major_peak_fitted_intensity)
-    major_peak_mz = major_peak_continuous_mz[numpy.where(major_peak_fitted_intensity == major_peak_max_intensity)]
+    major_peak_mz = float(major_peak_continuous_mz[numpy.where(major_peak_fitted_intensity == major_peak_max_intensity)])
 
     fragment_intensity_ratios = []
     fragment_mass_diff_values = []
@@ -336,7 +335,7 @@ def find_fragment_and_extract_features(major_peak_index, actual_peaks_info, peak
             if peak_fits[k]['expected mz'] == actual_peaks_info[major_peak_index]['expected fragments'][j]:
 
                 # if the peak was present and was fitted actually
-                if peak_fits[k]['mz'] > 0:
+                if peak_fits[k]['mz'][0] != -1:
 
                     # ratio between fragment intensity and its major ions intensity
                     max_fragment_intensity = max(peak_fits[k]['intensity'])
@@ -397,8 +396,8 @@ def get_null_peak_fit(actual_peak):
 
     missing_peak_fit = {
         'expected mz': actual_peak['expected mz'],  # this is an id of the peak
-        'mz': -1,
-        'intensity': -1,
+        'mz': [-1],
+        'intensity': [-1],
         'info': {}
     }
 
