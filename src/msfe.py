@@ -154,6 +154,8 @@ def get_peak_fit(peak_region, spectrum, theoretical_mz):
 
         # now compose fit information
 
+        # TODO: correct fitting for a saturated peaks (exclude similar maximal intensities in the middle)
+
         # find absolute mass accuracy and ppm for signal related to fit
         signal_fit_mass_diff = float(x[numpy.where(y == max(y))] - predicted_peak_mz)
         signal_fit_ppm = signal_fit_mass_diff / predicted_peak_mz * 10 ** 6
@@ -521,8 +523,12 @@ def extract_main_features_from_scan(spectrum):
     # parse expected peaks info
     expected_ions_info = parser.parse_expected_ions(expected_peaks_file_path)
 
+    # correct indexes of peaks (currently only saturated peaks are processed)
+    corrected_centroids_indexes = ms_operator.correct_centroids_indexes(spectrum['m/z array'], spectrum['intensity array'],
+                                                                        centroids_indexes, expected_ions_info)
+
     # get information about actual peaks in the spectrum in relation to expected ones and centroiding results
-    actual_peaks = ms_operator.find_closest_centroids(spectrum['m/z array'], centroids_indexes, expected_ions_info)
+    actual_peaks = ms_operator.find_closest_centroids(spectrum['m/z array'], corrected_centroids_indexes, expected_ions_info)
 
     independent_peaks_features = []
     independent_peak_fits = []  # there is a need to store temporarily peak fitting results
@@ -532,7 +538,7 @@ def extract_main_features_from_scan(spectrum):
 
         if actual_peaks[i]['present']:
 
-            peak_fit, peak_features = fit_peak_and_extract_features(actual_peaks[i], spectrum, centroids_indexes)
+            peak_fit, peak_features = fit_peak_and_extract_features(actual_peaks[i], spectrum, corrected_centroids_indexes)
 
             independent_peaks_features.append(peak_features)
             independent_peak_fits.append(peak_fit)
@@ -577,7 +583,7 @@ def extract_main_features_from_scan(spectrum):
                 pass
 
     # extract non-expected features from a scan
-    non_expected_features = form_frames_and_extract_features(spectrum, centroids_indexes)
+    non_expected_features = form_frames_and_extract_features(spectrum, corrected_centroids_indexes)
 
     # merge independent, isotopic, fragmentation and non-expected features
     scan_features = merge_features(independent_peaks_features, isotopic_peaks_features,

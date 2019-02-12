@@ -21,6 +21,115 @@ def extract_mz_region(spectrum, mz_interval):
     return numpy.array(mz_values), numpy.array(intensities)
 
 
+def get_saturated_peak_mz_range(mz_spectrum, intensities, peak_index):
+    """ This method looks for mz range of the saturated peak, i.e. mz range of a peak within which all the intensity
+        values are equal. """
+
+    saturated_peak_mz_values = []
+    saturated_peak_mz_indexes = []
+
+    # go to the left
+    there_is_equal_intensity_on_the_left = True
+
+    step = 0
+    while there_is_equal_intensity_on_the_left:
+
+        if intensities[peak_index - step - 1] == intensities[peak_index - step]:
+            step += 1
+            saturated_peak_mz_values.append(mz_spectrum[peak_index - step - 1])
+            saturated_peak_mz_indexes.append(peak_index - step - 1)
+        else:
+            there_is_equal_intensity_on_the_left = False
+
+    # go to the right
+    there_is_equal_intensity_on_the_right = True
+
+    step = 0
+    while there_is_equal_intensity_on_the_right:
+
+        if intensities[peak_index + step] == intensities[peak_index + step + 1]:
+            step += 1
+            saturated_peak_mz_values.append(mz_spectrum[peak_index + step + 1])
+            saturated_peak_mz_indexes.append(peak_index + step + 1)
+        else:
+            there_is_equal_intensity_on_the_right = False
+
+    return saturated_peak_mz_values, saturated_peak_mz_indexes
+
+
+def correct_centroids_indexes(mz_spectrum, intensities, centroids_indexes, expected_ions_info):
+    """ This method corrects peak-picking result. It looks for saturated peaks (with the same maximum intensity value)
+        among expected ones. If there is one, its centroid index is corrected so that it's closer to the expected value. """
+
+    left_corrected_peak_index, right_corrected_peak_index, left_min_mz_diffs, right_min_mz_diffs = None, None, None, None
+
+    expected_peaks_list = expected_ions_info['expected mzs']
+
+    for i in range(len(expected_peaks_list)):
+
+        # find closest peak index to the expected one
+        closest_index = 0
+        while mz_spectrum[centroids_indexes[closest_index]] < expected_peaks_list[i]:
+            closest_index += 1
+
+        # check two neighboring peaks (left and right) for saturation
+        left_peak_is_saturated = False
+        right_peak_is_saturated = False
+
+        if intensities[centroids_indexes[closest_index-1]-1] == intensities[centroids_indexes[closest_index-1]] or \
+                intensities[centroids_indexes[closest_index-1]] == intensities[centroids_indexes[closest_index-1]+1]:
+
+            left_peak_is_saturated = True
+
+            saturation_mz_values, saturation_mz_indexes = get_saturated_peak_mz_range(mz_spectrum, intensities,
+                                                                                      centroids_indexes[closest_index-1])
+            # find closest mz
+            mz_diffs = numpy.array(saturation_mz_values) - expected_peaks_list[i]
+            left_min_mz_diffs = min(mz_diffs)
+            closest_mz_index = int(mz_diffs[numpy.where(mz_diffs == left_min_mz_diffs)])
+
+            left_corrected_peak_index = saturation_mz_indexes[closest_mz_index]
+
+        else:
+            pass
+
+        if intensities[centroids_indexes[closest_index]-1] == intensities[centroids_indexes[closest_index]] or \
+                intensities[centroids_indexes[closest_index]] == intensities[centroids_indexes[closest_index]+1]:
+
+            right_peak_is_saturated = True
+
+            saturation_mz_values, saturation_mz_indexes = get_saturated_peak_mz_range(mz_spectrum, intensities,
+                                                                                      centroids_indexes[closest_index])
+            # find closest mz
+            mz_diffs = numpy.array(saturation_mz_values) - expected_peaks_list[i]
+            right_min_mz_diffs = min(mz_diffs)
+            closest_mz_index = int(mz_diffs[numpy.where(mz_diffs == right_min_mz_diffs)])
+
+            right_corrected_peak_index = saturation_mz_indexes[closest_mz_index]
+
+        else:
+            pass
+
+        # nothing to correct if both peaks are not saturated
+        if not left_peak_is_saturated and not right_peak_is_saturated:
+            continue
+
+        # make correction of single saturated peak
+        elif not left_peak_is_saturated and right_peak_is_saturated:
+            centroids_indexes[closest_index] = right_corrected_peak_index
+        # make correction of saturated peak
+        elif left_peak_is_saturated and not right_peak_is_saturated:
+            centroids_indexes[closest_index-1] = left_corrected_peak_index
+        else:
+            # choose the closest saturated peak and make correction then
+            if left_min_mz_diffs < right_min_mz_diffs:
+                centroids_indexes[closest_index-1] = left_corrected_peak_index
+            else:
+                centroids_indexes[closest_index] = right_corrected_peak_index
+
+    return centroids_indexes
+
+
 def find_closest_centroids(mz_spectrum, centroids_indexes, expected_ions_info):
     """ This method looks for all the expected peaks in the list of centroids. """
 
@@ -89,12 +198,6 @@ def find_closest_peak_index(mz_spectrum, peaks_indexes, expected_peak_mz):
     closest_index = 0
     while mz_spectrum[peaks_indexes[closest_index]] < expected_peak_mz:
         closest_index += 1
-
-    # to avoid violating allowed ppm error for over-saturated peaks
-    # TODO: 1) pass list of intensities to this function,
-    # TODO: 2) when the closest index is found, check the neighboring intensity values,
-    # TODO: 3) get the first mz index of the similar neighboring intensity values if there are any
-    # TODO: 3) OR get the closest mz index to the expected one
 
     previous_peak_ppm = abs(mz_spectrum[peaks_indexes[closest_index-1]] - expected_peak_mz) / expected_peak_mz * 10 ** 6
     next_peak_ppm = abs(mz_spectrum[peaks_indexes[closest_index]] - expected_peak_mz) / expected_peak_mz * 10 ** 6

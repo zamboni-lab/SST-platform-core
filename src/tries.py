@@ -70,12 +70,20 @@ from src.constants import parser_description_symbols as brackets
 # plt.axvline(x=expected)
 # plt.show()
 
-good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
-# good_example = '/Users/dmitrav/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
-spectra = list(mzxml.read(good_example))
+# good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
+# # # good_example = '/Users/dmitrav/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
+# # spectra = list(mzxml.read(good_example))
+# #
+# # centroids_indexes, properties = signal.find_peaks(spectra[43]['intensity array'], height=100)
+# #
+# # plt.plot(spectra[43]['m/z array'], spectra[43]['intensity array'], lw=1)
+# # plt.plot(spectra[43]['m/z array'][centroids_indexes], spectra[43]['intensity array'][centroids_indexes], 'rx',  lw=1)
+# # plt.show()
 
-centroids_indexes, properties = signal.find_peaks(spectra[43]['intensity array'], height=100)
 
-plt.plot(spectra[43]['m/z array'], spectra[43]['intensity array'], lw=1)
-plt.plot(spectra[43]['m/z array'][centroids_indexes], spectra[43]['intensity array'][centroids_indexes], 'rx',  lw=1)
-plt.show()
+a = [1,2,3,4]
+b = []
+
+a.extend(b)
+
+print(a)
