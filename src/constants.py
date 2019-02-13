@@ -1,5 +1,5 @@
 
-version = '0.0.7'
+version = '0.0.9'
 
 
 ms_spectrum_names = ['num', 'scanType', 'centroided', 'msLevel', 'peaksCount', 'polarity', 'retentionTime',\
@@ -27,8 +27,8 @@ peak_region_factor = 3  # 3 times resolution is a region for extracting informat
 
 maximum_number_of_subsequent_peaks_to_consider = 10  # initial guess
 
-mz_frame_size = 50  # for frames [0, 50], [50, 100], ...
-number_of_frames = 11
+mz_frame_size = 50  # for frames [50, 100], [100, 150]...
+number_of_frames = 12
 
-number_of_top_noisy_peaks_to_consider = 5
+number_of_top_noisy_peaks_to_consider = 10
 frame_intensity_percentiles = [25, 50, 75]

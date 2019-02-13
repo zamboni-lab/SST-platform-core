@@ -204,41 +204,23 @@ def extract_noise_features_from_frame(mz_frame, spectrum, centroids_indexes):
     frame_peaks_intensities = []
 
     i = 0
+    # go until left boundary of the frame is reached
+    while mz_frame[0] > spectrum['m/z array'][centroids_indexes[i]]:
+        i += 1
+    # collect peaks between left and right boundaries
     while mz_frame[0] < spectrum['m/z array'][centroids_indexes[i]] < mz_frame[1]:
         frame_peaks_intensities.append(spectrum['intensity array'][centroids_indexes[i]])
         i += 1
 
-    if len(frame_peaks_intensities) > n_top_guys:
-        frame_features = {
-            'number of peaks': len(frame_peaks_intensities),
-            'intensity sum': sum(frame_peaks_intensities),
-            'top peaks intensities': sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys],
-            'percentiles': list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles))
-        }
+    top_peaks_intensities = sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys]
 
-    elif 0 < len(frame_peaks_intensities) < n_top_guys:
-
-        top_peaks_intensities = sorted(frame_peaks_intensities, reverse=True)
-
-        # add null features to keep the dimensionality of the feature matrix
-        while len(top_peaks_intensities) < n_top_guys:
-            top_peaks_intensities.append(-1)
-
-        frame_features = {
-            'number of peaks': len(frame_peaks_intensities),
-            'intensity sum': sum(frame_peaks_intensities),
-            'top peaks intensities': top_peaks_intensities,
-            'percentiles': list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles))
-        }
-
-    else:
-        # fill with null features to keep the dimensionality of the feature matrix
-        frame_features = {
-            'number of peaks': -1,
-            'intensity sum': -1,
-            'top peaks intensities': [-1 for guy in range(n_top_guys)],
-            'percentiles': [-1 for percentile in frame_intensity_percentiles]
-        }
+    frame_features = {
+        'number of peaks': len(frame_peaks_intensities),
+        'intensity sum': sum(frame_peaks_intensities),
+        'percentiles': list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)),
+        'top peaks intensities': top_peaks_intensities,
+        'top percentiles': list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
+    }
 
     return frame_features
 
@@ -249,11 +231,11 @@ def form_frames_and_extract_features(spectrum, centroids_indexes):
     non_expected_features = []
 
     # define mz ranges to extract features from
-    ranges = [i * mz_frame_size for i in range(number_of_frames)]
+    ranges = [i * mz_frame_size for i in range(1, number_of_frames+2)]
 
     frames = []
-    for i in range(number_of_frames-1):
-        frames.append([ranges[i], ranges[i + 1]])
+    for i in range(number_of_frames):
+        frames.append([ranges[i], ranges[i+1]])
 
     # for each frame extract features
     for frame in frames:
