@@ -1,5 +1,5 @@
 
-version = '0.0.6'
+version = '0.0.7'
 
 
 ms_spectrum_names = ['num', 'scanType', 'centroided', 'msLevel', 'peaksCount', 'polarity', 'retentionTime',\

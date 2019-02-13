@@ -181,12 +181,14 @@ def find_expected_isotopes_and_fragments(expected_peak_mz, isotopes_mz_lists, fr
         if expected_peak_mz == isotope_list[0]:
             # add to the list the other isotopes
             isotopes = isotope_list[1:len(isotope_list)]
+            break
 
     for fragments_list in fragments_mz_lists:
         # if this is a major ion having potential fragments (may be fragmented)
         if expected_peak_mz == fragments_list[0]:
             # add to the list these potential fragments
             fragments = fragments_list[1:len(fragments_list)]
+            break
 
     return isotopes, fragments
 

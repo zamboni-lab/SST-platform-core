@@ -213,7 +213,7 @@ def extract_noise_features_from_frame(mz_frame, spectrum, centroids_indexes):
             'number of peaks': len(frame_peaks_intensities),
             'intensity sum': sum(frame_peaks_intensities),
             'top peaks intensities': sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys],
-            'percentiles': numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)
+            'percentiles': list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles))
         }
 
     elif 0 < len(frame_peaks_intensities) < n_top_guys:
@@ -228,7 +228,7 @@ def extract_noise_features_from_frame(mz_frame, spectrum, centroids_indexes):
             'number of peaks': len(frame_peaks_intensities),
             'intensity sum': sum(frame_peaks_intensities),
             'top peaks intensities': top_peaks_intensities,
-            'percentiles': numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)
+            'percentiles': list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles))
         }
 
     else:
@@ -302,11 +302,10 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
                     # otherwise it means that this expected isotope is missing actually
                     isotope_intensity_ratios.append(-1)
                     isotope_mass_diff_values.append(-1)
-
                     break
 
     isotopic_features = {
-        'isotopes mzs': actual_peaks_info[major_peak_index]['expected isotopes'],  # in case id is needed
+        # 'isotopes mzs': actual_peaks_info[major_peak_index]['expected isotopes'],  # in case id is needed
         'intensity ratios': isotope_intensity_ratios,
         'mass diff values': isotope_mass_diff_values
     }
@@ -341,23 +340,21 @@ def find_fragment_and_extract_features(major_peak_index, actual_peaks_info, peak
                     ratio = max_fragment_intensity / major_peak_max_intensity
 
                     # m/z diff between fragment and its major ion (how far is the fragment)
-                    fragment_mz = peak_fits[k]['mz'][numpy.where(peak_fits[k]['intensity'] == max_fragment_intensity)]
+                    fragment_mz = float(peak_fits[k]['mz'][numpy.where(peak_fits[k]['intensity'] == max_fragment_intensity)])
                     mass_diff = major_peak_mz - fragment_mz
 
                     fragment_intensity_ratios.append(ratio)
                     fragment_mass_diff_values.append(mass_diff)
-
                     break
 
                 else:
                     # otherwise it means that this expected isotope is missing actually
                     fragment_intensity_ratios.append(-1)
                     fragment_mass_diff_values.append(-1)
-
                     break
 
     fragmentation_features = {
-        'fragments mzs': actual_peaks_info[major_peak_index]['expected fragments'],  # in case id is needed
+        # 'fragments mzs': actual_peaks_info[major_peak_index]['expected fragments'],  # in case id is needed
         'intensity ratios': fragment_intensity_ratios,
         'mass diff values': fragment_mass_diff_values
     }
