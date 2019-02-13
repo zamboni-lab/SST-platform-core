@@ -34,6 +34,8 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
         # 'intensity': max(fitted_intensity, max(fit_info['raw intensity array'])),
         # # in this case goodness-of-fit does not tell much
 
+        'is missing': 0,
+        'saturation': fit_info['saturation'],
         'intensity': max(fitted_intensity),
         'expected intensity diff': max(fitted_intensity) - expected_intensity,
         'expected intensity ratio': expected_intensity / max(fitted_intensity),
@@ -130,14 +132,10 @@ def extract_width_features(continuous_mz, fitted_intensity):
 def get_peak_fit(peak_region, spectrum, theoretical_mz):
     """ This method fits the peak with a model and returns the fitted curve with fit information. """
 
-    x, y = spectrum['m/z array'][peak_region[0]:peak_region[-1] + 1], \
-           spectrum['intensity array'][peak_region[0]:peak_region[-1] + 1]
+    x, y, saturation = ms_operator.get_peak_fitting_values(spectrum, peak_region)
 
     if len(x) == len(y) == 3:
-
-        # I should find out whether this happens at all with large expected peaks.
-
-        # TODO: implement feature extraction out of raw data and remove ValueError
+        # I doubt it ever happens with large expected peaks
         raise ValueError("Don't fit function to 3 points. Better calculate features from raw data.")
 
     else:
@@ -154,8 +152,6 @@ def get_peak_fit(peak_region, spectrum, theoretical_mz):
 
         # now compose fit information
 
-        # TODO: correct fitting for a saturated peaks (exclude similar maximal intensities in the middle)
-
         # find absolute mass accuracy and ppm for signal related to fit
         signal_fit_mass_diff = float(x[numpy.where(y == max(y))] - predicted_peak_mz)
         signal_fit_ppm = signal_fit_mass_diff / predicted_peak_mz * 10 ** 6
@@ -166,11 +162,12 @@ def get_peak_fit(peak_region, spectrum, theoretical_mz):
 
         fit_info = {
             'model': 'gaussian',
-            'goodness-of-fit': g_out.redchi,  # goodness-of-fit is reduced chi-squared
+            'goodness-of-fit': [g_out.redchi, g_out.aic, g_out.bic],  # goodness-of-fit is reduced chi-squared
             'fit_theory_absolute_ma': fit_theory_mass_diff,  # fitted absolute mass accuracy
             'fit_theory_ppm': fit_theory_ppm,  # ppm between fitted peak mz and expected (theoretical) mz
             'resolution': d,
             'raw intensity array': y,
+            'saturation': saturation,
 
             # probably redundant information
             'signal_fit_absolute_ma': signal_fit_mass_diff,
@@ -376,6 +373,8 @@ def get_null_peak_features():
         # 'intensity': max(fitted_intensity, max(fit_info['raw intensity array'])),
         # # in this case goodness-of-fit does not tell much
 
+        'is missing': 1,
+        'saturation': -1,
         'intensity': -1,
         'expected intensity diff': -1,
         'expected intensity ratio': -1,
@@ -387,7 +386,7 @@ def get_null_peak_features():
         'left tail auc': -1,
         'right tail auc': -1,
         'symmetry': -1,
-        'goodness-of-fit': -1
+        'goodness-of-fit': [-1, -1, -1]
     }
 
     return missing_peak_features
@@ -597,8 +596,8 @@ if __name__ == '__main__':
     start_time = time.time()
 
     # TODO process all the files from a folder (unless the file is fetched from database and received as a message)
-    good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
-    # good_example = '/Users/dmitrav/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
+    # good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
+    good_example = '/Users/dmitrav/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
     spectra = list(mzxml.read(good_example))
 
     print('\n', time.time() - start_time, "seconds elapsed for reading")

@@ -266,6 +266,38 @@ def get_peak_fitting_region(spectrum, index):
     return [left_border, right_border]
 
 
+def get_peak_fitting_values(spectrum, peak_region):
+    """ This method returns mz and intensity values according to the given peak region.
+        It also checks the peak for saturation and returns boolean. """
+
+    mzs, intensities = spectrum['m/z array'][peak_region[0]:peak_region[-1] + 1], \
+                       spectrum['intensity array'][peak_region[0]:peak_region[-1] + 1]
+
+    is_peak_saturated = False
+
+    # correction is made in case the peak is saturated
+    corrected_mzs = [mzs[0]]  # add first value
+    corrected_intensities = [intensities[0]]  # add first value
+
+    for i in range(1, len(intensities) - 1):
+
+        if (intensities[i] == intensities[i-1] or intensities[i] == intensities[i+1]) \
+                and intensities[i] == max(intensities):
+
+            is_peak_saturated = True
+
+        else:
+            # these are normal values -> append
+            corrected_intensities.append(intensities[i])
+            corrected_mzs.append(mzs[i])
+
+    # add last values
+    corrected_intensities.append(intensities[-1])
+    corrected_mzs.append(mzs[-1])
+
+    return numpy.array(corrected_mzs), numpy.array(corrected_intensities), int(is_peak_saturated)
+
+
 def get_peak_width_and_predicted_mz(peak_region, spectrum, fitted_model):
     """ This method calculates peak resolution. """
 
