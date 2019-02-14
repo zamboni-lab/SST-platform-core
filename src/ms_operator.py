@@ -151,8 +151,8 @@ def find_closest_centroids(mz_spectrum, centroids_indexes, expected_ions_info):
             another_peak = {
                 'present': False,
                 'expected mz': expected_peaks_list[i],
-                'expected isotopes': isotopes, # expected (theoretical) isotopes related to this ion (incl. itself)
-                'expected fragments': fragments, # expected (theoretical) fragments related to this ion (incl. itself)
+                'expected isotopes': isotopes,  # expected (theoretical) isotopes related to this ion (incl. itself)
+                'expected fragments': fragments,  # expected (theoretical) fragments related to this ion (incl. itself)
             }
         else:
             another_peak = {

@@ -7,12 +7,16 @@ from matplotlib import pyplot as plt
 from src import parser, ms_operator
 from src.constants import peak_region_factor as prf
 from src.constants import peak_widths_levels_of_interest as widths_levels
-from src.constants import minimal_peak_intensity
+from src.constants import minimal_normal_peak_intensity
 from src.constants import maximum_number_of_subsequent_peaks_to_consider as max_sp_number
-from src.constants import mz_frame_size, number_of_frames
+from src.constants import normal_scan_mz_frame_size, normal_scan_number_of_frames
+from src.constants import chemical_noise_scan_mz_frame_size, chemical_noise_scan_number_of_frames
+from src.constants import instrument_noise_mz_frame_size, instrument_noise_scan_number_of_frames
 from src.constants import number_of_top_noisy_peaks_to_consider as n_top_guys
-from src.constants import frame_intensity_percentiles, expected_peaks_file_path, main_features_scans_indexes
-from src.constants import background_features_scans_indexes
+from src.constants import frame_intensity_percentiles
+from src.constants import main_features_scans_indexes, chemical_noise_features_scans_indexes, instrument_noise_features_scans_indexes
+from src.constants import normal_scan_expected_peaks_file_path, chemical_noise_scan_expected_peaks_file_path
+from src.constants import minimal_background_peak_intensity as min_bg_peak_intensity
 from lmfit.models import GaussianModel
 
 
@@ -198,8 +202,55 @@ def fit_peak_and_extract_features(actual_peak, spectrum, centroids_indexes):
     return peak_fit, peak_features
 
 
-def extract_noise_features_from_frame(mz_frame, spectrum, centroids_indexes):
-    """ This method extracts either non-expected or background (instrument noise) features of a given frame. """
+def extract_non_expected_features_from_one_frame(mz_frame, spectrum, centroids_indexes, actual_peaks):
+    """ This method extracts non-expected features of a given frame. Expected peaks are excluded. """
+
+    frame_peaks_intensities = []
+
+    i = 0
+    # go until left boundary of the frame is reached
+    while mz_frame[0] > spectrum['m/z array'][centroids_indexes[i]]:
+        i += 1
+    # collect peaks between left and right boundaries
+    while mz_frame[0] < spectrum['m/z array'][centroids_indexes[i]] < mz_frame[1]:
+
+        is_non_expected_peak = True
+        # try looking for this peak among expected ones
+        for j in range(len(actual_peaks)):
+
+            if actual_peaks[j]['present']:
+                if actual_peaks[j]['index'] == centroids_indexes[i]:
+                    # if found, then it's expected one
+                    is_non_expected_peak = False
+                    break
+            else:
+                pass
+
+        if is_non_expected_peak:
+            # append only non-expected peaks
+            frame_peaks_intensities.append(spectrum['intensity array'][centroids_indexes[i]])
+        else:
+            pass
+
+        # iterate further
+        i += 1
+
+    top_peaks_intensities = sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys]
+
+    frame_features = {
+        'number of peaks': len(frame_peaks_intensities),
+        'intensity sum': sum(frame_peaks_intensities),
+        'percentiles': list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)),
+        'top peaks intensities': top_peaks_intensities,
+        'top percentiles': list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
+    }
+
+    return frame_features
+
+
+def extract_instrument_noise_features_from_one_frame(mz_frame, spectrum, centroids_indexes):
+    """ This method extracts background (instrument noise) features of a given frame.
+        No expected peaks here. """
 
     frame_peaks_intensities = []
 
@@ -225,21 +276,53 @@ def extract_noise_features_from_frame(mz_frame, spectrum, centroids_indexes):
     return frame_features
 
 
-def form_frames_and_extract_features(spectrum, centroids_indexes):
-    """ This method extracts features related to unexpected noise of instrumental and chemical nature. """
+def form_frames_and_extract_instrument_noise_features(spectrum, centroids_indexes):
+    """ This method forms frames for extraction of instrument noise (background) features
+        and then calls the extracting function. Frames here are specific background scans. """
 
     non_expected_features = []
 
     # define mz ranges to extract features from
-    ranges = [i * mz_frame_size for i in range(1, number_of_frames+2)]
-
     frames = []
-    for i in range(number_of_frames):
-        frames.append([ranges[i], ranges[i+1]])
+
+    ranges = [i * instrument_noise_mz_frame_size for i in range(1, instrument_noise_scan_number_of_frames+2)]
+    for i in range(instrument_noise_scan_number_of_frames):
+        frames.append([ranges[i], ranges[i + 1]])
 
     # for each frame extract features
     for frame in frames:
-        frame_features = extract_noise_features_from_frame(frame, spectrum, centroids_indexes)
+        frame_features = extract_instrument_noise_features_from_one_frame(frame, spectrum, centroids_indexes)
+        non_expected_features.append(frame_features)
+
+    return non_expected_features
+
+
+def form_frames_and_extract_non_expected_features(spectrum, centroids_indexes, actual_peaks, scan_type):
+    """ This method forms m/z frames and then extracts non-expected features
+        related to normal or chemical noise scan out of each frame.
+        Different frames are used depending on the type of the scan. """
+
+    non_expected_features = []
+
+    # define mz ranges to extract features from
+    frames = []
+
+    if scan_type == 'normal':
+        ranges = [i * normal_scan_mz_frame_size for i in range(1, normal_scan_number_of_frames+2)]
+        for i in range(normal_scan_number_of_frames):
+            frames.append([ranges[i], ranges[i+1]])
+
+    elif scan_type == 'chemical noise':
+        ranges = [i * chemical_noise_scan_mz_frame_size for i in range(1, chemical_noise_scan_number_of_frames+2)]
+        for i in range(chemical_noise_scan_number_of_frames):
+            frames.append([ranges[i], ranges[i + 1]])
+
+    else:
+        pass
+
+    # for each frame extract features
+    for frame in frames:
+        frame_features = extract_non_expected_features_from_one_frame(frame, spectrum, centroids_indexes, actual_peaks)
         non_expected_features.append(frame_features)
 
     return non_expected_features
@@ -473,9 +556,9 @@ def extract_background_features_from_scan(spectrum):
     scan_features = []
 
     # peak picking here
-    centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=minimal_peak_intensity)
+    centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=min_bg_peak_intensity)
 
-    all_background_features = form_frames_and_extract_features(spectrum, centroids_indexes)
+    all_background_features = form_frames_and_extract_instrument_noise_features(spectrum, centroids_indexes)
 
     for frame_features in all_background_features:
         for feature_name in list(frame_features.keys()):
@@ -492,11 +575,19 @@ def extract_background_features_from_scan(spectrum):
     return scan_features
 
 
-def extract_main_features_from_scan(spectrum):
-    """ This method extracts all the features from one scan. """
+def extract_main_features_from_scan(spectrum, scan_type):
+    """ This method extracts all the features from one scan.
+        There are slight differences between normal scan and chemical noise scan. """
+
+    # default scan type is normal
+    expected_peaks_file_path = normal_scan_expected_peaks_file_path
+
+    if scan_type == 'chemical noise':
+        # use another file if a chemical noise scan is being processed
+        expected_peaks_file_path = chemical_noise_scan_expected_peaks_file_path
 
     # peak picking here
-    centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=minimal_peak_intensity)
+    centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=minimal_normal_peak_intensity)
 
     # parse expected peaks info
     expected_ions_info = parser.parse_expected_ions(expected_peaks_file_path)
@@ -561,7 +652,8 @@ def extract_main_features_from_scan(spectrum):
                 pass
 
     # extract non-expected features from a scan
-    non_expected_features = form_frames_and_extract_features(spectrum, corrected_centroids_indexes)
+    non_expected_features = form_frames_and_extract_non_expected_features(spectrum, corrected_centroids_indexes,
+                                                                          actual_peaks, scan_type=scan_type)
 
     # merge independent, isotopic, fragmentation and non-expected features
     scan_features = merge_features(independent_peaks_features, isotopic_peaks_features,
@@ -575,22 +667,27 @@ if __name__ == '__main__':
     start_time = time.time()
 
     # TODO process all the files from a folder (unless the file is fetched from database and received as a message)
-    # good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
-    good_example = '/Users/dmitrav/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
+    good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
+    # good_example = '/Users/dmitrav/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
     spectra = list(mzxml.read(good_example))
 
     print('\n', time.time() - start_time, "seconds elapsed for reading")
 
-    feature_matrix = []
+    feature_matrix_row = []
 
     # fill in the feature matrix with main features
     for scan_index in main_features_scans_indexes:
-        scan_features = extract_main_features_from_scan(spectra[scan_index])
-        feature_matrix.append(scan_features)
+        scan_features = extract_main_features_from_scan(spectra[scan_index], scan_type='normal')
+        feature_matrix_row.extend(scan_features)
+
+    # fill in the feature matrix with chemical noise features
+    for scan_index in chemical_noise_features_scans_indexes:
+        scan_features = extract_main_features_from_scan(spectra[scan_index], scan_type='chemical noise')
+        feature_matrix_row.extend(scan_features)
 
     # fill in the feature matrix with features related to instrument noise (different scans)
-    for scan_index in background_features_scans_indexes:
+    for scan_index in instrument_noise_features_scans_indexes:
         scan_features = extract_background_features_from_scan(spectra[scan_index])
-        feature_matrix.append(scan_features)
+        feature_matrix_row.extend(scan_features)
 
     print('\n', time.time() - start_time, "seconds elapsed in total")
