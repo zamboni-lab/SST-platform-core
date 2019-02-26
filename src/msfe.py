@@ -681,7 +681,7 @@ def aggregate_features(list_of_scans_features):
             # simple averaging and variance estimation
             # TODO: consider using bootstrap or other mean estimates instead
             mean_estimate = numpy.mean(feature_values)
-            dispersion_estimate = numpy.var(feature_values)
+            dispersion_estimate = numpy.std(feature_values)
 
             aggregated_main_features.extend([mean_estimate, dispersion_estimate])
 
@@ -709,7 +709,6 @@ if __name__ == '__main__':
 
     # aggregate main features and add to the feature matrix
     aggregated_main_features = aggregate_features(main_features)
-    feature_matrix_row.extend(aggregated_main_features)
 
     # get chemical noise features for every scan
     chemical_noise_features = []
@@ -719,7 +718,6 @@ if __name__ == '__main__':
 
     # aggregate chemical noise features and add to the feature matrix
     aggregated_chemical_noise_features = aggregate_features(chemical_noise_features)
-    feature_matrix_row.extend(aggregated_chemical_noise_features)
 
     # get features related to instrument noise for every scan
     instrument_noise_features = []
@@ -729,6 +727,10 @@ if __name__ == '__main__':
 
     # aggregate instrument noise features and add to the feature matrix
     aggregated_instrument_noise_features = aggregate_features(instrument_noise_features)
+
+    # compose feature matrix row
+    feature_matrix_row.extend(aggregated_main_features)
+    feature_matrix_row.extend(aggregated_chemical_noise_features)
     feature_matrix_row.extend(aggregated_instrument_noise_features)
 
     print('\n', time.time() - start_time, "seconds elapsed in total")

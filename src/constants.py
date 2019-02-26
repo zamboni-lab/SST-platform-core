@@ -1,5 +1,5 @@
 
-version = '0.1.1'
+version = '0.1.2'
 
 parser_comment_symbol = '#'
 parser_description_symbols = '()'
