@@ -28,7 +28,6 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
     predicted_peak_mz = float(continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))])
 
     # extract information about subsequent (following) peaks after the major one
-
     sp_ratios = extract_sp_features(predicted_peak_mz, max(fitted_intensity), continuous_mz[-1], spectrum,
                                     centroids_indexes)
 
@@ -662,6 +661,33 @@ def extract_main_features_from_scan(spectrum, scan_type):
     return scan_features
 
 
+def aggregate_features(list_of_scans_features):
+    """ This method takes list of scans features and returns one feature list of n scans feature lists:
+        for each feature average value is calculated and variance metric is added as another feature. """
+
+    # in case there was only 1 scan processed
+    if len(list_of_scans_features) == 1:
+        return list_of_scans_features[0]
+    # otherwise do aggregate
+    else:
+        aggregated_main_features = []
+
+        for j in range(len(list_of_scans_features[0])):
+            feature_values = []
+            for i in range(len(list_of_scans_features)):
+                # ! adding -1 values (e.g., missing features) we allow estimations to be shifted significantly
+                feature_values.append(list_of_scans_features[i][j])
+
+            # simple averaging and variance estimation
+            # TODO: consider using bootstrap or other mean estimates instead
+            mean_estimate = numpy.mean(feature_values)
+            dispersion_estimate = numpy.var(feature_values)
+
+            aggregated_main_features.extend([mean_estimate, dispersion_estimate])
+
+        return aggregated_main_features
+
+
 if __name__ == '__main__':
 
     start_time = time.time()
@@ -675,19 +701,34 @@ if __name__ == '__main__':
 
     feature_matrix_row = []
 
-    # fill in the feature matrix with main features
+    # get main features for every scan
+    main_features = []
     for scan_index in main_features_scans_indexes:
         scan_features = extract_main_features_from_scan(spectra[scan_index], scan_type='normal')
-        feature_matrix_row.extend(scan_features)
+        main_features.append(scan_features)
 
-    # fill in the feature matrix with chemical noise features
+    # aggregate main features and add to the feature matrix
+    aggregated_main_features = aggregate_features(main_features)
+    feature_matrix_row.extend(aggregated_main_features)
+
+    # get chemical noise features for every scan
+    chemical_noise_features = []
     for scan_index in chemical_noise_features_scans_indexes:
         scan_features = extract_main_features_from_scan(spectra[scan_index], scan_type='chemical noise')
-        feature_matrix_row.extend(scan_features)
+        chemical_noise_features.append(scan_features)
 
-    # fill in the feature matrix with features related to instrument noise (different scans)
+    # aggregate chemical noise features and add to the feature matrix
+    aggregated_chemical_noise_features = aggregate_features(chemical_noise_features)
+    feature_matrix_row.extend(aggregated_chemical_noise_features)
+
+    # get features related to instrument noise for every scan
+    instrument_noise_features = []
     for scan_index in instrument_noise_features_scans_indexes:
         scan_features = extract_background_features_from_scan(spectra[scan_index])
-        feature_matrix_row.extend(scan_features)
+        instrument_noise_features.append(scan_features)
+
+    # aggregate instrument noise features and add to the feature matrix
+    aggregated_instrument_noise_features = aggregate_features(instrument_noise_features)
+    feature_matrix_row.extend(aggregated_instrument_noise_features)
 
     print('\n', time.time() - start_time, "seconds elapsed in total")
