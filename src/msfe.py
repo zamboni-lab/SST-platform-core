@@ -14,7 +14,7 @@ from src.constants import chemical_noise_scan_mz_frame_size, chemical_noise_scan
 from src.constants import instrument_noise_mz_frame_size, instrument_noise_scan_number_of_frames
 from src.constants import number_of_top_noisy_peaks_to_consider as n_top_guys
 from src.constants import frame_intensity_percentiles
-from src.constants import main_features_scans_indexes, chemical_noise_features_scans_indexes, instrument_noise_features_scans_indexes
+from src.constants import chemical_noise_features_scans_indexes, instrument_noise_features_scans_indexes
 from src.constants import normal_scan_expected_peaks_file_path, chemical_noise_scan_expected_peaks_file_path
 from src.constants import minimal_background_peak_intensity as min_bg_peak_intensity
 from lmfit.models import GaussianModel
@@ -700,6 +700,8 @@ if __name__ == '__main__':
     print('\n', time.time() - start_time, "seconds elapsed for reading")
 
     feature_matrix_row = []
+
+    main_features_scans_indexes = ms_operator.get_best_tic_scans_indexes(spectra)
 
     # get main features for every scan
     main_features = []

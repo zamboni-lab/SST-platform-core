@@ -1,5 +1,5 @@
 
-version = '0.1.2'
+version = '0.1.3'
 
 parser_comment_symbol = '#'
 parser_description_symbols = '()'
@@ -12,8 +12,12 @@ chemical_noise_scan_expected_peaks_file_path = "/Users/andreidm/ETH/projects/ms_
 # normal_scan_expected_peaks_file_path = "/Users/dmitrav/ETH/projects/ms_feature_extractor/data/expected_peaks_example.txt"
 # chemical_noise_scan_expected_peaks_file_path = "/Users/dmitrav/ETH/projects/ms_feature_extractor/data/expected_peaks_example.txt"
 
+number_of_normal_scans = 3  # for Michelle's method main scans are defined by TIC maxima
+# chemical_noise_features_scans_indexes = [17, 18]  # for Michelle's method
+# instrument_noise_features_scans_indexes = [174, 175]  # for Michelle's method
+
 # scan number 43 is a good example for current testing mzXML file
-main_features_scans_indexes = [43, 42]  # indexes for independent, isotopic, fragmentation, non-expected features extraction
+# main_features_scans_indexes = [43, 42]  # indexes for independent, isotopic, fragmentation, non-expected features extraction
 chemical_noise_features_scans_indexes = [42, 41]  # indexes for chemical noise features extraction
 instrument_noise_features_scans_indexes = [41, 40]  # indexes for instrument noise features extraction
 

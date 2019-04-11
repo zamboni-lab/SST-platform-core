@@ -1,6 +1,6 @@
 
 import numpy
-from src.constants import allowed_ppm_error
+from src.constants import allowed_ppm_error, number_of_normal_scans
 
 
 def extract_mz_region(spectrum, mz_interval):
@@ -358,3 +358,17 @@ def get_integration_arrays(mz_array, intensity_array, left_point_mz, right_point
             break
 
     return intensities, mzs
+
+
+def get_best_tic_scans_indexes(spectra, n=number_of_normal_scans):
+    """ This method finds max TIC within the spectra and returns n following scans indexes. """
+
+    max_tic_scan = (0, spectra[0]["totIonCurrent"])
+
+    for i in range(1, len(spectra)):
+        if spectra[i]["totIonCurrent"] > max_tic_scan[1]:
+            max_tic_scan = (i, spectra[i]["totIonCurrent"])
+
+    best_tic_scans_indexes = [max_tic_scan[0]+i for i in range(n)]
+
+    return best_tic_scans_indexes
