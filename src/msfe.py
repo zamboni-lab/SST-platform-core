@@ -23,7 +23,7 @@ from lmfit.models import GaussianModel
 def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, centroids_indexes, actual_peak_info):
     """ This method extracts features related to expected ions of interest and expected mixture chemicals. """
 
-    expected_intensity = actual_peak_info['expected intensity']
+    expected_intensity = actual_peak_info['expected_intensity']
 
     predicted_peak_mz = float(continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))])
 
@@ -37,18 +37,18 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
         # 'intensity': max(fitted_intensity, max(fit_info['raw intensity array'])),
         # # in this case goodness-of-fit does not tell much
 
-        'is missing': 0,
+        'is_missing': 0,
         'saturation': fit_info['saturation'],
         'intensity': max(fitted_intensity),
-        'expected intensity diff': max(fitted_intensity) - expected_intensity,
-        'expected intensity ratio': expected_intensity / max(fitted_intensity),
-        'absolute mass accuracy': fit_info['fit_theory_absolute_ma'],
+        'expected_intensity_diff': max(fitted_intensity) - expected_intensity,
+        'expected_intensity_ratio': expected_intensity / max(fitted_intensity),
+        'absolute_mass_accuracy': fit_info['fit_theory_absolute_ma'],
         'ppm': fit_info['fit_theory_ppm'],
         'widths': extract_width_features(continuous_mz, fitted_intensity),  # 20%, 50%, 80% of max intensity
-        'subsequent peaks number': max_sp_number,
-        'subsequent peaks ratios': sp_ratios,
-        'left tail auc': left_tail_auc,
-        'right tail auc': right_tail_auc,
+        'subsequent_peaks_number': max_sp_number,
+        'subsequent_peaks_ratios': sp_ratios,
+        'left_tail_auc': left_tail_auc,
+        'right_tail_auc': right_tail_auc,
         'symmetry': (left_tail_auc + right_tail_auc) / (2 * max(left_tail_auc, right_tail_auc)),
         'goodness-of-fit': fit_info['goodness-of-fit']
     }
@@ -169,7 +169,7 @@ def get_peak_fit(peak_region, spectrum, theoretical_mz):
             'fit_theory_absolute_ma': fit_theory_mass_diff,  # fitted absolute mass accuracy
             'fit_theory_ppm': fit_theory_ppm,  # ppm between fitted peak mz and expected (theoretical) mz
             'resolution': d,
-            'raw intensity array': y,
+            'raw_intensity_array': y,
             'saturation': saturation,
 
             # probably redundant information
@@ -186,13 +186,13 @@ def fit_peak_and_extract_features(actual_peak, spectrum, centroids_indexes):
 
     peak_region_indexes = ms_operator.get_peak_fitting_region(spectrum, actual_peak['index'])
 
-    fitted_mz, fitted_intensity, fit_info = get_peak_fit(peak_region_indexes, spectrum, actual_peak['expected mz'])
+    fitted_mz, fitted_intensity, fit_info = get_peak_fit(peak_region_indexes, spectrum, actual_peak['expected_mz'])
 
     peak_features = extract_peak_features(fitted_mz, fitted_intensity, fit_info,
                                           spectrum, centroids_indexes, actual_peak)
 
     peak_fit = {
-        'expected mz': actual_peak['expected mz'],  # this is an id of the peak
+        'expected_mz': actual_peak['expected_mz'],  # this is an id of the peak
         'mz': fitted_mz,
         'intensity': fitted_intensity,
         'info': fit_info
@@ -237,11 +237,11 @@ def extract_non_expected_features_from_one_frame(mz_frame, spectrum, centroids_i
     top_peaks_intensities = sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys]
 
     frame_features = {
-        'number of peaks': len(frame_peaks_intensities),
-        'intensity sum': sum(frame_peaks_intensities),
+        'number_of_peaks': len(frame_peaks_intensities),
+        'intensity_sum': sum(frame_peaks_intensities),
         'percentiles': list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)),
-        'top peaks intensities': top_peaks_intensities,
-        'top percentiles': list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
+        'top_peaks_intensities': top_peaks_intensities,
+        'top_percentiles': list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
     }
 
     return frame_features
@@ -265,11 +265,11 @@ def extract_instrument_noise_features_from_one_frame(mz_frame, spectrum, centroi
     top_peaks_intensities = sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys]
 
     frame_features = {
-        'number of peaks': len(frame_peaks_intensities),
-        'intensity sum': sum(frame_peaks_intensities),
+        'number_of_peaks': len(frame_peaks_intensities),
+        'intensity_sum': sum(frame_peaks_intensities),
         'percentiles': list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)),
-        'top peaks intensities': top_peaks_intensities,
-        'top percentiles': list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
+        'top_peaks_intensities': top_peaks_intensities,
+        'top_percentiles': list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
     }
 
     return frame_features
@@ -311,7 +311,7 @@ def form_frames_and_extract_non_expected_features(spectrum, centroids_indexes, a
         for i in range(normal_scan_number_of_frames):
             frames.append([ranges[i], ranges[i+1]])
 
-    elif scan_type == 'chemical noise':
+    elif scan_type == 'chemical_noise':
         ranges = [i * chemical_noise_scan_mz_frame_size for i in range(1, chemical_noise_scan_number_of_frames+2)]
         for i in range(chemical_noise_scan_number_of_frames):
             frames.append([ranges[i], ranges[i + 1]])
@@ -340,11 +340,11 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
     isotope_intensity_ratios = []
     isotope_mass_diff_values = []
 
-    for j in range(len(actual_peaks_info[major_peak_index]['expected isotopes'])):
+    for j in range(len(actual_peaks_info[major_peak_index]['expected_isotopes'])):
 
         # find each isotope in the peak fits list
         for k in range(len(peak_fits)):
-            if peak_fits[k]['expected mz'] == actual_peaks_info[major_peak_index]['expected isotopes'][j]:
+            if peak_fits[k]['expected_mz'] == actual_peaks_info[major_peak_index]['expected_isotopes'][j]:
 
                 # if the peak was present and was fitted actually
                 if peak_fits[k]['mz'][0] != -1:
@@ -370,8 +370,8 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
 
     isotopic_features = {
         # 'isotopes mzs': actual_peaks_info[major_peak_index]['expected isotopes'],  # in case id is needed
-        'intensity ratios': isotope_intensity_ratios,
-        'mass diff values': isotope_mass_diff_values
+        'intensity_ratios': isotope_intensity_ratios,
+        'mass_diff_values': isotope_mass_diff_values
     }
 
     return isotopic_features
@@ -390,11 +390,11 @@ def find_fragment_and_extract_features(major_peak_index, actual_peaks_info, peak
     fragment_intensity_ratios = []
     fragment_mass_diff_values = []
 
-    for j in range(len(actual_peaks_info[major_peak_index]['expected fragments'])):
+    for j in range(len(actual_peaks_info[major_peak_index]['expected_fragments'])):
 
         # find each fragment in the peak fits list
         for k in range(len(peak_fits)):
-            if peak_fits[k]['expected mz'] == actual_peaks_info[major_peak_index]['expected fragments'][j]:
+            if peak_fits[k]['expected_mz'] == actual_peaks_info[major_peak_index]['expected_fragments'][j]:
 
                 # if the peak was present and was fitted actually
                 if peak_fits[k]['mz'][0] != -1:
@@ -419,8 +419,8 @@ def find_fragment_and_extract_features(major_peak_index, actual_peaks_info, peak
 
     fragmentation_features = {
         # 'fragments mzs': actual_peaks_info[major_peak_index]['expected fragments'],  # in case id is needed
-        'intensity ratios': fragment_intensity_ratios,
-        'mass diff values': fragment_mass_diff_values
+        'intensity_ratios': fragment_intensity_ratios,
+        'mass_diff_values': fragment_mass_diff_values
     }
 
     return fragmentation_features
@@ -434,18 +434,18 @@ def get_null_peak_features():
         # 'intensity': max(fitted_intensity, max(fit_info['raw intensity array'])),
         # # in this case goodness-of-fit does not tell much
 
-        'is missing': 1,
+        'is_missing': 1,
         'saturation': -1,
         'intensity': -1,
-        'expected intensity diff': -1,
-        'expected intensity ratio': -1,
-        'absolute mass accuracy': -1,
+        'expected_intensity_diff': -1,
+        'expected_intensity_ratio': -1,
+        'absolute_mass_accuracy': -1,
         'ppm': -1,
         'widths': [-1, -1, -1],  # 20%, 50%, 80% of max intensity
-        'subsequent peaks number': -1,
-        'subsequent peaks ratios': [-1 for value in range(max_sp_number)],
-        'left tail auc': -1,
-        'right tail auc': -1,
+        'subsequent_peaks_number': -1,
+        'subsequent_peaks_ratios': [-1 for value in range(max_sp_number)],
+        'left_tail_auc': -1,
+        'right_tail_auc': -1,
         'symmetry': -1,
         'goodness-of-fit': [-1, -1, -1]
     }
@@ -457,7 +457,7 @@ def get_null_peak_fit(actual_peak):
     """ Compose the empty dictionary with peak fit for a missing peak to keep dimensionality of the data structure. """
 
     missing_peak_fit = {
-        'expected mz': actual_peak['expected mz'],  # this is an id of the peak
+        'expected_mz': actual_peak['expected_mz'],  # this is an id of the peak
         'mz': [-1],
         'intensity': [-1],
         'info': {}
@@ -472,8 +472,8 @@ def get_null_isotopic_features(actual_peak_info):
 
     missing_isotopic_features = {
         # 'isotopes mzs': actual_peak_info['expected isotopes'],  # in case id is needed
-        'intensity ratios': [-1 for value in actual_peak_info['expected isotopes']],
-        'mass diff values': [-1 for value in actual_peak_info['expected isotopes']]
+        'intensity_ratios': [-1 for value in actual_peak_info['expected_isotopes']],
+        'mass_diff_values': [-1 for value in actual_peak_info['expected_isotopes']]
     }
 
     return missing_isotopic_features
@@ -485,103 +485,93 @@ def get_null_fragmentation_features(actual_peak_info):
 
     missing_fragmentation_features = {
         # 'fragments mzs': actual_peak_info['expected fragments'],  # in case id is needed
-        'intensity ratios': [-1 for value in actual_peak_info['expected fragments']],
-        'mass diff values': [-1 for value in actual_peak_info['expected fragments']]
+        'intensity_ratios': [-1 for value in actual_peak_info['expected_fragments']],
+        'mass_diff_values': [-1 for value in actual_peak_info['expected_fragments']]
     }
 
     return missing_fragmentation_features
 
 
-def merge_features(all_independent_features, all_isotopic_features, all_fragmentation_features, all_non_expected_features):
+def extend_scan_features(general_scan_features, general_features_names, some_new_features, new_features_type, we_need_features_names=True):
+
+    if we_need_features_names:
+        # this is the first scan, so we are collecting features values and names
+        for features in some_new_features:
+            for feature_name in list(features.keys()):
+
+                if isinstance(features[feature_name], int) or isinstance(features[feature_name], float):
+                    general_scan_features.append(features[feature_name])
+                    general_features_names.append(feature_name)
+
+                elif isinstance(features[feature_name], list):
+                    general_scan_features.extend(features[feature_name])
+                    for i in range(len(features[feature_name])):
+                        general_features_names.append(feature_name + "_" + str(i))
+
+                elif isinstance(features[feature_name], numpy.ndarray):
+                    general_scan_features.extend(list(features[feature_name]))
+                    for i in range(len(features[feature_name])):
+                        general_features_names.append(feature_name + "_" + str(i))
+
+                else:
+                    raise ValueError("Unknown feature type: " + new_features_type)
+    else:
+        # collecting just features values (features names were collected during previous iteration, for previous scan)
+        for features in some_new_features:
+            for feature_name in list(features.keys()):
+
+                if isinstance(features[feature_name], int) or isinstance(features[feature_name], float):
+                    general_scan_features.append(features[feature_name])
+
+                elif isinstance(features[feature_name], list):
+                    general_scan_features.extend(features[feature_name])
+
+                elif isinstance(features[feature_name], numpy.ndarray):
+                    general_scan_features.extend(list(features[feature_name]))
+
+                else:
+                    raise ValueError("Unknown feature type: " + new_features_type)
+
+
+def merge_features(all_independent_features, all_isotopic_features, all_fragmentation_features, all_non_expected_features, get_names=True):
     """ This method combines all the different features
         and effectively builds one row (out of one scan) for the feature matrix. """
 
     scan_features = []
+    features_names = []  # for feature matrix readability
 
-    for peak_features in all_independent_features:
-        for feature_name in list(peak_features.keys()):
+    extend_scan_features(scan_features, features_names, all_independent_features, "independent", we_need_features_names=get_names)
+    extend_scan_features(scan_features, features_names, all_isotopic_features, "isotopic", we_need_features_names=get_names)
+    extend_scan_features(scan_features, features_names, all_fragmentation_features, "fragmentation", we_need_features_names=get_names)
+    extend_scan_features(scan_features, features_names, all_non_expected_features, "non-expected", we_need_features_names=get_names)
 
-            if isinstance(peak_features[feature_name], int) or isinstance(peak_features[feature_name], float):
-                scan_features.append(peak_features[feature_name])
-            elif isinstance(peak_features[feature_name], list):
-                scan_features.extend(peak_features[feature_name])
-            elif isinstance(peak_features[feature_name], numpy.ndarray):
-                scan_features.extend(list(peak_features[feature_name]))
-            else:
-                raise ValueError("Unknown independent feature type")
-
-    for isotope_features in all_isotopic_features:
-        for feature_name in list(isotope_features.keys()):
-
-            if isinstance(isotope_features[feature_name], int) or isinstance(isotope_features[feature_name], float):
-                scan_features.append(isotope_features[feature_name])
-            elif isinstance(isotope_features[feature_name], list):
-                scan_features.extend(isotope_features[feature_name])
-            elif isinstance(isotope_features[feature_name], numpy.ndarray):
-                scan_features.extend(list(isotope_features[feature_name]))
-            else:
-                raise ValueError("Unknown isotope feature type")
-
-    for fragments_features in all_fragmentation_features:
-        for feature_name in list(fragments_features.keys()):
-
-            if isinstance(fragments_features[feature_name], int) or isinstance(fragments_features[feature_name], float):
-                scan_features.append(fragments_features[feature_name])
-            elif isinstance(fragments_features[feature_name], list):
-                scan_features.extend(fragments_features[feature_name])
-            elif isinstance(fragments_features[feature_name], numpy.ndarray):
-                scan_features.extend(list(fragments_features[feature_name]))
-            else:
-                raise ValueError("Unknown fragmentation feature type")
-
-    for frame_features in all_non_expected_features:
-        for feature_name in list(frame_features.keys()):
-
-            if isinstance(frame_features[feature_name], int) or isinstance(frame_features[feature_name], float):
-                scan_features.append(frame_features[feature_name])
-            elif isinstance(frame_features[feature_name], list):
-                scan_features.extend(frame_features[feature_name])
-            elif isinstance(frame_features[feature_name], numpy.ndarray):
-                scan_features.extend(list(frame_features[feature_name]))
-            else:
-                raise ValueError("Unknown non-expected feature type")
-
-    return scan_features
+    return scan_features, features_names
 
 
-def extract_background_features_from_scan(spectrum):
+def extract_background_features_from_scan(spectrum, get_names=True):
     """ This method extracts background (related to instrument noise) features from one scan. """
 
     scan_features = []
+    features_names = []
 
     # peak picking here
     centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=min_bg_peak_intensity)
 
     all_background_features = form_frames_and_extract_instrument_noise_features(spectrum, centroids_indexes)
 
-    for frame_features in all_background_features:
-        for feature_name in list(frame_features.keys()):
+    extend_scan_features(scan_features, features_names, all_background_features, "instrument noise", we_need_features_names=get_names)
 
-            if isinstance(frame_features[feature_name], int) or isinstance(frame_features[feature_name], float):
-                scan_features.append(frame_features[feature_name])
-            elif isinstance(frame_features[feature_name], list):
-                scan_features.extend(frame_features[feature_name])
-            elif isinstance(frame_features[feature_name], numpy.ndarray):
-                scan_features.extend(list(frame_features[feature_name]))
-            else:
-                raise ValueError("Unknown background feature type")
-
-    return scan_features
+    return scan_features, features_names
 
 
-def extract_main_features_from_scan(spectrum, scan_type):
+def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
     """ This method extracts all the features from one scan.
         There are slight differences between normal scan and chemical noise scan. """
 
     # default scan type is normal
     expected_peaks_file_path = normal_scan_expected_peaks_file_path
 
-    if scan_type == 'chemical noise':
+    if scan_type == 'chemical_noise':
         # use another file if a chemical noise scan is being processed
         expected_peaks_file_path = chemical_noise_scan_expected_peaks_file_path
 
@@ -628,11 +618,11 @@ def extract_main_features_from_scan(spectrum, scan_type):
     for i in range(len(actual_peaks)):
 
         if actual_peaks[i]['present']:
-            if len(actual_peaks[i]['expected isotopes']) > 0:
+            if len(actual_peaks[i]['expected_isotopes']) > 0:
                 isotope_features = find_isotope_and_extract_features(i, actual_peaks, independent_peak_fits)
                 isotopic_peaks_features.append(isotope_features)
 
-            elif len(actual_peaks[i]['expected fragments']) > 0:
+            elif len(actual_peaks[i]['expected_fragments']) > 0:
                 fragmentation_features = find_fragment_and_extract_features(i, actual_peaks, independent_peak_fits)
                 fragmentation_peaks_features.append(fragmentation_features)
             else:
@@ -640,11 +630,11 @@ def extract_main_features_from_scan(spectrum, scan_type):
 
         else:
             # fill the data structure with null values
-            if len(actual_peaks[i]['expected isotopes']) > 0:
+            if len(actual_peaks[i]['expected_isotopes']) > 0:
                 isotope_features = get_null_isotopic_features(actual_peaks[i])
                 isotopic_peaks_features.append(isotope_features)
 
-            elif len(actual_peaks[i]['expected fragments']) > 0:
+            elif len(actual_peaks[i]['expected_fragments']) > 0:
                 fragmentation_features = get_null_fragmentation_features(actual_peaks[i])
                 fragmentation_peaks_features.append(fragmentation_features)
             else:
@@ -655,15 +645,17 @@ def extract_main_features_from_scan(spectrum, scan_type):
                                                                           actual_peaks, scan_type=scan_type)
 
     # merge independent, isotopic, fragmentation and non-expected features
-    scan_features = merge_features(independent_peaks_features, isotopic_peaks_features,
-                                   fragmentation_peaks_features, non_expected_features)
+    scan_features, features_names = merge_features(independent_peaks_features, isotopic_peaks_features,
+                                                   fragmentation_peaks_features, non_expected_features, get_names=get_names)
 
-    return scan_features
+    return scan_features, features_names
 
 
-def aggregate_features(list_of_scans_features):
+def aggregate_features(list_of_scans_features, features_names):
     """ This method takes list of scans features and returns one feature list of n scans feature lists:
         for each feature average value is calculated and variance metric is added as another feature. """
+
+    aggregated_main_features_names = []
 
     # in case there was only 1 scan processed
     if len(list_of_scans_features) == 1:
@@ -683,9 +675,12 @@ def aggregate_features(list_of_scans_features):
             mean_estimate = numpy.mean(feature_values)
             dispersion_estimate = numpy.std(feature_values)
 
-            aggregated_main_features.extend([mean_estimate, dispersion_estimate])
+            feature_names = [features_names[j]+"_mean", features_names[j]+"_std"]
 
-        return aggregated_main_features
+            aggregated_main_features.extend([mean_estimate, dispersion_estimate])
+            aggregated_main_features_names.extend(feature_names)
+
+        return aggregated_main_features, aggregated_main_features_names
 
 
 def main(spectra, in_test_mode=False):
@@ -704,40 +699,63 @@ def main(spectra, in_test_mode=False):
         pass
 
     feature_matrix_row = []
+    feature_matrix_row_names = []
 
     main_features_scans_indexes = ms_operator.get_best_tic_scans_indexes(spectra, in_test_mode=in_test_mode)
 
     # get main features for every scan
     main_features = []
+    main_features_names = []
     for scan_index in main_features_scans_indexes:
-        scan_features = extract_main_features_from_scan(spectra[scan_index], scan_type='normal')
+
+        if len(main_features_names) > 0:
+            scan_features, _ = extract_main_features_from_scan(spectra[scan_index], scan_type='normal', get_names=False)
+        else:
+            scan_features, main_features_names = extract_main_features_from_scan(spectra[scan_index],scan_type='normal')
+
         main_features.append(scan_features)
 
     # aggregate main features and add to the feature matrix
-    aggregated_main_features = aggregate_features(main_features)
+    aggregated_main_features, aggregated_main_features_names = aggregate_features(main_features, main_features_names)
 
     # get chemical noise features for every scan
     chemical_noise_features = []
+    chemical_noise_features_names = []
     for scan_index in chemical_noise_features_scans_indexes:
-        scan_features = extract_main_features_from_scan(spectra[scan_index], scan_type='chemical noise')
+
+        if len(chemical_noise_features_names) > 0:
+            scan_features, _ = extract_main_features_from_scan(spectra[scan_index], scan_type='chemical_noise', get_names=False)
+        else:
+            scan_features, chemical_noise_features_names = extract_main_features_from_scan(spectra[scan_index], scan_type='chemical_noise')
+
         chemical_noise_features.append(scan_features)
 
     # aggregate chemical noise features and add to the feature matrix
-    aggregated_chemical_noise_features = aggregate_features(chemical_noise_features)
+    aggregated_chemical_noise_features, aggregated_chemical_noise_features_names = aggregate_features(chemical_noise_features, chemical_noise_features_names)
 
     # get features related to instrument noise for every scan
     instrument_noise_features = []
+    instrument_noise_features_names = []
     for scan_index in instrument_noise_features_scans_indexes:
-        scan_features = extract_background_features_from_scan(spectra[scan_index])
+        if len(instrument_noise_features_names) > 0:
+            scan_features, _ = extract_background_features_from_scan(spectra[scan_index], get_names=False)
+        else:
+            scan_features, instrument_noise_features_names = extract_background_features_from_scan(spectra[scan_index])
+
         instrument_noise_features.append(scan_features)
 
     # aggregate instrument noise features and add to the feature matrix
-    aggregated_instrument_noise_features = aggregate_features(instrument_noise_features)
+    aggregated_instrument_noise_features, aggregated_instrument_noise_features_names = aggregate_features(instrument_noise_features, instrument_noise_features_names)
 
-    # compose feature matrix row
+    # compose feature matrix row (values)
     feature_matrix_row.extend(aggregated_main_features)
     feature_matrix_row.extend(aggregated_chemical_noise_features)
     feature_matrix_row.extend(aggregated_instrument_noise_features)
+
+    # compose feature matrix row (names)
+    feature_matrix_row_names.extend(aggregated_main_features_names)
+    feature_matrix_row_names.extend(aggregated_chemical_noise_features_names)
+    feature_matrix_row_names.extend(aggregated_instrument_noise_features_names)
 
     print('\n', time.time() - start_time, "seconds elapsed in total")
 

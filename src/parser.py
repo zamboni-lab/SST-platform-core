@@ -47,10 +47,10 @@ def parse_expected_ions(file_path):
                     isotopic_lists.append(isotopes_list)
 
     expected_ions_info = {
-        'expected mzs': expected_ions_mzs,
-        'expected intensities': expected_ions_intensities,
-        'fragments mzs': fragmentation_lists,
-        'isotopes mzs': isotopic_lists
+        'expected_mzs': expected_ions_mzs,
+        'expected_intensities': expected_ions_intensities,
+        'fragments_mzs': fragmentation_lists,
+        'isotopes_mzs': isotopic_lists
     }
 
     return expected_ions_info

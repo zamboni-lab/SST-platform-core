@@ -63,7 +63,7 @@ def correct_centroids_indexes(mz_spectrum, intensities, centroids_indexes, expec
 
     left_corrected_peak_index, right_corrected_peak_index, left_min_mz_diffs, right_min_mz_diffs = None, None, None, None
 
-    expected_peaks_list = expected_ions_info['expected mzs']
+    expected_peaks_list = expected_ions_info['expected_mzs']
 
     for i in range(len(expected_peaks_list)):
 
@@ -133,8 +133,8 @@ def correct_centroids_indexes(mz_spectrum, intensities, centroids_indexes, expec
 def find_closest_centroids(mz_spectrum, centroids_indexes, expected_ions_info):
     """ This method looks for all the expected peaks in the list of centroids. """
 
-    expected_peaks_list = expected_ions_info['expected mzs']
-    expected_intensities_list = expected_ions_info['expected intensities']
+    expected_peaks_list = expected_ions_info['expected_mzs']
+    expected_intensities_list = expected_ions_info['expected_intensities']
 
     # actual peaks out of expected ones
     actual_peaks = []
@@ -144,26 +144,26 @@ def find_closest_centroids(mz_spectrum, centroids_indexes, expected_ions_info):
         closest_peak_index, centroid_ppm = find_closest_peak_index(mz_spectrum, centroids_indexes, expected_peaks_list[i])
 
         isotopes, fragments = find_expected_isotopes_and_fragments(expected_peaks_list[i],
-                                                                   expected_ions_info['isotopes mzs'],
-                                                                   expected_ions_info['fragments mzs'])
+                                                                   expected_ions_info['isotopes_mzs'],
+                                                                   expected_ions_info['fragments_mzs'])
 
         if closest_peak_index < 0:
             another_peak = {
                 'present': False,
-                'expected mz': expected_peaks_list[i],
-                'expected isotopes': isotopes,  # expected (theoretical) isotopes related to this ion (incl. itself)
-                'expected fragments': fragments,  # expected (theoretical) fragments related to this ion (incl. itself)
+                'expected_mz': expected_peaks_list[i],
+                'expected_isotopes': isotopes,  # expected (theoretical) isotopes related to this ion (incl. itself)
+                'expected_fragments': fragments,  # expected (theoretical) fragments related to this ion (incl. itself)
             }
         else:
             another_peak = {
                 'present': True,
-                'expected mz': expected_peaks_list[i],  # expected (theoretical) mz
-                'expected intensity': expected_intensities_list[i],  # expected (theoretical) ion abundance
+                'expected_mz': expected_peaks_list[i],  # expected (theoretical) mz
+                'expected_intensity': expected_intensities_list[i],  # expected (theoretical) ion abundance
                 'mz': mz_spectrum[centroids_indexes[closest_peak_index]],  # measured mz
                 'index': centroids_indexes[closest_peak_index],
-                'expected isotopes': isotopes,  # expected (theoretical) isotopes related to this ion (incl. itself)
-                'expected fragments': fragments,  # expected (theoretical) fragments related to this ion (incl. itself)
-                'centroid ppm': centroid_ppm  # ppm between expected peak and actual peak centroid
+                'expected_isotopes': isotopes,  # expected (theoretical) isotopes related to this ion (incl. itself)
+                'expected_fragments': fragments,  # expected (theoretical) fragments related to this ion (incl. itself)
+                'centroid_ppm': centroid_ppm  # ppm between expected peak and actual peak centroid
             }
 
         actual_peaks.append(another_peak)
