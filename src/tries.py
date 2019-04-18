@@ -8,7 +8,3 @@ from src.constants import parser_comment_symbol as sharp
 from src.constants import parser_description_symbols as brackets
 from lmfit.models import GaussianModel
 
-
-a = [1,2,3]
-
-print(numpy.mean(a))

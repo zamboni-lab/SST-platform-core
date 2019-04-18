@@ -688,20 +688,24 @@ def aggregate_features(list_of_scans_features):
         return aggregated_main_features
 
 
-if __name__ == '__main__':
+def main(spectra, in_test_mode=False):
 
     start_time = time.time()
 
-    # TODO process all the files from a folder (unless the file is fetched from database and received as a message)
-    good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
-    # good_example = '/Users/dmitrav/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
-    spectra = list(mzxml.read(good_example))
+    if in_test_mode:
 
-    print('\n', time.time() - start_time, "seconds elapsed for reading")
+        good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
+        # good_example = '/Users/dmitrav/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
+        spectra = list(mzxml.read(good_example))
+
+        print('\n', time.time() - start_time, "seconds elapsed for reading")
+
+    else:
+        pass
 
     feature_matrix_row = []
 
-    main_features_scans_indexes = ms_operator.get_best_tic_scans_indexes(spectra)
+    main_features_scans_indexes = ms_operator.get_best_tic_scans_indexes(spectra, in_test_mode=in_test_mode)
 
     # get main features for every scan
     main_features = []
@@ -736,3 +740,7 @@ if __name__ == '__main__':
     feature_matrix_row.extend(aggregated_instrument_noise_features)
 
     print('\n', time.time() - start_time, "seconds elapsed in total")
+
+
+if __name__ == '__main__':
+    main([], in_test_mode=True)

@@ -360,14 +360,21 @@ def get_integration_arrays(mz_array, intensity_array, left_point_mz, right_point
     return intensities, mzs
 
 
-def get_best_tic_scans_indexes(spectra, n=number_of_normal_scans):
+def get_best_tic_scans_indexes(spectra, n=number_of_normal_scans, in_test_mode=False):
     """ This method finds max TIC within the spectra and returns n following scans indexes. """
 
-    max_tic_scan = (0, spectra[0]["totIonCurrent"])
+    if in_test_mode:
+        # for mzxml data structure
+        tic_field_name = "totIonCurrent"
+    else:
+        # for custom data structure built on mz5
+        tic_field_name = "tic"
+
+    max_tic_scan = (0, spectra[0][tic_field_name])
 
     for i in range(1, len(spectra)):
-        if spectra[i]["totIonCurrent"] > max_tic_scan[1]:
-            max_tic_scan = (i, spectra[i]["totIonCurrent"])
+        if spectra[i][tic_field_name] > max_tic_scan[1]:
+            max_tic_scan = (i, spectra[i][tic_field_name])
 
     best_tic_scans_indexes = [max_tic_scan[0]+i for i in range(n)]
 
