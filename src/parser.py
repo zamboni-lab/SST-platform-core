@@ -2,6 +2,7 @@
 from src.constants import parser_comment_symbol as sharp
 from src.constants import parser_description_symbols as brackets
 from src.constants import feature_matrix_file_path, ms_settings_matrix_file_path
+from src.constants import chemical_mix_id, version
 import json, os
 
 
@@ -58,23 +59,23 @@ def parse_expected_ions(file_path):
     return expected_ions_info
 
 
-def parse_instrument_settings_from_multiple_old_files(list_of_paths):
+def parse_instrument_settings_from_multiple_ms_runs(list_of_paths):
     """ This method reads instrument settings from previously generated files (paths provided),
         and adds information to the general ms_settings_matrix, which is stored as another json. """
 
     if not os.path.isfile(ms_settings_matrix_file_path):
         # if the file does not exist yet, create empty one
-        ms_matrix = {'ms_runs': []}
+        s_matrix = {'ms_runs': []}
         with open(ms_settings_matrix_file_path, 'w') as new_file:
-            json.dump(ms_matrix, new_file)
+            json.dump(s_matrix, new_file)
     else:
         pass
 
     for path in list_of_paths:
-        parse_instrument_settings(path)
+        parse_ms_run_instrument_settings(path)
 
 
-def parse_instrument_settings(file_path):
+def parse_ms_run_instrument_settings(file_path):
     """ This method reads instrument settings from newly generated file (after it's uploaded on server)
         and adds information to the general ms_settings_matrix, which is stored as another json. """
 
@@ -106,10 +107,10 @@ def parse_instrument_settings(file_path):
 
     # open old ms settings file
     with open(ms_settings_matrix_file_path) as general_file:
-        ms_matrix = json.load(general_file)
+        s_matrix = json.load(general_file)
 
     # add new data to old file
-    ms_matrix['ms_runs'].append({
+    s_matrix['ms_runs'].append({
         'meta': meta,
         'actuals': actuals,
         'cals': cals
@@ -117,12 +118,42 @@ def parse_instrument_settings(file_path):
 
     # dump updated file to the same place
     with open(ms_settings_matrix_file_path, 'w') as updated_file:
-        json.dump(ms_matrix, updated_file)
+        json.dump(s_matrix, updated_file)
+
+
+def update_feature_matrix(extracted_features, features_names, ms_run_ids):
+    """ This method gets results of single MS run feature extraction
+        and updates the general feature matrix. """
+
+    if not os.path.isfile(feature_matrix_file_path):
+        # if the file does not exist yet, create empty one
+        f_matrix = {'ms_runs': []}
+        with open(feature_matrix_file_path, 'w') as new_file:
+            json.dump(f_matrix, new_file)
+    else:
+        pass
+
+    with open(feature_matrix_file_path) as general_file:
+        f_matrix = json.load(general_file)
+
+    f_matrix['ms_runs'].append({
+        'date': ms_run_ids['date'],
+        'original_filename': ms_run_ids['original_filename'],
+        'chemical_mix_id': chemical_mix_id,
+        'msfe_version': version,
+        'scans_processed': None,  # TODO: pass here numbers of the scans of all three types
+        'features_values': extracted_features,
+        'features_names': features_names
+    })
+
+    # dump updated file to the same place
+    with open(feature_matrix_file_path, 'w') as updated_file:
+        json.dump(f_matrix, updated_file)
 
 
 if __name__ == "__main__":
 
-    parse_instrument_settings_from_multiple_old_files(["/Users/andreidm/ETH/projects/ms_feature_extractor/data/ms_settings.json"])
+    # parse_instrument_settings_from_multiple_ms_runs(["/Users/andreidm/ETH/projects/ms_feature_extractor/data/ms_settings.json"])
 
     print()
 

@@ -683,7 +683,9 @@ def aggregate_features(list_of_scans_features, features_names):
         return aggregated_main_features, aggregated_main_features_names
 
 
-def main(spectra, in_test_mode=False):
+def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
+    """ This is main method of the module. It extracts all the features from a single ms run (several scans)
+        and returns single row of feature matrix (list) together with feature names (list)."""
 
     start_time = time.time()
 
@@ -759,6 +761,10 @@ def main(spectra, in_test_mode=False):
 
     print('\n', time.time() - start_time, "seconds elapsed in total")
 
+    parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids)
+
 
 if __name__ == '__main__':
-    main([], in_test_mode=True)
+
+    ms_run_ids = ["", ""]
+    extract_features_from_ms_run([], ms_run_ids, in_test_mode=True)
