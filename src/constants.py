@@ -1,7 +1,8 @@
 
-version = '0.1.6'
+version = '0.1.7'
 
 feature_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/feature_matrix.json"
+ms_settings_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/ms_settings_matrix.json"
 
 parser_comment_symbol = '#'
 parser_description_symbols = '()'
