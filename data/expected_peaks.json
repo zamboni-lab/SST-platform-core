@@ -1,0 +1,61 @@
+{
+  "normal": [
+    [
+      "Caffeine",
+      "C8H9N4O2-",
+      "C7H7N4O2-"
+    ],
+    [
+      "Fluconazole",
+      "C13H11F2N6O-",
+      "C7H7N6O-"
+    ],
+    [
+      "3-(Heptadecafluorooctyl)aniline",
+      "C14H5F17N-"
+    ],
+    [
+      "Albendazole",
+      "C12H14N3O2S-",
+      "C8H3N3OS-",
+      "C11H10N3OS-"
+    ],
+    [
+      "Triamcinolone acetonide",
+      "C24H30FO6-",
+      "C24H31F2O6-",
+      "C21H21O4-"
+    ],
+    [
+      "Perfluorodecanoic acid",
+      "C10O2F19-",
+      "C9F19-"
+    ],
+    [
+      "Tricosafluorododecanoic acid",
+      "C12O2F23-",
+      "C11F23"
+    ],
+    [
+      "Perfluorotetradecanoic acid",
+      "C14O2F27-",
+      "C13F27",
+      "C13F25O-"
+    ],
+    [
+      "Pentadecafluoroheptyl",
+      "C7F15-"
+    ]
+  ],
+  "chemical_noise": [
+    [
+      "HOT",
+      "C3O3NSH8-"
+    ],
+    [
+      "HEX",
+      "C18O6P3N3F25H18-"
+    ]
+  ]
+}
+

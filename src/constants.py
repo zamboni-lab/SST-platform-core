@@ -1,6 +1,6 @@
 
-version = '0.1.8'
-chemical_mix_id = '1'  # should be connected somehow to all the following specifications (parameters)
+version = '0.1.9'
+chemical_mix_id = '1'  # TODO: should be connected somehow to all the following specifications (parameters)
 
 feature_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/feature_matrix.json"
 ms_settings_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/ms_settings_matrix.json"
@@ -11,10 +11,10 @@ parser_description_symbols = '()'
 minimal_normal_peak_intensity = 100
 minimal_background_peak_intensity = 1
 
-normal_scan_expected_peaks_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/data/expected_peaks_example.txt"
-chemical_noise_scan_expected_peaks_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/data/expected_peaks_example.txt"
-# normal_scan_expected_peaks_file_path = "/Users/dmitrav/ETH/projects/ms_feature_extractor/data/expected_peaks_example.txt"
-# chemical_noise_scan_expected_peaks_file_path = "/Users/dmitrav/ETH/projects/ms_feature_extractor/data/expected_peaks_example.txt"
+normal_scan_expected_peaks_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/data/expected_peaks_example_v018.txt"
+chemical_noise_scan_expected_peaks_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/data/expected_peaks_example_v018.txt"
+# normal_scan_expected_peaks_file_path = "/Users/dmitrav/ETH/projects/ms_feature_extractor/data/expected_peaks_example_v018.txt"
+# chemical_noise_scan_expected_peaks_file_path = "/Users/dmitrav/ETH/projects/ms_feature_extractor/data/expected_peaks_example_v018.txt"
 
 number_of_normal_scans = 3  # for Michelle's method main scans are defined by TIC maxima
 # chemical_noise_features_scans_indexes = [17, 18]  # for Michelle's method

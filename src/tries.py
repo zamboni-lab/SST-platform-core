@@ -8,3 +8,14 @@ from src.constants import parser_comment_symbol as sharp
 from src.constants import parser_description_symbols as brackets
 from lmfit.models import GaussianModel
 
+from pyopenms import *
+
+# isotopes = EmpiricalFormula("C7F15-").getIsotopeDistribution(CoarseIsotopePatternGenerator(3))
+# total_intensity = 0
+# isotopes = isotopes.getContainer()
+
+# ions_ids = ["damn" + "it" + str(i) for i in range(len(isotopes))]
+
+llist = ['1', '2', '3']
+
+print([*llist, *llist[1:]])

@@ -23,8 +23,6 @@ from lmfit.models import GaussianModel
 def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, centroids_indexes, actual_peak_info):
     """ This method extracts features related to expected ions of interest and expected mixture chemicals. """
 
-    expected_intensity = actual_peak_info['expected_intensity']
-
     predicted_peak_mz = float(continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))])
 
     # extract information about subsequent (following) peaks after the major one
@@ -34,14 +32,14 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
     left_tail_auc, right_tail_auc = extract_auc_features(spectrum, continuous_mz, fitted_intensity, predicted_peak_mz)
 
     peak_features = {
-        # 'intensity': max(fitted_intensity, max(fit_info['raw intensity array'])),
-        # # in this case goodness-of-fit does not tell much
+        # # we don't have expected ("theoretical") intensity actually,
+        # # we only have abundancy ratios for isotopes
+        # 'expected_intensity_diff': max(fitted_intensity) - expected_intensity,
+        # 'expected_intensity_ratio': expected_intensity / max(fitted_intensity),
 
         'is_missing': 0,
         'saturation': fit_info['saturation'],
         'intensity': max(fitted_intensity),
-        'expected_intensity_diff': max(fitted_intensity) - expected_intensity,
-        'expected_intensity_ratio': expected_intensity / max(fitted_intensity),
         'absolute_mass_accuracy': fit_info['fit_theory_absolute_ma'],
         'ppm': fit_info['fit_theory_ppm'],
         'widths': extract_width_features(continuous_mz, fitted_intensity),  # 20%, 50%, 80% of max intensity
@@ -579,7 +577,7 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
     centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=minimal_normal_peak_intensity)
 
     # parse expected peaks info
-    expected_ions_info = parser.parse_expected_ions(expected_peaks_file_path)
+    expected_ions_info = parser.parse_expected_ions(expected_peaks_file_path, scan_type=scan_type)
 
     # correct indexes of peaks (currently only saturated peaks are processed)
     corrected_centroids_indexes = ms_operator.correct_centroids_indexes(spectrum['m/z array'], spectrum['intensity array'],

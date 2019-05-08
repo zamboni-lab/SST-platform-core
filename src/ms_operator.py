@@ -134,7 +134,6 @@ def find_closest_centroids(mz_spectrum, centroids_indexes, expected_ions_info):
     """ This method looks for all the expected peaks in the list of centroids. """
 
     expected_peaks_list = expected_ions_info['expected_mzs']
-    expected_intensities_list = expected_ions_info['expected_intensities']
 
     # actual peaks out of expected ones
     actual_peaks = []
@@ -158,7 +157,6 @@ def find_closest_centroids(mz_spectrum, centroids_indexes, expected_ions_info):
             another_peak = {
                 'present': True,
                 'expected_mz': expected_peaks_list[i],  # expected (theoretical) mz
-                'expected_intensity': expected_intensities_list[i],  # expected (theoretical) ion abundance
                 'mz': mz_spectrum[centroids_indexes[closest_peak_index]],  # measured mz
                 'index': centroids_indexes[closest_peak_index],
                 'expected_isotopes': isotopes,  # expected (theoretical) isotopes related to this ion (incl. itself)
