@@ -22,8 +22,18 @@ def parse_expected_ions(file_path, scan_type):
     with open(file_path) as input_file:
         all_expected_ions = json.load(input_file)
 
-    for ion in all_expected_ions[scan_type]:
+    # correct ions names: all uppercase + no - in the end
+    for i in range(len(all_expected_ions[scan_type])):
+        for j in range(1, len(all_expected_ions[scan_type][i])):
+            if all_expected_ions[scan_type][i][j][-1] == '-':
+                # if there is - in the end of the ion name, remove it
+                all_expected_ions[scan_type][i][j] = all_expected_ions[scan_type][i][j][:-1].upper()
+            else:
+                # if not, just make sure it's uppercase
+                all_expected_ions[scan_type][i][j] = all_expected_ions[scan_type][i][j].upper()
 
+    # iterate over ions to parse information
+    for ion in all_expected_ions[scan_type]:
         # get the list of mzs of isotopes of the main guy + isotopic intensity ratios
         # (abundance of isotope in relation to the main guy)
         ion_isotopes = EmpiricalFormula(ion[1]).getIsotopeDistribution(CoarseIsotopePatternGenerator(3)).getContainer()
@@ -31,14 +41,14 @@ def parse_expected_ions(file_path, scan_type):
         isotopes_intensity_ratios = [iso.getIntensity() for iso in ion_isotopes]
 
         # add ids of the ion isotopes
-        ids = [ion[0] + "i" + str(i+1) for i in range(len(ion_isotopes))]
+        ids = [ion[0] + "_i" + str(i+1) for i in range(len(ion_isotopes))]
 
         # if there is any expected fragment
         if len(ion) > 1:
             # get the list of mzs of ions fragments including mz of the main guy
-            fragments_list = [EmpiricalFormula(ion[fragment]).getMonoWeight() for fragment in ion[1:]]
+            fragments_list = [EmpiricalFormula(fragment).getMonoWeight() for fragment in ion[1:]]
             # add ids of the ion fragments
-            ids.extend([ion[0] + "f" + str(i+1) for i in range(len(fragments_list[1:]))])
+            ids.extend([ion[0] + "_f" + str(i+1) for i in range(len(fragments_list[1:]))])
 
         else:
             fragments_list = []

@@ -15,7 +15,7 @@ from src.constants import instrument_noise_mz_frame_size, instrument_noise_scan_
 from src.constants import number_of_top_noisy_peaks_to_consider as n_top_guys
 from src.constants import frame_intensity_percentiles
 from src.constants import chemical_noise_features_scans_indexes, instrument_noise_features_scans_indexes
-from src.constants import normal_scan_expected_peaks_file_path, chemical_noise_scan_expected_peaks_file_path
+from src.constants import expected_peaks_file_path
 from src.constants import minimal_background_peak_intensity as min_bg_peak_intensity
 from lmfit.models import GaussianModel
 
@@ -30,6 +30,10 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
                                     centroids_indexes)
 
     left_tail_auc, right_tail_auc = extract_auc_features(spectrum, continuous_mz, fitted_intensity, predicted_peak_mz)
+
+    symmetry = (left_tail_auc + right_tail_auc) / (2 * max(left_tail_auc, right_tail_auc))
+
+    print(left_tail_auc, right_tail_auc, ", symmetry =", symmetry)
 
     peak_features = {
         # # we don't have expected ("theoretical") intensity actually,
@@ -47,7 +51,7 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
         'subsequent_peaks_ratios': sp_ratios,
         'left_tail_auc': left_tail_auc,
         'right_tail_auc': right_tail_auc,
-        'symmetry': (left_tail_auc + right_tail_auc) / (2 * max(left_tail_auc, right_tail_auc)),
+        'symmetry': symmetry,
         'goodness-of-fit': fit_info['goodness-of-fit']
     }
 
@@ -231,6 +235,9 @@ def extract_non_expected_features_from_one_frame(mz_frame, spectrum, centroids_i
 
         # iterate further
         i += 1
+        # exit loop if there's no more centroids
+        if i == len(centroids_indexes):
+            break
 
     top_peaks_intensities = sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys]
 
@@ -566,13 +573,6 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
     """ This method extracts all the features from one scan.
         There are slight differences between normal scan and chemical noise scan. """
 
-    # default scan type is normal
-    expected_peaks_file_path = normal_scan_expected_peaks_file_path
-
-    if scan_type == 'chemical_noise':
-        # use another file if a chemical noise scan is being processed
-        expected_peaks_file_path = chemical_noise_scan_expected_peaks_file_path
-
     # peak picking here
     centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=minimal_normal_peak_intensity)
 
@@ -689,9 +689,9 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
     if in_test_mode:
 
-        good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
-        # good_example = '/Users/dmitrav/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
-        spectra = list(mzxml.read(good_example))
+        # chemical mix by Michelle
+        chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix/20190405_QCmeth_Mix30_013.mzXML'
+        spectra = list(mzxml.read(chemical_standard))
 
         print('\n', time.time() - start_time, "seconds elapsed for reading")
 
@@ -764,5 +764,5 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
 if __name__ == '__main__':
 
-    ms_run_ids = ["", ""]
+    ms_run_ids = {'date': 'test_date', 'original_filename': 'test_filename'}
     extract_features_from_ms_run([], ms_run_ids, in_test_mode=True)
