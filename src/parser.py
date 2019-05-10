@@ -2,9 +2,12 @@
 from src.constants import parser_comment_symbol as sharp
 from src.constants import parser_description_symbols as brackets
 from src.constants import feature_matrix_file_path, ms_settings_matrix_file_path
-from src.constants import chemical_mix_id, version
+from src.constants import chemical_mix_id, msfe_version
+from src.constants import number_of_normal_scans
+from src.constants import chemical_noise_features_scans_indexes as chem_scans
+from src.constants import instrument_noise_features_scans_indexes as bg_scans
+from pyopenms import EmpiricalFormula, CoarseIsotopePatternGenerator
 import json, os
-from pyopenms import *
 
 
 def parse_expected_ions(file_path, scan_type):
@@ -210,8 +213,8 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids):
         'date': ms_run_ids['date'],
         'original_filename': ms_run_ids['original_filename'],
         'chemical_mix_id': chemical_mix_id,
-        'msfe_version': version,
-        'scans_processed': None,  # TODO: pass here numbers of the scans of all three types
+        'msfe_version': msfe_version,
+        'scans_processed': [number_of_normal_scans, len(chem_scans), len(bg_scans)],
         'features_values': extracted_features,
         'features_names': features_names
     })

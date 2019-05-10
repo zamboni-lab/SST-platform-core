@@ -261,10 +261,15 @@ def extract_instrument_noise_features_from_one_frame(mz_frame, spectrum, centroi
     # go until left boundary of the frame is reached
     while mz_frame[0] > spectrum['m/z array'][centroids_indexes[i]]:
         i += 1
+
     # collect peaks between left and right boundaries
     while mz_frame[0] < spectrum['m/z array'][centroids_indexes[i]] < mz_frame[1]:
         frame_peaks_intensities.append(spectrum['intensity array'][centroids_indexes[i]])
         i += 1
+
+        # exit loop if there's no more centroids
+        if i == len(centroids_indexes):
+            break
 
     top_peaks_intensities = sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys]
 
@@ -773,5 +778,5 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
 if __name__ == '__main__':
 
-    ms_run_ids = {'date': 'test_date', 'original_filename': 'test_filename'}
+    ms_run_ids = {'date': 'today', 'original_filename': 'new_file'}
     extract_features_from_ms_run([], ms_run_ids, in_test_mode=True)
