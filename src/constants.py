@@ -1,5 +1,5 @@
 
-msfe_version = '0.1.14'
+msfe_version = '0.1.15'
 chemical_mix_id = '1'  # TODO: should be connected somehow to all the following specifications (parameters)
 
 feature_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/feature_matrix.json"
@@ -24,7 +24,7 @@ allowed_ppm_error = 25
 
 peak_region_factor = 3  # 3 times resolution is a region for extracting information
 
-maximum_number_of_subsequent_peaks_to_consider = 10  # initial guess
+maximum_number_of_subsequent_peaks_to_consider = 5  # initial guess
 
 normal_scan_mz_frame_size = 50  # for frames [50, 100], [100, 150] ... [1000, 1050]
 normal_scan_number_of_frames = 20

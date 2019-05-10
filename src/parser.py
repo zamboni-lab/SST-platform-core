@@ -44,7 +44,7 @@ def parse_expected_ions(file_path, scan_type):
         isotopes_intensity_ratios = [iso.getIntensity() for iso in ion_isotopes]
 
         # add ids of the ion isotopes
-        ids = [ion[0] + "_i" + str(i+1) for i in range(len(ion_isotopes))]
+        ids = [ion[0].replace(" ", "_") + "_i" + str(i+1) for i in range(len(ion_isotopes))]
 
         # if there is any expected fragment
         if len(ion) > 1:
