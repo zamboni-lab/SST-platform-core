@@ -36,3 +36,5 @@ from pyopenms import *
 #         llist[i] = llist[i].upper()
 #
 # print(llist)
+
+print(len(1))

@@ -20,7 +20,7 @@ from src.constants import minimal_background_peak_intensity as min_bg_peak_inten
 from lmfit.models import GaussianModel
 
 
-def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, centroids_indexes, actual_peak_info):
+def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, centroids_indexes):
     """ This method extracts features related to expected ions of interest and expected mixture chemicals. """
 
     predicted_peak_mz = float(continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))])
@@ -31,9 +31,8 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
 
     left_tail_auc, right_tail_auc = extract_auc_features(spectrum, continuous_mz, fitted_intensity, predicted_peak_mz)
 
+    # TODO: think about a better metric
     symmetry = (left_tail_auc + right_tail_auc) / (2 * max(left_tail_auc, right_tail_auc))
-
-    print(left_tail_auc, right_tail_auc, ", symmetry =", symmetry)
 
     peak_features = {
         # # we don't have expected ("theoretical") intensity actually,
@@ -191,7 +190,7 @@ def fit_peak_and_extract_features(actual_peak, spectrum, centroids_indexes):
     fitted_mz, fitted_intensity, fit_info = get_peak_fit(peak_region_indexes, spectrum, actual_peak['expected_mz'])
 
     peak_features = extract_peak_features(fitted_mz, fitted_intensity, fit_info,
-                                          spectrum, centroids_indexes, actual_peak)
+                                          spectrum, centroids_indexes)
 
     peak_fit = {
         'expected_mz': actual_peak['expected_mz'],  # this is an id of the peak
@@ -436,14 +435,14 @@ def get_null_peak_features():
         to keep the whole features matrix of the same dimensionality. """
 
     missing_peak_features = {
-        # 'intensity': max(fitted_intensity, max(fit_info['raw intensity array'])),
-        # # in this case goodness-of-fit does not tell much
+        # # we don't have expected ("theoretical") intensity actually,
+        # # we only have abundancy ratios for isotopes
+        # 'expected_intensity_diff': -1,
+        # 'expected_intensity_ratio': -1,
 
         'is_missing': 1,
         'saturation': -1,
         'intensity': -1,
-        'expected_intensity_diff': -1,
-        'expected_intensity_ratio': -1,
         'absolute_mass_accuracy': -1,
         'ppm': -1,
         'widths': [-1, -1, -1],  # 20%, 50%, 80% of max intensity
@@ -576,15 +575,25 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
     # peak picking here
     centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=minimal_normal_peak_intensity)
 
+    # # debug
+    # import matplotlib.pyplot as plt
+    # plt.plot(spectrum['m/z array'], spectrum['intensity array'], 'b-')
+    # plt.plot(spectrum['m/z array'][centroids_indexes[22746]], spectrum['intensity array'][centroids_indexes[22746]], 'gx')
+    # plt.plot(spectrum['m/z array'][centroids_indexes[22745]], spectrum['intensity array'][centroids_indexes[22745]], 'gx')
+    # plt.plot(spectrum['m/z array'][centroids_indexes[22747]], spectrum['intensity array'][centroids_indexes[22747]], 'gx')
+    # plt.plot(spectrum['m/z array'][216960], spectrum['intensity array'][216960], 'rx')
+    # plt.show()
+
     # parse expected peaks info
     expected_ions_info = parser.parse_expected_ions(expected_peaks_file_path, scan_type=scan_type)
 
-    # correct indexes of peaks (currently only saturated peaks are processed)
-    corrected_centroids_indexes = ms_operator.correct_centroids_indexes(spectrum['m/z array'], spectrum['intensity array'],
-                                                                        centroids_indexes, expected_ions_info)
+    # TODO: review & debug, as it's causing problems: wrike+351004892
+    # # correct indexes of peaks (currently only saturated peaks are processed)
+    # corrected_centroids_indexes = ms_operator.correct_centroids_indexes(spectrum['m/z array'], spectrum['intensity array'],
+    #                                                                     centroids_indexes, expected_ions_info)
 
     # get information about actual peaks in the spectrum in relation to expected ones and centroiding results
-    actual_peaks = ms_operator.find_closest_centroids(spectrum['m/z array'], corrected_centroids_indexes, expected_ions_info)
+    actual_peaks = ms_operator.find_closest_centroids(spectrum['m/z array'], centroids_indexes, expected_ions_info)
 
     independent_peaks_features = []
     independent_peak_fits = []  # there is a need to store temporarily peak fitting results
@@ -594,7 +603,7 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
 
         if actual_peaks[i]['present']:
 
-            peak_fit, peak_features = fit_peak_and_extract_features(actual_peaks[i], spectrum, corrected_centroids_indexes)
+            peak_fit, peak_features = fit_peak_and_extract_features(actual_peaks[i], spectrum, centroids_indexes)
 
             independent_peaks_features.append(peak_features)
             independent_peak_fits.append(peak_fit)
@@ -639,7 +648,7 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
                 pass
 
     # extract non-expected features from a scan
-    non_expected_features = form_frames_and_extract_non_expected_features(spectrum, corrected_centroids_indexes,
+    non_expected_features = form_frames_and_extract_non_expected_features(spectrum, centroids_indexes,
                                                                           actual_peaks, scan_type=scan_type)
 
     # merge independent, isotopic, fragmentation and non-expected features
