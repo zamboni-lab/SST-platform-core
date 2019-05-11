@@ -194,7 +194,7 @@ def parse_ms_run_instrument_settings(file_path):
         json.dump(s_matrix, updated_file)
 
 
-def update_feature_matrix(extracted_features, features_names, ms_run_ids):
+def update_feature_matrix(extracted_features, features_names, ms_run_ids, scans_processed):
     """ This method gets results of single MS run feature extraction
         and updates the general feature matrix. """
 
@@ -214,7 +214,7 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids):
         'original_filename': ms_run_ids['original_filename'],
         'chemical_mix_id': chemical_mix_id,
         'msfe_version': msfe_version,
-        'scans_processed': [number_of_normal_scans, len(chem_scans), len(bg_scans)],
+        'scans_processed': scans_processed,
         'features_values': extracted_features,
         'features_names': features_names
     })

@@ -1,5 +1,5 @@
 
-msfe_version = '0.1.15'
+msfe_version = '0.1.16'
 chemical_mix_id = '1'  # TODO: should be connected somehow to all the following specifications (parameters)
 
 feature_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/feature_matrix.json"
