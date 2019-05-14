@@ -1,5 +1,5 @@
 
-msfe_version = '0.1.16'
+msfe_version = '0.2.0'
 chemical_mix_id = '1'  # TODO: should be connected somehow to all the following specifications (parameters)
 
 feature_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/feature_matrix.json"
@@ -15,8 +15,8 @@ expected_peaks_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/da
 
 number_of_normal_scans = 3  # for Michelle's method main scans are defined by TIC maxima
 
-chemical_noise_features_scans_indexes = [17, 18]  # for Michelle's method
-instrument_noise_features_scans_indexes = [174, 175]  # for Michelle's method
+chemical_noise_features_scans_indexes = [17]  # for Michelle's method
+instrument_noise_features_scans_indexes = [174]  # for Michelle's method
 
 peak_widths_levels_of_interest = [0.2, 0.5, 0.8]
 

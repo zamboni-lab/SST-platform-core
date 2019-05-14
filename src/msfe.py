@@ -352,6 +352,7 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
     major_peak_mz = float(major_peak_continuous_mz[numpy.where(major_peak_fitted_intensity == major_peak_max_intensity)])
 
     isotope_intensity_ratios = []
+    isotope_intensity_ratios_diffs = []
     isotope_mass_diff_values = []
 
     for j in range(len(actual_peaks_info[major_peak_index]['expected_isotopes'])):
@@ -371,7 +372,11 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
                     isotope_mz = float(peak_fits[k]['mz'][numpy.where(peak_fits[k]['intensity'] == max_isotope_intensity)])
                     mass_diff = isotope_mz - major_peak_mz
 
+                    # diff between theoretical isotopic ratio and observed one
+                    ratio_diff = actual_peaks_info[major_peak_index]['expected_isotopic_ratios'][j] - ratio
+
                     isotope_intensity_ratios.append(ratio)
+                    isotope_intensity_ratios_diffs.append(ratio_diff)
                     isotope_mass_diff_values.append(mass_diff)
 
                     break
@@ -379,6 +384,7 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
                 else:
                     # otherwise it means that this expected isotope is missing actually
                     isotope_intensity_ratios.append(-1)
+                    isotope_intensity_ratios_diffs.append(-1)
                     isotope_mass_diff_values.append(-1)
                     break
 
@@ -387,6 +393,7 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
     isotopic_features = {
         # 'isotopes mzs': actual_peaks_info[major_peak_index]['expected isotopes'],  # in case id is needed
         'intensity_ratios_'+peak_id: isotope_intensity_ratios,
+        'intensity_ratios_diffs_'+peak_id: isotope_intensity_ratios_diffs,
         'mass_diff_values_'+peak_id: isotope_mass_diff_values
     }
 
@@ -494,6 +501,7 @@ def get_null_isotopic_features(actual_peak_info):
     missing_isotopic_features = {
         # 'isotopes mzs': actual_peak_info['expected isotopes'],  # in case id is needed
         'intensity_ratios_'+peak_id: [-1 for value in actual_peak_info['expected_isotopes']],
+        'intensity_ratios_diffs_'+peak_id: [-1 for value in actual_peak_info['expected_isotopes']],
         'mass_diff_values_'+peak_id: [-1 for value in actual_peak_info['expected_isotopes']]
     }
 
@@ -683,14 +691,14 @@ def aggregate_features(list_of_scans_features, features_names):
     """ This method takes list of scans features and returns one feature list of n scans feature lists:
         for each feature average value is calculated and variance metric is added as another feature. """
 
-    aggregated_main_features_names = []
-
     # in case there was only 1 scan processed
     if len(list_of_scans_features) == 1:
-        return list_of_scans_features[0]
+        return list_of_scans_features[0], features_names
+
     # otherwise do aggregate
     else:
         aggregated_main_features = []
+        aggregated_main_features_names = []
 
         for j in range(len(list_of_scans_features[0])):
             feature_values = []

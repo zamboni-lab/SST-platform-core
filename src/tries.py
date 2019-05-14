@@ -37,12 +37,6 @@ from pyopenms import *
 #
 # print(llist)
 
-id = '1'
+a = [1,2,3,4,54,5,5]
 
-d = {'peak'+id: 3 }
-
-print(d)
-
-a = sum([1 > 0, 2. > 0, 3 < 1. ])
-
-print(isinstance(a, int))
+print(a.index(54))
