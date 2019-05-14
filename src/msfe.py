@@ -15,15 +15,13 @@ from src.constants import instrument_noise_mz_frame_size, instrument_noise_scan_
 from src.constants import number_of_top_noisy_peaks_to_consider as n_top_guys
 from src.constants import frame_intensity_percentiles
 from src.constants import chemical_noise_features_scans_indexes, instrument_noise_features_scans_indexes
-from src.constants import normal_scan_expected_peaks_file_path, chemical_noise_scan_expected_peaks_file_path
+from src.constants import expected_peaks_file_path
 from src.constants import minimal_background_peak_intensity as min_bg_peak_intensity
 from lmfit.models import GaussianModel
 
 
-def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, centroids_indexes, actual_peak_info):
+def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, centroids_indexes, peak_id):
     """ This method extracts features related to expected ions of interest and expected mixture chemicals. """
-
-    expected_intensity = actual_peak_info['expected_intensity']
 
     predicted_peak_mz = float(continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))])
 
@@ -33,24 +31,27 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
 
     left_tail_auc, right_tail_auc = extract_auc_features(spectrum, continuous_mz, fitted_intensity, predicted_peak_mz)
 
-    peak_features = {
-        # 'intensity': max(fitted_intensity, max(fit_info['raw intensity array'])),
-        # # in this case goodness-of-fit does not tell much
+    # TODO: think about a better metric
+    symmetry = (left_tail_auc + right_tail_auc) / (2 * max(left_tail_auc, right_tail_auc))
 
-        'is_missing': 0,
-        'saturation': fit_info['saturation'],
-        'intensity': max(fitted_intensity),
-        'expected_intensity_diff': max(fitted_intensity) - expected_intensity,
-        'expected_intensity_ratio': expected_intensity / max(fitted_intensity),
-        'absolute_mass_accuracy': fit_info['fit_theory_absolute_ma'],
-        'ppm': fit_info['fit_theory_ppm'],
-        'widths': extract_width_features(continuous_mz, fitted_intensity),  # 20%, 50%, 80% of max intensity
-        'subsequent_peaks_number': max_sp_number,
-        'subsequent_peaks_ratios': sp_ratios,
-        'left_tail_auc': left_tail_auc,
-        'right_tail_auc': right_tail_auc,
-        'symmetry': (left_tail_auc + right_tail_auc) / (2 * max(left_tail_auc, right_tail_auc)),
-        'goodness-of-fit': fit_info['goodness-of-fit']
+    peak_features = {
+        # # we don't have expected ("theoretical") intensity actually,
+        # # we only have abundancy ratios for isotopes
+        # 'expected_intensity_diff': max(fitted_intensity) - expected_intensity,
+        # 'expected_intensity_ratio': expected_intensity / max(fitted_intensity),
+
+        'is_missing_'+peak_id: 0,
+        'saturation_'+peak_id: fit_info['saturation'],
+        'intensity_'+peak_id: max(fitted_intensity),
+        'absolute_mass_accuracy_'+peak_id: fit_info['fit_theory_absolute_ma'],
+        'ppm_'+peak_id: fit_info['fit_theory_ppm'],
+        'widths_'+peak_id: extract_width_features(continuous_mz, fitted_intensity),  # 20%, 50%, 80% of max intensity
+        'subsequent_peaks_number_'+peak_id: int(sum([ratio > 0 for ratio in sp_ratios])),
+        'subsequent_peaks_ratios_'+peak_id: sp_ratios,
+        'left_tail_auc_'+peak_id: left_tail_auc,
+        'right_tail_auc_'+peak_id: right_tail_auc,
+        'symmetry_'+peak_id: symmetry,
+        'goodness-of-fit_'+peak_id: fit_info['goodness-of-fit']
     }
 
     return peak_features
@@ -189,10 +190,11 @@ def fit_peak_and_extract_features(actual_peak, spectrum, centroids_indexes):
     fitted_mz, fitted_intensity, fit_info = get_peak_fit(peak_region_indexes, spectrum, actual_peak['expected_mz'])
 
     peak_features = extract_peak_features(fitted_mz, fitted_intensity, fit_info,
-                                          spectrum, centroids_indexes, actual_peak)
+                                          spectrum, centroids_indexes, actual_peak['id'])
 
     peak_fit = {
         'expected_mz': actual_peak['expected_mz'],  # this is an id of the peak
+        'peak_id': actual_peak['id'],
         'mz': fitted_mz,
         'intensity': fitted_intensity,
         'info': fit_info
@@ -201,7 +203,7 @@ def fit_peak_and_extract_features(actual_peak, spectrum, centroids_indexes):
     return peak_fit, peak_features
 
 
-def extract_non_expected_features_from_one_frame(mz_frame, spectrum, centroids_indexes, actual_peaks):
+def extract_non_expected_features_from_one_frame(mz_frame, spectrum, centroids_indexes, actual_peaks, scan_type):
     """ This method extracts non-expected features of a given frame. Expected peaks are excluded. """
 
     frame_peaks_intensities = []
@@ -233,15 +235,20 @@ def extract_non_expected_features_from_one_frame(mz_frame, spectrum, centroids_i
 
         # iterate further
         i += 1
+        # exit loop if there's no more centroids
+        if i == len(centroids_indexes):
+            break
 
     top_peaks_intensities = sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys]
 
+    features_id = scan_type[0:4] + "_" + str(mz_frame[0]) + "_" + str(mz_frame[1])
+
     frame_features = {
-        'number_of_peaks': len(frame_peaks_intensities),
-        'intensity_sum': sum(frame_peaks_intensities),
-        'percentiles': list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)),
-        'top_peaks_intensities': top_peaks_intensities,
-        'top_percentiles': list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
+        'number_of_peaks_'+features_id: len(frame_peaks_intensities),
+        'intensity_sum_'+features_id: sum(frame_peaks_intensities),
+        'percentiles_'+features_id: list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)),
+        'top_peaks_intensities_'+features_id: top_peaks_intensities,
+        'top_percentiles_'+features_id: list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
     }
 
     return frame_features
@@ -257,19 +264,26 @@ def extract_instrument_noise_features_from_one_frame(mz_frame, spectrum, centroi
     # go until left boundary of the frame is reached
     while mz_frame[0] > spectrum['m/z array'][centroids_indexes[i]]:
         i += 1
+
     # collect peaks between left and right boundaries
     while mz_frame[0] < spectrum['m/z array'][centroids_indexes[i]] < mz_frame[1]:
         frame_peaks_intensities.append(spectrum['intensity array'][centroids_indexes[i]])
         i += 1
 
+        # exit loop if there's no more centroids
+        if i == len(centroids_indexes):
+            break
+
     top_peaks_intensities = sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys]
 
+    features_id = 'bg_' + str(mz_frame[0]) + "_" + str(mz_frame[1])
+
     frame_features = {
-        'number_of_peaks': len(frame_peaks_intensities),
-        'intensity_sum': sum(frame_peaks_intensities),
-        'percentiles': list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)),
-        'top_peaks_intensities': top_peaks_intensities,
-        'top_percentiles': list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
+        'number_of_peaks_'+features_id: len(frame_peaks_intensities),
+        'intensity_sum_'+features_id: sum(frame_peaks_intensities),
+        'percentiles_'+features_id: list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)),
+        'top_peaks_intensities_'+features_id: top_peaks_intensities,
+        'top_percentiles_'+features_id: list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
     }
 
     return frame_features
@@ -321,7 +335,7 @@ def form_frames_and_extract_non_expected_features(spectrum, centroids_indexes, a
 
     # for each frame extract features
     for frame in frames:
-        frame_features = extract_non_expected_features_from_one_frame(frame, spectrum, centroids_indexes, actual_peaks)
+        frame_features = extract_non_expected_features_from_one_frame(frame, spectrum, centroids_indexes, actual_peaks, scan_type)
         non_expected_features.append(frame_features)
 
     return non_expected_features
@@ -338,6 +352,7 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
     major_peak_mz = float(major_peak_continuous_mz[numpy.where(major_peak_fitted_intensity == major_peak_max_intensity)])
 
     isotope_intensity_ratios = []
+    isotope_intensity_ratios_diffs = []
     isotope_mass_diff_values = []
 
     for j in range(len(actual_peaks_info[major_peak_index]['expected_isotopes'])):
@@ -357,7 +372,11 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
                     isotope_mz = float(peak_fits[k]['mz'][numpy.where(peak_fits[k]['intensity'] == max_isotope_intensity)])
                     mass_diff = isotope_mz - major_peak_mz
 
+                    # diff between theoretical isotopic ratio and observed one
+                    ratio_diff = actual_peaks_info[major_peak_index]['expected_isotopic_ratios'][j] - ratio
+
                     isotope_intensity_ratios.append(ratio)
+                    isotope_intensity_ratios_diffs.append(ratio_diff)
                     isotope_mass_diff_values.append(mass_diff)
 
                     break
@@ -365,13 +384,17 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
                 else:
                     # otherwise it means that this expected isotope is missing actually
                     isotope_intensity_ratios.append(-1)
+                    isotope_intensity_ratios_diffs.append(-1)
                     isotope_mass_diff_values.append(-1)
                     break
 
+    peak_id = actual_peaks_info[major_peak_index]['id']
+
     isotopic_features = {
         # 'isotopes mzs': actual_peaks_info[major_peak_index]['expected isotopes'],  # in case id is needed
-        'intensity_ratios': isotope_intensity_ratios,
-        'mass_diff_values': isotope_mass_diff_values
+        'intensity_ratios_'+peak_id: isotope_intensity_ratios,
+        'intensity_ratios_diffs_'+peak_id: isotope_intensity_ratios_diffs,
+        'mass_diff_values_'+peak_id: isotope_mass_diff_values
     }
 
     return isotopic_features
@@ -417,37 +440,39 @@ def find_fragment_and_extract_features(major_peak_index, actual_peaks_info, peak
                     fragment_mass_diff_values.append(-1)
                     break
 
+    peak_id = actual_peaks_info[major_peak_index]['id']
+
     fragmentation_features = {
         # 'fragments mzs': actual_peaks_info[major_peak_index]['expected fragments'],  # in case id is needed
-        'intensity_ratios': fragment_intensity_ratios,
-        'mass_diff_values': fragment_mass_diff_values
+        'intensity_ratios_'+peak_id: fragment_intensity_ratios,
+        'mass_diff_values_'+peak_id: fragment_mass_diff_values
     }
 
     return fragmentation_features
 
 
-def get_null_peak_features():
+def get_null_peak_features(peak_id):
     """ Compose the empty dictionary with peak features
         to keep the whole features matrix of the same dimensionality. """
 
     missing_peak_features = {
-        # 'intensity': max(fitted_intensity, max(fit_info['raw intensity array'])),
-        # # in this case goodness-of-fit does not tell much
+        # # we don't have expected ("theoretical") intensity actually,
+        # # we only have abundancy ratios for isotopes
+        # 'expected_intensity_diff': -1,
+        # 'expected_intensity_ratio': -1,
 
-        'is_missing': 1,
-        'saturation': -1,
-        'intensity': -1,
-        'expected_intensity_diff': -1,
-        'expected_intensity_ratio': -1,
-        'absolute_mass_accuracy': -1,
-        'ppm': -1,
-        'widths': [-1, -1, -1],  # 20%, 50%, 80% of max intensity
-        'subsequent_peaks_number': -1,
-        'subsequent_peaks_ratios': [-1 for value in range(max_sp_number)],
-        'left_tail_auc': -1,
-        'right_tail_auc': -1,
-        'symmetry': -1,
-        'goodness-of-fit': [-1, -1, -1]
+        'is_missing_'+peak_id: 1,
+        'saturation_'+peak_id: -1,
+        'intensity_'+peak_id: -1,
+        'absolute_mass_accuracy_'+peak_id: -1,
+        'ppm_'+peak_id: -1,
+        'widths_'+peak_id: [-1, -1, -1],  # 20%, 50%, 80% of max intensity
+        'subsequent_peaks_number_'+peak_id: -1,
+        'subsequent_peaks_ratios_'+peak_id: [-1 for value in range(max_sp_number)],
+        'left_tail_auc_'+peak_id: -1,
+        'right_tail_auc_'+peak_id: -1,
+        'symmetry_'+peak_id: -1,
+        'goodness-of-fit_'+peak_id: [-1, -1, -1]
     }
 
     return missing_peak_features
@@ -458,6 +483,7 @@ def get_null_peak_fit(actual_peak):
 
     missing_peak_fit = {
         'expected_mz': actual_peak['expected_mz'],  # this is an id of the peak
+        'peak_id': actual_peak['id'],
         'mz': [-1],
         'intensity': [-1],
         'info': {}
@@ -470,10 +496,13 @@ def get_null_isotopic_features(actual_peak_info):
     """ Compose the empty dictionary with isotopic features for a missing peak
         to keep the whole features matrix of the same dimensionality. """
 
+    peak_id = actual_peak_info['id']
+
     missing_isotopic_features = {
         # 'isotopes mzs': actual_peak_info['expected isotopes'],  # in case id is needed
-        'intensity_ratios': [-1 for value in actual_peak_info['expected_isotopes']],
-        'mass_diff_values': [-1 for value in actual_peak_info['expected_isotopes']]
+        'intensity_ratios_'+peak_id: [-1 for value in actual_peak_info['expected_isotopes']],
+        'intensity_ratios_diffs_'+peak_id: [-1 for value in actual_peak_info['expected_isotopes']],
+        'mass_diff_values_'+peak_id: [-1 for value in actual_peak_info['expected_isotopes']]
     }
 
     return missing_isotopic_features
@@ -483,10 +512,12 @@ def get_null_fragmentation_features(actual_peak_info):
     """ Compose the empty dictionary with isotopic features for a missing peak
         to keep the whole features matrix of the same dimensionality. """
 
+    peak_id = actual_peak_info['id']
+
     missing_fragmentation_features = {
         # 'fragments mzs': actual_peak_info['expected fragments'],  # in case id is needed
-        'intensity_ratios': [-1 for value in actual_peak_info['expected_fragments']],
-        'mass_diff_values': [-1 for value in actual_peak_info['expected_fragments']]
+        'intensity_ratios_'+peak_id: [-1 for value in actual_peak_info['expected_fragments']],
+        'mass_diff_values_'+peak_id: [-1 for value in actual_peak_info['expected_fragments']]
     }
 
     return missing_fragmentation_features
@@ -514,7 +545,8 @@ def extend_scan_features(general_scan_features, general_features_names, some_new
                         general_features_names.append(feature_name + "_" + str(i))
 
                 else:
-                    raise ValueError("Unknown feature type: " + new_features_type)
+                    print(feature_name, ": ", features[feature_name])
+                    raise ValueError("Unknown feature type encountered for: " + new_features_type)
     else:
         # collecting just features values (features names were collected during previous iteration, for previous scan)
         for features in some_new_features:
@@ -530,7 +562,8 @@ def extend_scan_features(general_scan_features, general_features_names, some_new
                     general_scan_features.extend(list(features[feature_name]))
 
                 else:
-                    raise ValueError("Unknown feature type: " + new_features_type)
+                    print(feature_name, ": ", features[feature_name])
+                    raise ValueError("Unknown feature type encountered for: " + new_features_type)
 
 
 def merge_features(all_independent_features, all_isotopic_features, all_fragmentation_features, all_non_expected_features, get_names=True):
@@ -568,25 +601,28 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
     """ This method extracts all the features from one scan.
         There are slight differences between normal scan and chemical noise scan. """
 
-    # default scan type is normal
-    expected_peaks_file_path = normal_scan_expected_peaks_file_path
-
-    if scan_type == 'chemical_noise':
-        # use another file if a chemical noise scan is being processed
-        expected_peaks_file_path = chemical_noise_scan_expected_peaks_file_path
-
     # peak picking here
     centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=minimal_normal_peak_intensity)
 
-    # parse expected peaks info
-    expected_ions_info = parser.parse_expected_ions(expected_peaks_file_path)
+    # # debug
+    # import matplotlib.pyplot as plt
+    # plt.plot(spectrum['m/z array'], spectrum['intensity array'], 'b-')
+    # plt.plot(spectrum['m/z array'][centroids_indexes[22746]], spectrum['intensity array'][centroids_indexes[22746]], 'gx')
+    # plt.plot(spectrum['m/z array'][centroids_indexes[22745]], spectrum['intensity array'][centroids_indexes[22745]], 'gx')
+    # plt.plot(spectrum['m/z array'][centroids_indexes[22747]], spectrum['intensity array'][centroids_indexes[22747]], 'gx')
+    # plt.plot(spectrum['m/z array'][216960], spectrum['intensity array'][216960], 'rx')
+    # plt.show()
 
-    # correct indexes of peaks (currently only saturated peaks are processed)
-    corrected_centroids_indexes = ms_operator.correct_centroids_indexes(spectrum['m/z array'], spectrum['intensity array'],
-                                                                        centroids_indexes, expected_ions_info)
+    # parse expected peaks info
+    expected_ions_info = parser.parse_expected_ions(expected_peaks_file_path, scan_type=scan_type)
+
+    # TODO: review & debug, as it's causing problems: wrike+351004892
+    # # correct indexes of peaks (currently only saturated peaks are processed)
+    # corrected_centroids_indexes = ms_operator.correct_centroids_indexes(spectrum['m/z array'], spectrum['intensity array'],
+    #                                                                     centroids_indexes, expected_ions_info)
 
     # get information about actual peaks in the spectrum in relation to expected ones and centroiding results
-    actual_peaks = ms_operator.find_closest_centroids(spectrum['m/z array'], corrected_centroids_indexes, expected_ions_info)
+    actual_peaks = ms_operator.find_closest_centroids(spectrum['m/z array'], centroids_indexes, expected_ions_info)
 
     independent_peaks_features = []
     independent_peak_fits = []  # there is a need to store temporarily peak fitting results
@@ -596,7 +632,7 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
 
         if actual_peaks[i]['present']:
 
-            peak_fit, peak_features = fit_peak_and_extract_features(actual_peaks[i], spectrum, corrected_centroids_indexes)
+            peak_fit, peak_features = fit_peak_and_extract_features(actual_peaks[i], spectrum, centroids_indexes)
 
             independent_peaks_features.append(peak_features)
             independent_peak_fits.append(peak_fit)
@@ -605,7 +641,7 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
             # save the same dimensionality with actual peaks structure
             # ans keep the size of the feature matrix constant
 
-            null_peak_features = get_null_peak_features()
+            null_peak_features = get_null_peak_features(actual_peaks[i]['id'])
             null_peak_fit = get_null_peak_fit(actual_peaks[i])
 
             independent_peaks_features.append(null_peak_features)
@@ -641,7 +677,7 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
                 pass
 
     # extract non-expected features from a scan
-    non_expected_features = form_frames_and_extract_non_expected_features(spectrum, corrected_centroids_indexes,
+    non_expected_features = form_frames_and_extract_non_expected_features(spectrum, centroids_indexes,
                                                                           actual_peaks, scan_type=scan_type)
 
     # merge independent, isotopic, fragmentation and non-expected features
@@ -655,14 +691,14 @@ def aggregate_features(list_of_scans_features, features_names):
     """ This method takes list of scans features and returns one feature list of n scans feature lists:
         for each feature average value is calculated and variance metric is added as another feature. """
 
-    aggregated_main_features_names = []
-
     # in case there was only 1 scan processed
     if len(list_of_scans_features) == 1:
-        return list_of_scans_features[0]
+        return list_of_scans_features[0], features_names
+
     # otherwise do aggregate
     else:
         aggregated_main_features = []
+        aggregated_main_features_names = []
 
         for j in range(len(list_of_scans_features[0])):
             feature_values = []
@@ -691,9 +727,9 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
     if in_test_mode:
 
-        good_example = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
-        # good_example = '/Users/dmitrav/ETH/projects/ms_feature_extractor/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'
-        spectra = list(mzxml.read(good_example))
+        # chemical mix by Michelle
+        chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix/20190405_QCmeth_Mix30_013.mzXML'
+        spectra = list(mzxml.read(chemical_standard))
 
         print('\n', time.time() - start_time, "seconds elapsed for reading")
 
@@ -759,12 +795,16 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
     feature_matrix_row_names.extend(aggregated_chemical_noise_features_names)
     feature_matrix_row_names.extend(aggregated_instrument_noise_features_names)
 
-    print('\n', time.time() - start_time, "seconds elapsed in total")
+    print('\n', time.time() - start_time, "seconds elapsed for processing in total")
 
-    parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids)
+    scans_processed = {'normal': main_features_scans_indexes,
+                       'chemical_noise': chemical_noise_features_scans_indexes,
+                       'instrument_noise': instrument_noise_features_scans_indexes}
+
+    parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids, scans_processed)
 
 
 if __name__ == '__main__':
 
-    ms_run_ids = ["", ""]
+    ms_run_ids = {'date': 'next_time', 'original_filename': 'another_new_file'}
     extract_features_from_ms_run([], ms_run_ids, in_test_mode=True)

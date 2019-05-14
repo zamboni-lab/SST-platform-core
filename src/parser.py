@@ -2,12 +2,85 @@
 from src.constants import parser_comment_symbol as sharp
 from src.constants import parser_description_symbols as brackets
 from src.constants import feature_matrix_file_path, ms_settings_matrix_file_path
-from src.constants import chemical_mix_id, version
+from src.constants import chemical_mix_id, msfe_version
+from src.constants import number_of_normal_scans
+from src.constants import chemical_noise_features_scans_indexes as chem_scans
+from src.constants import instrument_noise_features_scans_indexes as bg_scans
+from pyopenms import EmpiricalFormula, CoarseIsotopePatternGenerator
 import json, os
 
 
-def parse_expected_ions(file_path):
-    """ This method parses information about expected ions. """
+def parse_expected_ions(file_path, scan_type):
+    """ Since >v.0.1.8 JSON file is used for input. The information about expected ions is extracted from there.
+        The resulting data structure is almost the same with the old version (to integrate to old code). """
+
+    assert scan_type == "normal" or scan_type == "chemical_noise"
+
+    ions_ids = []
+    expected_ions_mzs = []
+    expected_isotopic_ratios = []
+    fragmentation_lists = []
+    isotopic_lists = []
+
+    with open(file_path) as input_file:
+        all_expected_ions = json.load(input_file)
+
+    # correct ions names: all uppercase + no - in the end
+    for i in range(len(all_expected_ions[scan_type])):
+        for j in range(1, len(all_expected_ions[scan_type][i])):
+            if all_expected_ions[scan_type][i][j][-1] == '-':
+                # if there is - in the end of the ion name, remove it
+                all_expected_ions[scan_type][i][j] = all_expected_ions[scan_type][i][j][:-1].upper()
+            else:
+                # if not, just make sure it's uppercase
+                all_expected_ions[scan_type][i][j] = all_expected_ions[scan_type][i][j].upper()
+
+    # iterate over ions to parse information
+    for ion in all_expected_ions[scan_type]:
+        # get the list of mzs of isotopes of the main guy + isotopic intensity ratios
+        # (abundance of isotope in relation to the main guy)
+        ion_isotopes = EmpiricalFormula(ion[1]).getIsotopeDistribution(CoarseIsotopePatternGenerator(3)).getContainer()
+        isotopes_mzs = [iso.getMZ() for iso in ion_isotopes]
+        isotopes_intensity_ratios = [iso.getIntensity() for iso in ion_isotopes]
+
+        # add ids of the ion isotopes
+        ids = [ion[0].replace(" ", "_") + "_i" + str(i+1) for i in range(len(ion_isotopes))]
+
+        # if there is any expected fragment
+        if len(ion) > 1:
+            # get the list of mzs of ions fragments including mz of the main guy
+            fragments_list = [EmpiricalFormula(fragment).getMonoWeight() for fragment in ion[1:]]
+            # add ids of the ion fragments
+            ids.extend([ion[0] + "_f" + str(i+1) for i in range(len(fragments_list[1:]))])
+
+        else:
+            fragments_list = []
+
+        # append / extend
+        # the following two lists are of the same size == number of all mz values incl. main guys, isotopes, fragments
+        ions_ids.extend(ids)
+        expected_ions_mzs.extend([*isotopes_mzs, *fragments_list[1:]])
+
+        # the following three lists are of the same size == number of main guys
+        expected_isotopic_ratios.append(isotopes_intensity_ratios)
+        fragmentation_lists.append(fragments_list)
+        isotopic_lists.append(isotopes_mzs)
+
+    # compose and return info
+    expected_ions_info = {
+        'ions_ids': ions_ids,
+        'expected_mzs': expected_ions_mzs,
+        'expected_isotopic_ratios': expected_isotopic_ratios,  # instead of "theoretical" intensities
+        'fragments_mzs': fragmentation_lists,
+        'isotopes_mzs': isotopic_lists
+    }
+
+    return expected_ions_info
+
+
+def parse_expected_ions_old_version(file_path):
+    """ Deprecated since v.0.1.8.
+        This method parses information about expected ions. """
 
     with open(file_path) as file:
         all_of_it = file.read()
@@ -121,7 +194,7 @@ def parse_ms_run_instrument_settings(file_path):
         json.dump(s_matrix, updated_file)
 
 
-def update_feature_matrix(extracted_features, features_names, ms_run_ids):
+def update_feature_matrix(extracted_features, features_names, ms_run_ids, scans_processed):
     """ This method gets results of single MS run feature extraction
         and updates the general feature matrix. """
 
@@ -140,8 +213,8 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids):
         'date': ms_run_ids['date'],
         'original_filename': ms_run_ids['original_filename'],
         'chemical_mix_id': chemical_mix_id,
-        'msfe_version': version,
-        'scans_processed': None,  # TODO: pass here numbers of the scans of all three types
+        'msfe_version': msfe_version,
+        'scans_processed': scans_processed,
         'features_values': extracted_features,
         'features_names': features_names
     })
