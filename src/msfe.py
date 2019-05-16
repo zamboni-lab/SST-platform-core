@@ -1,10 +1,10 @@
 """ MS feature extractor """
 
-import time, numpy
+import time, numpy, datetime
 from scipy import signal
 from pyteomics import mzxml
 from matplotlib import pyplot as plt
-from src import parser, ms_operator
+from src import parser, ms_operator, logger
 from src.constants import peak_region_factor as prf
 from src.constants import peak_widths_levels_of_interest as widths_levels
 from src.constants import minimal_normal_peak_intensity
@@ -724,6 +724,7 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
         and returns single row of feature matrix (list) together with feature names (list)."""
 
     start_time = time.time()
+    logger.print_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": feature extraction started")
 
     if in_test_mode:
 
@@ -796,12 +797,14 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
     feature_matrix_row_names.extend(aggregated_instrument_noise_features_names)
 
     print('\n', time.time() - start_time, "seconds elapsed for processing in total")
+    logger.print_info("Feature extraction finished, " + str(time.time() - start_time), " seconds elapsed")
 
     scans_processed = {'normal': main_features_scans_indexes,
                        'chemical_noise': chemical_noise_features_scans_indexes,
                        'instrument_noise': instrument_noise_features_scans_indexes}
 
     parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids, scans_processed)
+    logger.print_info("Feature matrix updated\n")
 
 
 if __name__ == '__main__':

@@ -1,9 +1,13 @@
 
-msfe_version = '0.2.0'
+msfe_version = '0.2.1'
 chemical_mix_id = '1'  # TODO: should be connected somehow to all the following specifications (parameters)
 
-feature_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/feature_matrix.json"
-ms_settings_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/ms_settings_matrix.json"
+log_location = "/mnt/qcout/log.txt"
+
+feature_matrix_file_path = "/mnt/qcout/f_matrix.json"
+# feature_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/feature_matrix.json"
+ms_settings_matrix_file_path = "/mnt/qcout/s_matrix.json"
+# ms_settings_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/ms_settings_matrix.json"
 
 parser_comment_symbol = '#'
 parser_description_symbols = '()'
@@ -11,7 +15,7 @@ parser_description_symbols = '()'
 minimal_normal_peak_intensity = 100
 minimal_background_peak_intensity = 1
 
-expected_peaks_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/data/expected_peaks.json"
+expected_peaks_file_path = "/home/nzadmin/msqc/msfe/data/expected_peaks_v1.json"
 
 number_of_normal_scans = 3  # for Michelle's method main scans are defined by TIC maxima
 
