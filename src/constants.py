@@ -1,5 +1,5 @@
 
-msfe_version = '0.2.2'
+msfe_version = '0.2.3'
 chemical_mix_id = '1'  # TODO: should be connected somehow to all the following specifications (parameters)
 
 qc_log_location = "/mnt/qcout/qc_logs.txt"
@@ -16,7 +16,7 @@ parser_description_symbols = '()'
 minimal_normal_peak_intensity = 100
 minimal_background_peak_intensity = 1
 
-expected_peaks_file_path = "/home/nzadmin/msqc/msfe/data/expected_peaks_v1.json"
+expected_peaks_file_path = "/home/nzadmin/msqc/msfe/data/expected_peaks_v" + chemical_mix_id + ".json"
 
 number_of_normal_scans = 3  # for Michelle's method main scans are defined by TIC maxima
 
