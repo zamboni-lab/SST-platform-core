@@ -6,8 +6,9 @@ from src.constants import chemical_mix_id, msfe_version
 from src.constants import number_of_normal_scans
 from src.constants import chemical_noise_features_scans_indexes as chem_scans
 from src.constants import instrument_noise_features_scans_indexes as bg_scans
+from src import logger
 from pyopenms import EmpiricalFormula, CoarseIsotopePatternGenerator
-import json, os
+import json, os, datetime
 
 
 def parse_expected_ions(file_path, scan_type):
@@ -178,6 +179,8 @@ def parse_ms_run_instrument_settings(file_path):
             meta["keys"].append(key)
             meta["values"].append(new_data[key])
 
+    logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes collected")
+
     # open old ms settings file
     with open(ms_settings_matrix_file_path) as general_file:
         s_matrix = json.load(general_file)
@@ -192,6 +195,8 @@ def parse_ms_run_instrument_settings(file_path):
     # dump updated file to the same place
     with open(ms_settings_matrix_file_path, 'w') as updated_file:
         json.dump(s_matrix, updated_file)
+
+    logger.print_tune_info("MS settings matrix updated\n")
 
 
 def update_feature_matrix(extracted_features, features_names, ms_run_ids, scans_processed):

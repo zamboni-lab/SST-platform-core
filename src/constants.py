@@ -1,8 +1,9 @@
 
-msfe_version = '0.2.1'
+msfe_version = '0.2.2'
 chemical_mix_id = '1'  # TODO: should be connected somehow to all the following specifications (parameters)
 
-log_location = "/mnt/qcout/log.txt"
+qc_log_location = "/mnt/qcout/qc_logs.txt"
+tune_log_location = "/mnt/qcout/tune_logs.txt"
 
 feature_matrix_file_path = "/mnt/qcout/f_matrix.json"
 # feature_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/feature_matrix.json"
