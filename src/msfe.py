@@ -41,17 +41,17 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
         # 'expected_intensity_ratio': expected_intensity / max(fitted_intensity),
 
         'is_missing_'+peak_id: 0,
-        'saturation_'+peak_id: fit_info['saturation'],
-        'intensity_'+peak_id: max(fitted_intensity),
-        'absolute_mass_accuracy_'+peak_id: fit_info['fit_theory_absolute_ma'],
-        'ppm_'+peak_id: fit_info['fit_theory_ppm'],
+        'saturation_'+peak_id: int(fit_info['saturation']),
+        'intensity_'+peak_id: int(max(fitted_intensity)),
+        'absolute_mass_accuracy_'+peak_id: float(fit_info['fit_theory_absolute_ma']),
+        'ppm_'+peak_id: float(fit_info['fit_theory_ppm']),
         'widths_'+peak_id: extract_width_features(continuous_mz, fitted_intensity),  # 20%, 50%, 80% of max intensity
         'subsequent_peaks_number_'+peak_id: int(sum([ratio > 0 for ratio in sp_ratios])),
-        'subsequent_peaks_ratios_'+peak_id: sp_ratios,
-        'left_tail_auc_'+peak_id: left_tail_auc,
-        'right_tail_auc_'+peak_id: right_tail_auc,
-        'symmetry_'+peak_id: symmetry,
-        'goodness-of-fit_'+peak_id: fit_info['goodness-of-fit']
+        'subsequent_peaks_ratios_'+peak_id: [float(ratio) for ratio in sp_ratios],
+        'left_tail_auc_'+peak_id: float(left_tail_auc),
+        'right_tail_auc_'+peak_id: float(right_tail_auc),
+        'symmetry_'+peak_id: float(symmetry),
+        'goodness-of-fit_'+peak_id: [float(metric) for metric in fit_info['goodness-of-fit']]
     }
 
     return peak_features
@@ -229,7 +229,7 @@ def extract_non_expected_features_from_one_frame(mz_frame, spectrum, centroids_i
 
         if is_non_expected_peak:
             # append only non-expected peaks
-            frame_peaks_intensities.append(spectrum['intensity array'][centroids_indexes[i]])
+            frame_peaks_intensities.append(int(spectrum['intensity array'][centroids_indexes[i]]))
         else:
             pass
 
@@ -245,7 +245,7 @@ def extract_non_expected_features_from_one_frame(mz_frame, spectrum, centroids_i
 
     frame_features = {
         'number_of_peaks_'+features_id: len(frame_peaks_intensities),
-        'intensity_sum_'+features_id: sum(frame_peaks_intensities),
+        'intensity_sum_'+features_id: float(sum(frame_peaks_intensities)),
         'percentiles_'+features_id: list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)),
         'top_peaks_intensities_'+features_id: top_peaks_intensities,
         'top_percentiles_'+features_id: list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
@@ -267,7 +267,7 @@ def extract_instrument_noise_features_from_one_frame(mz_frame, spectrum, centroi
 
     # collect peaks between left and right boundaries
     while mz_frame[0] < spectrum['m/z array'][centroids_indexes[i]] < mz_frame[1]:
-        frame_peaks_intensities.append(spectrum['intensity array'][centroids_indexes[i]])
+        frame_peaks_intensities.append(int(spectrum['intensity array'][centroids_indexes[i]]))
         i += 1
 
         # exit loop if there's no more centroids
@@ -375,9 +375,9 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
                     # diff between theoretical isotopic ratio and observed one
                     ratio_diff = actual_peaks_info[major_peak_index]['expected_isotopic_ratios'][j] - ratio
 
-                    isotope_intensity_ratios.append(ratio)
-                    isotope_intensity_ratios_diffs.append(ratio_diff)
-                    isotope_mass_diff_values.append(mass_diff)
+                    isotope_intensity_ratios.append(float(ratio))
+                    isotope_intensity_ratios_diffs.append(float(ratio_diff))
+                    isotope_mass_diff_values.append(float(mass_diff))
 
                     break
 
@@ -430,8 +430,8 @@ def find_fragment_and_extract_features(major_peak_index, actual_peaks_info, peak
                     fragment_mz = float(peak_fits[k]['mz'][numpy.where(peak_fits[k]['intensity'] == max_fragment_intensity)])
                     mass_diff = major_peak_mz - fragment_mz
 
-                    fragment_intensity_ratios.append(ratio)
-                    fragment_mass_diff_values.append(mass_diff)
+                    fragment_intensity_ratios.append(float(ratio))
+                    fragment_mass_diff_values.append(float(mass_diff))
                     break
 
                 else:
@@ -604,15 +604,6 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
     # peak picking here
     centroids_indexes, properties = signal.find_peaks(spectrum['intensity array'], height=minimal_normal_peak_intensity)
 
-    # # debug
-    # import matplotlib.pyplot as plt
-    # plt.plot(spectrum['m/z array'], spectrum['intensity array'], 'b-')
-    # plt.plot(spectrum['m/z array'][centroids_indexes[22746]], spectrum['intensity array'][centroids_indexes[22746]], 'gx')
-    # plt.plot(spectrum['m/z array'][centroids_indexes[22745]], spectrum['intensity array'][centroids_indexes[22745]], 'gx')
-    # plt.plot(spectrum['m/z array'][centroids_indexes[22747]], spectrum['intensity array'][centroids_indexes[22747]], 'gx')
-    # plt.plot(spectrum['m/z array'][216960], spectrum['intensity array'][216960], 'rx')
-    # plt.show()
-
     # parse expected peaks info
     expected_ions_info = parser.parse_expected_ions(expected_peaks_file_path, scan_type=scan_type)
 
@@ -708,8 +699,8 @@ def aggregate_features(list_of_scans_features, features_names):
 
             # simple averaging and variance estimation
             # TODO: consider using bootstrap or other mean estimates instead
-            mean_estimate = numpy.mean(feature_values)
-            dispersion_estimate = numpy.std(feature_values)
+            mean_estimate = float(numpy.mean(feature_values))
+            dispersion_estimate = float(numpy.std(feature_values))
 
             feature_names = [features_names[j]+"_mean", features_names[j]+"_std"]
 
@@ -797,7 +788,7 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
     feature_matrix_row_names.extend(aggregated_instrument_noise_features_names)
 
     print('\n', time.time() - start_time, "seconds elapsed for processing in total")
-    logger.print_qc_info("Feature extraction finished, " + str(time.time() - start_time), " seconds elapsed")
+    logger.print_qc_info("Feature extraction finished, " + str(time.time() - start_time) + " seconds elapsed")
 
     scans_processed = {'normal': main_features_scans_indexes,
                        'chemical_noise': chemical_noise_features_scans_indexes,
