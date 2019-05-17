@@ -1,15 +1,15 @@
 
-msfe_version = '0.2.4'
+msfe_version = '0.2.5'
 chemical_mix_id = '1'
 
-# qc_log_location = "/mnt/qcout/qc_logs.txt"
+# qc_log_location = "/mnt/nas2/fiaqc-out/qc_logs.txt"
 qc_log_location = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/qc_logs.txt"
-# tune_log_location = "/mnt/qcout/tune_logs.txt"
+# tune_log_location = "/mnt/nas2/fiaqc-out/tune_logs.txt"
 tune_log_location = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/tune_logs.txt"
 
-# feature_matrix_file_path = "/mnt/qcout/f_matrix.json"
+# feature_matrix_file_path = "/mnt/nas2/fiaqc-out/f_matrix.json"
 feature_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/feature_matrix.json"
-# ms_settings_matrix_file_path = "/mnt/qcout/s_matrix.json"
+# ms_settings_matrix_file_path = "/mnt/nas2/fiaqc-out/s_matrix.json"
 ms_settings_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/ms_settings_matrix.json"
 
 # expected_peaks_file_path = "/home/nzadmin/msqc/msfe/data/expected_peaks_v" + chemical_mix_id + ".json"
