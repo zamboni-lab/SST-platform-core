@@ -649,11 +649,9 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
                 isotope_features = find_isotope_and_extract_features(i, actual_peaks, independent_peak_fits)
                 isotopic_peaks_features.append(isotope_features)
 
-            elif len(actual_peaks[i]['expected_fragments']) > 0:
+            if len(actual_peaks[i]['expected_fragments']) > 0:
                 fragmentation_features = find_fragment_and_extract_features(i, actual_peaks, independent_peak_fits)
                 fragmentation_peaks_features.append(fragmentation_features)
-            else:
-                pass
 
         else:
             # fill the data structure with null values
@@ -661,11 +659,9 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
                 isotope_features = get_null_isotopic_features(actual_peaks[i])
                 isotopic_peaks_features.append(isotope_features)
 
-            elif len(actual_peaks[i]['expected_fragments']) > 0:
+            if len(actual_peaks[i]['expected_fragments']) > 0:
                 fragmentation_features = get_null_fragmentation_features(actual_peaks[i])
                 fragmentation_peaks_features.append(fragmentation_features)
-            else:
-                pass
 
     # extract non-expected features from a scan
     non_expected_features = form_frames_and_extract_non_expected_features(spectrum, centroids_indexes,
