@@ -608,9 +608,15 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
     expected_ions_info = parser.parse_expected_ions(expected_peaks_file_path, scan_type=scan_type)
 
     # TODO: review & debug, as it's causing problems: wrike+351004892
-    # # correct indexes of peaks (currently only saturated peaks are processed)
-    # corrected_centroids_indexes = ms_operator.correct_centroids_indexes(spectrum['m/z array'], spectrum['intensity array'],
-    #                                                                     centroids_indexes, expected_ions_info)
+    # correct indexes of peaks (currently only saturated peaks are processed)
+    corrected_centroids_indexes = ms_operator.correct_centroids_indexes(spectrum['m/z array'], spectrum['intensity array'],
+                                                                        centroids_indexes, expected_ions_info)
+
+    # # debug
+    # plt.plot(spectrum['m/z array'], spectrum['intensity array'])
+    # plt.plot(spectrum['m/z array'][centroids_indexes], spectrum['intensity array'][centroids_indexes], 'gx')
+    # plt.plot(spectrum['m/z array'][corrected_centroids_indexes], spectrum['intensity array'][corrected_centroids_indexes], 'rx')
+    # plt.show()
 
     # get information about actual peaks in the spectrum in relation to expected ones and centroiding results
     actual_peaks = ms_operator.find_closest_centroids(spectrum['m/z array'], centroids_indexes, expected_ions_info)
@@ -715,8 +721,15 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
     if in_test_mode:
 
-        # chemical mix by Michelle
-        chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix/20190405_QCmeth_Mix30_013.mzXML'
+        # # chemical mix by Michelle
+        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/20190405_QCmeth_Mix30_013.mzXML'
+
+        # scan 19 should have almost all the expected peaks saturated
+        chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_007.mzXML'
+
+        # # scan 61 should have some expected peaks saturated
+        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_042.mzXML'
+
         spectra = list(mzxml.read(chemical_standard))
 
         print('\n', time.time() - start_time, "seconds elapsed for reading")

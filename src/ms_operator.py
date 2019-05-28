@@ -114,10 +114,10 @@ def correct_centroids_indexes(mz_spectrum, intensities, centroids_indexes, expec
         if not left_peak_is_saturated and not right_peak_is_saturated:
             continue
 
-        # make correction of single saturated peak
+        # make correction for right one
         elif not left_peak_is_saturated and right_peak_is_saturated:
             centroids_indexes[closest_index] = right_corrected_peak_index
-        # make correction of saturated peak
+        # make correction for left one
         elif left_peak_is_saturated and not right_peak_is_saturated:
             centroids_indexes[closest_index-1] = left_corrected_peak_index
         else:
@@ -393,5 +393,9 @@ def get_best_tic_scans_indexes(spectra, n=number_of_normal_scans, in_test_mode=F
             max_tic_scan = (i, spectra[i][tic_field_name])
 
     best_tic_scans_indexes = [max_tic_scan[0]+i for i in range(n)]
+
+    if in_test_mode:
+        # # add saturated scan for testing
+        best_tic_scans_indexes.append(18)
 
     return best_tic_scans_indexes
