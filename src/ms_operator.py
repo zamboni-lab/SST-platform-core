@@ -25,34 +25,22 @@ def get_saturated_peak_mz_range(mz_spectrum, intensities, peak_index):
     """ This method looks for mz range of the saturated peak, i.e. mz range of a peak within which all the intensity
         values are equal. """
 
-    saturated_peak_mz_values = []
-    saturated_peak_mz_indexes = []
+    saturated_peak_mz_values = [mz_spectrum[peak_index]]
+    saturated_peak_mz_indexes = [peak_index]
 
-    # go to the left
-    there_is_equal_intensity_on_the_left = True
+    step = 1
+    # go to the left looking for the same intensity values
+    while intensities[peak_index] == intensities[peak_index - step]:
+        saturated_peak_mz_indexes.append(peak_index - step)
+        saturated_peak_mz_values.append(mz_spectrum[peak_index - step])
+        step += 1
 
-    step = 0
-    while there_is_equal_intensity_on_the_left:
-
-        if intensities[peak_index - step - 1] == intensities[peak_index - step]:
-            step += 1
-            saturated_peak_mz_values.append(mz_spectrum[peak_index - step - 1])
-            saturated_peak_mz_indexes.append(peak_index - step - 1)
-        else:
-            there_is_equal_intensity_on_the_left = False
-
-    # go to the right
-    there_is_equal_intensity_on_the_right = True
-
-    step = 0
-    while there_is_equal_intensity_on_the_right:
-
-        if intensities[peak_index + step] == intensities[peak_index + step + 1]:
-            step += 1
-            saturated_peak_mz_values.append(mz_spectrum[peak_index + step + 1])
-            saturated_peak_mz_indexes.append(peak_index + step + 1)
-        else:
-            there_is_equal_intensity_on_the_right = False
+    step = 1
+    # go to the right looking for the same intensity values
+    while intensities[peak_index] == intensities[peak_index + step]:
+        saturated_peak_mz_indexes.append(peak_index + step)
+        saturated_peak_mz_values.append(mz_spectrum[peak_index + step])
+        step += 1
 
     return saturated_peak_mz_values, saturated_peak_mz_indexes
 
@@ -85,7 +73,7 @@ def correct_centroids_indexes(mz_spectrum, intensities, centroids_indexes, expec
                                                                                       centroids_indexes[closest_index-1])
             # find closest mz
             mz_diffs = numpy.array(saturation_mz_values) - expected_peaks_list[i]
-            left_min_mz_diffs = min(mz_diffs)
+            left_min_mz_diffs = min(abs(mz_diffs))
             closest_mz_index = int(mz_diffs[numpy.where(mz_diffs == left_min_mz_diffs)])
 
             left_corrected_peak_index = saturation_mz_indexes[closest_mz_index]
@@ -102,7 +90,7 @@ def correct_centroids_indexes(mz_spectrum, intensities, centroids_indexes, expec
                                                                                       centroids_indexes[closest_index])
             # find closest mz
             mz_diffs = numpy.array(saturation_mz_values) - expected_peaks_list[i]
-            right_min_mz_diffs = min(mz_diffs)
+            right_min_mz_diffs = min(abs(mz_diffs))
             closest_mz_index = int(mz_diffs[numpy.where(mz_diffs == right_min_mz_diffs)])
 
             right_corrected_peak_index = saturation_mz_indexes[closest_mz_index]
@@ -257,9 +245,6 @@ def locate_annotated_peak(mz_region, spectrum):
 def get_peak_fitting_region(spectrum, index):
     """ This method extracts the peak region indexes (peak with tails) for a peak of the given index.
         The region is being prolonged unless the intensity value goes up again. So the tails are always descending. """
-
-    if index == 216961:
-        print(index)
 
     left_border = -1
 

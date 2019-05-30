@@ -31,7 +31,6 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
 
     left_tail_auc, right_tail_auc = extract_auc_features(spectrum, continuous_mz, fitted_intensity, predicted_peak_mz)
 
-    # TODO: think about a better metric
     symmetry = (left_tail_auc + right_tail_auc) / (2 * max(left_tail_auc, right_tail_auc))
 
     peak_features = {
@@ -138,47 +137,41 @@ def get_peak_fit(peak_region, spectrum, theoretical_mz):
 
     x, y, saturation = ms_operator.get_peak_fitting_values(spectrum, peak_region)
 
-    if len(x) == len(y) == 3:
-        # I doubt it ever happens with large expected peaks
-        raise ValueError("Don't fit function to 3 points. Better calculate features from raw data.")
+    g_model = GaussianModel()
+    g_pars = g_model.guess(y, x=x)
+    g_out = g_model.fit(y, g_pars, x=x)
 
-    else:
+    # define d as peak resolution (i.e. width on the 50% of the height)
+    d, predicted_peak_mz = ms_operator.get_peak_width_and_predicted_mz(peak_region, spectrum, g_out)
 
-        g_model = GaussianModel()
-        g_pars = g_model.guess(y, x=x)
-        g_out = g_model.fit(y, g_pars, x=x)
+    xc = numpy.linspace(predicted_peak_mz - prf * d, predicted_peak_mz + prf * d, 5000)
+    yc = g_out.eval(x=xc)
 
-        # define d as peak resolution (i.e. width on the 50% of the height)
-        d, predicted_peak_mz = ms_operator.get_peak_width_and_predicted_mz(peak_region, spectrum, g_out)
+    # now compose fit information
 
-        xc = numpy.linspace(predicted_peak_mz - prf * d, predicted_peak_mz + prf * d, 5000)
-        yc = g_out.eval(x=xc)
+    # find absolute mass accuracy and ppm for signal related to fit
+    signal_fit_mass_diff = float(x[numpy.where(y == max(y))] - predicted_peak_mz)
+    signal_fit_ppm = signal_fit_mass_diff / predicted_peak_mz * 10 ** 6
 
-        # now compose fit information
+    # find absolute mass accuracy and ppm for fit related to expected (theoretical) value
+    fit_theory_mass_diff = predicted_peak_mz - theoretical_mz
+    fit_theory_ppm = fit_theory_mass_diff / theoretical_mz * 10 ** 6
 
-        # find absolute mass accuracy and ppm for signal related to fit
-        signal_fit_mass_diff = float(x[numpy.where(y == max(y))] - predicted_peak_mz)
-        signal_fit_ppm = signal_fit_mass_diff / predicted_peak_mz * 10 ** 6
+    fit_info = {
+        'model': 'gaussian',
+        'goodness-of-fit': [g_out.redchi, g_out.aic, g_out.bic],  # goodness-of-fit is reduced chi-squared
+        'fit_theory_absolute_ma': fit_theory_mass_diff,  # fitted absolute mass accuracy
+        'fit_theory_ppm': fit_theory_ppm,  # ppm between fitted peak mz and expected (theoretical) mz
+        'resolution': d,
+        'raw_intensity_array': y,
+        'saturation': saturation,
 
-        # find absolute mass accuracy and ppm for fit related to expected (theoretical) value
-        fit_theory_mass_diff = predicted_peak_mz - theoretical_mz
-        fit_theory_ppm = fit_theory_mass_diff / theoretical_mz * 10 ** 6
+        # probably redundant information
+        'signal_fit_absolute_ma': signal_fit_mass_diff,
+        'signal_fit_ppm': signal_fit_ppm
+    }
 
-        fit_info = {
-            'model': 'gaussian',
-            'goodness-of-fit': [g_out.redchi, g_out.aic, g_out.bic],  # goodness-of-fit is reduced chi-squared
-            'fit_theory_absolute_ma': fit_theory_mass_diff,  # fitted absolute mass accuracy
-            'fit_theory_ppm': fit_theory_ppm,  # ppm between fitted peak mz and expected (theoretical) mz
-            'resolution': d,
-            'raw_intensity_array': y,
-            'saturation': saturation,
-
-            # probably redundant information
-            'signal_fit_absolute_ma': signal_fit_mass_diff,
-            'signal_fit_ppm': signal_fit_ppm
-        }
-
-        return xc, yc, fit_info
+    return xc, yc, fit_info
 
 
 def fit_peak_and_extract_features(actual_peak, spectrum, centroids_indexes):
@@ -607,7 +600,6 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
     # parse expected peaks info
     expected_ions_info = parser.parse_expected_ions(expected_peaks_file_path, scan_type=scan_type)
 
-    # TODO: review & debug, as it's causing problems: wrike+351004892
     # correct indexes of peaks (currently only saturated peaks are processed)
     corrected_centroids_indexes = ms_operator.correct_centroids_indexes(spectrum['m/z array'], spectrum['intensity array'],
                                                                         centroids_indexes, expected_ions_info)
@@ -619,7 +611,7 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
     # plt.show()
 
     # get information about actual peaks in the spectrum in relation to expected ones and centroiding results
-    actual_peaks = ms_operator.find_closest_centroids(spectrum['m/z array'], centroids_indexes, expected_ions_info)
+    actual_peaks = ms_operator.find_closest_centroids(spectrum['m/z array'], corrected_centroids_indexes, expected_ions_info)
 
     independent_peaks_features = []
     independent_peak_fits = []  # there is a need to store temporarily peak fitting results
@@ -629,7 +621,7 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
 
         if actual_peaks[i]['present']:
 
-            peak_fit, peak_features = fit_peak_and_extract_features(actual_peaks[i], spectrum, centroids_indexes)
+            peak_fit, peak_features = fit_peak_and_extract_features(actual_peaks[i], spectrum, corrected_centroids_indexes)
 
             independent_peaks_features.append(peak_features)
             independent_peak_fits.append(peak_fit)
@@ -670,7 +662,7 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
                 fragmentation_peaks_features.append(fragmentation_features)
 
     # extract non-expected features from a scan
-    non_expected_features = form_frames_and_extract_non_expected_features(spectrum, centroids_indexes,
+    non_expected_features = form_frames_and_extract_non_expected_features(spectrum, corrected_centroids_indexes,
                                                                           actual_peaks, scan_type=scan_type)
 
     # merge independent, isotopic, fragmentation and non-expected features
@@ -722,10 +714,10 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
     if in_test_mode:
 
         # # chemical mix by Michelle
-        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/20190405_QCmeth_Mix30_013.mzXML'
+        chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/20190405_QCmeth_Mix30_013.mzXML'
 
         # scan 19 should have almost all the expected peaks saturated
-        chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_007.mzXML'
+        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_007.mzXML'
 
         # # scan 61 should have some expected peaks saturated
         # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_042.mzXML'
