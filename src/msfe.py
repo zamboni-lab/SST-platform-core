@@ -138,6 +138,7 @@ def extract_width_features(continuous_mz, fitted_intensity):
 def get_peak_fit(peak_region, spectrum, theoretical_mz):
     """ This method fits the peak with a model and returns the fitted curve with fit information. """
 
+
     x, y, is_apex_flat = ms_operator.get_peak_fitting_values(spectrum, peak_region)
 
     g_model = GaussianModel()
@@ -724,6 +725,9 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
         # # scan 61 should have some expected peaks saturated
         # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_042.mzXML'
+        
+        # # Duncan's last qc
+        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/duncan_3_points_fit_bug.mzXML'
 
         spectra = list(mzxml.read(chemical_standard))
 

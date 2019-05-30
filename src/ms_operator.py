@@ -190,9 +190,6 @@ def find_expected_isotopes_and_fragments(expected_peak_mz, isotopes_mz_lists, fr
 def find_closest_peak_index(mz_spectrum, peaks_indexes, expected_peak_mz):
     """ This method finds the closest peak to the expected one within centroids list.
         If in the vicinity of allowed ppm there is no peak, the peak is considered to be missing. """
-    # # debug
-    # if str(expected_peak_mz)[0:8] == '714.9534':
-    #     print(expected_peak_mz)
 
     closest_index = 0
     while mz_spectrum[peaks_indexes[closest_index]] < expected_peak_mz:
@@ -200,10 +197,6 @@ def find_closest_peak_index(mz_spectrum, peaks_indexes, expected_peak_mz):
 
     previous_peak_ppm = abs(mz_spectrum[peaks_indexes[closest_index-1]] - expected_peak_mz) / expected_peak_mz * 10 ** 6
     next_peak_ppm = abs(mz_spectrum[peaks_indexes[closest_index]] - expected_peak_mz) / expected_peak_mz * 10 ** 6
-
-    # # debug
-    if peaks_indexes[closest_index] == 216961 or peaks_indexes[closest_index-1] == 216961:
-        print()
 
     if previous_peak_ppm <= next_peak_ppm and previous_peak_ppm <= allowed_ppm_error:
         return closest_index-1, previous_peak_ppm
