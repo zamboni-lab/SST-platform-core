@@ -1,5 +1,5 @@
 
-msfe_version = '0.2.6'
+msfe_version = '0.2.8'
 chemical_mix_id = '1'
 
 # qc_log_location = "/mnt/nas2/fiaqc-out/qc_logs.txt"
