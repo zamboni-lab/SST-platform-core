@@ -46,7 +46,7 @@ def get_saturated_peak_mz_range(mz_spectrum, intensities, peak_index):
 
 
 def correct_centroids_indexes(mz_spectrum, intensities, centroids_indexes, expected_ions_info):
-    """ This method corrects peak-picking result. It looks for saturated peaks (with the same maximum intensity value)
+    """ This method corrects peak-picking result. It looks for flat peaks (with the same maximum intensity value)
         among expected ones. If there is one, its centroid index is corrected so that it's closer to the expected value. """
 
     left_corrected_peak_index, right_corrected_peak_index, left_min_mz_diffs, right_min_mz_diffs = None, None, None, None
@@ -60,23 +60,23 @@ def correct_centroids_indexes(mz_spectrum, intensities, centroids_indexes, expec
         while mz_spectrum[centroids_indexes[closest_index]] < expected_peaks_list[i]:
             closest_index += 1
 
-        # check two neighboring peaks (left and right) for saturation
-        left_peak_is_saturated = False
-        right_peak_is_saturated = False
+        # check two neighboring peaks (left and right) for flat apex
+        left_peak_is_flat = False
+        right_peak_is_flat = False
 
         if intensities[centroids_indexes[closest_index-1]-1] == intensities[centroids_indexes[closest_index-1]] or \
                 intensities[centroids_indexes[closest_index-1]] == intensities[centroids_indexes[closest_index-1]+1]:
 
-            left_peak_is_saturated = True
+            left_peak_is_flat = True
 
-            saturation_mz_values, saturation_mz_indexes = get_saturated_peak_mz_range(mz_spectrum, intensities,
+            flat_apex_mz_values, flat_apex_mz_indexes = get_saturated_peak_mz_range(mz_spectrum, intensities,
                                                                                       centroids_indexes[closest_index-1])
             # find closest mz
-            mz_diffs = numpy.array(saturation_mz_values) - expected_peaks_list[i]
+            mz_diffs = numpy.array(flat_apex_mz_values) - expected_peaks_list[i]
             left_min_mz_diffs = min(abs(mz_diffs))
             closest_mz_index = int(mz_diffs[numpy.where(mz_diffs == left_min_mz_diffs)])
 
-            left_corrected_peak_index = saturation_mz_indexes[closest_mz_index]
+            left_corrected_peak_index = flat_apex_mz_indexes[closest_mz_index]
 
         else:
             pass
@@ -84,29 +84,29 @@ def correct_centroids_indexes(mz_spectrum, intensities, centroids_indexes, expec
         if intensities[centroids_indexes[closest_index]-1] == intensities[centroids_indexes[closest_index]] or \
                 intensities[centroids_indexes[closest_index]] == intensities[centroids_indexes[closest_index]+1]:
 
-            right_peak_is_saturated = True
+            right_peak_is_flat = True
 
-            saturation_mz_values, saturation_mz_indexes = get_saturated_peak_mz_range(mz_spectrum, intensities,
+            flat_apex_mz_values, flat_apex_mz_indexes = get_saturated_peak_mz_range(mz_spectrum, intensities,
                                                                                       centroids_indexes[closest_index])
             # find closest mz
-            mz_diffs = numpy.array(saturation_mz_values) - expected_peaks_list[i]
+            mz_diffs = numpy.array(flat_apex_mz_values) - expected_peaks_list[i]
             right_min_mz_diffs = min(abs(mz_diffs))
             closest_mz_index = int(mz_diffs[numpy.where(mz_diffs == right_min_mz_diffs)])
 
-            right_corrected_peak_index = saturation_mz_indexes[closest_mz_index]
+            right_corrected_peak_index = flat_apex_mz_indexes[closest_mz_index]
 
         else:
             pass
 
-        # nothing to correct if both peaks are not saturated
-        if not left_peak_is_saturated and not right_peak_is_saturated:
+        # nothing to correct if both peaks are not flat
+        if not left_peak_is_flat and not right_peak_is_flat:
             continue
 
         # make correction for right one
-        elif not left_peak_is_saturated and right_peak_is_saturated:
+        elif not left_peak_is_flat and right_peak_is_flat:
             centroids_indexes[closest_index] = right_corrected_peak_index
         # make correction for left one
-        elif left_peak_is_saturated and not right_peak_is_saturated:
+        elif left_peak_is_flat and not right_peak_is_flat:
             centroids_indexes[closest_index-1] = left_corrected_peak_index
         else:
             # choose the closest saturated peak and make correction then
@@ -271,23 +271,23 @@ def get_peak_fitting_region(spectrum, index):
 
 def get_peak_fitting_values(spectrum, peak_region):
     """ This method returns mz and intensity values according to the given peak region.
-        It also checks the peak for saturation and returns boolean. """
+        The flat apex intensity values, however, are not included. """
 
     mzs, intensities = spectrum['m/z array'][peak_region[0]:peak_region[-1] + 1], \
                        spectrum['intensity array'][peak_region[0]:peak_region[-1] + 1]
 
-    is_peak_saturated = False
+    is_peak_flat = False
 
-    # correction is made in case the peak is saturated
+    # correction is made in case the peak is flat
     corrected_mzs = [mzs[0]]  # add first value
     corrected_intensities = [intensities[0]]  # add first value
 
+    max_intensity = max(intensities)
+
     for i in range(1, len(intensities) - 1):
 
-        if (intensities[i] == intensities[i-1] or intensities[i] == intensities[i+1]) \
-                and intensities[i] == max(intensities):
-
-            is_peak_saturated = True
+        if intensities[i] == intensities[i-1] and intensities[i] == max_intensity:
+            is_peak_flat = True
 
         else:
             # these are normal values -> append
@@ -298,7 +298,7 @@ def get_peak_fitting_values(spectrum, peak_region):
     corrected_intensities.append(intensities[-1])
     corrected_mzs.append(mzs[-1])
 
-    return numpy.array(corrected_mzs), numpy.array(corrected_intensities), int(is_peak_saturated)
+    return numpy.array(corrected_mzs), numpy.array(corrected_intensities), is_peak_flat
 
 
 def get_peak_width_and_predicted_mz(peak_region, spectrum, fitted_model):

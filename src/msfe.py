@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from src import parser, ms_operator, logger
 from src.constants import peak_region_factor as prf
 from src.constants import peak_widths_levels_of_interest as widths_levels
-from src.constants import minimal_normal_peak_intensity
+from src.constants import minimal_normal_peak_intensity, saturation_intensity
 from src.constants import maximum_number_of_subsequent_peaks_to_consider as max_sp_number
 from src.constants import normal_scan_mz_frame_size, normal_scan_number_of_frames
 from src.constants import chemical_noise_scan_mz_frame_size, chemical_noise_scan_number_of_frames
@@ -33,6 +33,8 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
 
     symmetry = (left_tail_auc + right_tail_auc) / (2 * max(left_tail_auc, right_tail_auc))
 
+    intensity_value = max(fitted_intensity)
+
     peak_features = {
         # # we don't have expected ("theoretical") intensity actually,
         # # we only have abundancy ratios for isotopes
@@ -40,8 +42,9 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
         # 'expected_intensity_ratio': expected_intensity / max(fitted_intensity),
 
         'is_missing_'+peak_id: 0,
-        'saturation_'+peak_id: int(fit_info['saturation']),
-        'intensity_'+peak_id: int(max(fitted_intensity)),
+        'is_apex_flat_'+peak_id: int(fit_info['is_apex_flat']),
+        'is_saturated_'+peak_id: int(intensity_value > saturation_intensity),
+        'intensity_'+peak_id: int(intensity_value),
         'absolute_mass_accuracy_'+peak_id: float(fit_info['fit_theory_absolute_ma']),
         'ppm_'+peak_id: float(fit_info['fit_theory_ppm']),
         'widths_'+peak_id: extract_width_features(continuous_mz, fitted_intensity),  # 20%, 50%, 80% of max intensity
@@ -135,7 +138,7 @@ def extract_width_features(continuous_mz, fitted_intensity):
 def get_peak_fit(peak_region, spectrum, theoretical_mz):
     """ This method fits the peak with a model and returns the fitted curve with fit information. """
 
-    x, y, saturation = ms_operator.get_peak_fitting_values(spectrum, peak_region)
+    x, y, is_apex_flat = ms_operator.get_peak_fitting_values(spectrum, peak_region)
 
     g_model = GaussianModel()
     g_pars = g_model.guess(y, x=x)
@@ -164,7 +167,7 @@ def get_peak_fit(peak_region, spectrum, theoretical_mz):
         'fit_theory_ppm': fit_theory_ppm,  # ppm between fitted peak mz and expected (theoretical) mz
         'resolution': d,
         'raw_intensity_array': y,
-        'saturation': saturation,
+        'is_apex_flat': is_apex_flat,
 
         # probably redundant information
         'signal_fit_absolute_ma': signal_fit_mass_diff,
@@ -455,7 +458,8 @@ def get_null_peak_features(peak_id):
         # 'expected_intensity_ratio': -1,
 
         'is_missing_'+peak_id: 1,
-        'saturation_'+peak_id: -1,
+        'is_apex_flat_'+peak_id: -1,
+        'is_saturated_'+peak_id: -1,
         'intensity_'+peak_id: -1,
         'absolute_mass_accuracy_'+peak_id: -1,
         'ppm_'+peak_id: -1,
@@ -600,7 +604,7 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
     # parse expected peaks info
     expected_ions_info = parser.parse_expected_ions(expected_peaks_file_path, scan_type=scan_type)
 
-    # correct indexes of peaks (currently only saturated peaks are processed)
+    # correct indexes of peaks (currently only flat peaks are processed)
     corrected_centroids_indexes = ms_operator.correct_centroids_indexes(spectrum['m/z array'], spectrum['intensity array'],
                                                                         centroids_indexes, expected_ions_info)
 
@@ -692,7 +696,6 @@ def aggregate_features(list_of_scans_features, features_names):
                 feature_values.append(list_of_scans_features[i][j])
 
             # simple averaging and variance estimation
-            # TODO: consider using bootstrap or other mean estimates instead
             mean_estimate = float(numpy.mean(feature_values))
             dispersion_estimate = float(numpy.std(feature_values))
 

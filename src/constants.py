@@ -1,5 +1,5 @@
 
-msfe_version = '0.2.9'
+msfe_version = '0.2.11'
 chemical_mix_id = '1'
 
 # qc_log_location = "/mnt/nas2/fiaqc-out/qc_logs.txt"
@@ -27,6 +27,8 @@ chemical_noise_features_scans_indexes = [17]  # for Michelle's method
 instrument_noise_features_scans_indexes = [174]  # for Michelle's method
 
 peak_widths_levels_of_interest = [0.2, 0.5, 0.8]
+
+saturation_intensity = 1000000
 
 allowed_ppm_error = 25
 
