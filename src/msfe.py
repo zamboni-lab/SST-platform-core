@@ -138,7 +138,6 @@ def extract_width_features(continuous_mz, fitted_intensity):
 def get_peak_fit(peak_region, spectrum, theoretical_mz):
     """ This method fits the peak with a model and returns the fitted curve with fit information. """
 
-
     x, y, is_apex_flat = ms_operator.get_peak_fitting_values(spectrum, peak_region)
 
     g_model = GaussianModel()
@@ -349,8 +348,10 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
     major_peak_mz = float(major_peak_continuous_mz[numpy.where(major_peak_fitted_intensity == major_peak_max_intensity)])
 
     isotope_intensity_ratios = []
-    isotope_intensity_ratios_diffs = []
     isotope_mass_diff_values = []
+
+    isotope_intensities = []
+    isotope_expected_ratios = []
 
     for j in range(len(actual_peaks_info[major_peak_index]['expected_isotopes'])):
 
@@ -369,29 +370,39 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
                     isotope_mz = float(peak_fits[k]['mz'][numpy.where(peak_fits[k]['intensity'] == max_isotope_intensity)])
                     mass_diff = isotope_mz - major_peak_mz
 
-                    # diff between theoretical isotopic ratio and observed one
-                    ratio_diff = actual_peaks_info[major_peak_index]['expected_isotopic_ratios'][j] - ratio
-
                     isotope_intensity_ratios.append(float(ratio))
-                    isotope_intensity_ratios_diffs.append(float(ratio_diff))
                     isotope_mass_diff_values.append(float(mass_diff))
+
+                    # collect intensities and theoretical isotopic ratios to compare them later
+                    isotope_intensities.append(max_isotope_intensity)
+                    isotope_expected_ratios.append(actual_peaks_info[major_peak_index]['expected_isotopic_ratios'][j])
 
                     break
 
                 else:
                     # otherwise it means that this expected isotope is missing actually
                     isotope_intensity_ratios.append(-1)
-                    isotope_intensity_ratios_diffs.append(-1)
                     isotope_mass_diff_values.append(-1)
+                    isotope_intensities.append(-1)
+
                     break
+
+    if -1 in isotope_intensities:
+        # if at least one of the isotopes is missing, one can not calculate isotopic distributions
+        isotope_intensity_ratios_diffs = [-1 for value in range(len(isotope_intensities))]
+    else:
+        # find real isotopic distribution
+        isotope_ratios = [intensity / sum(isotope_intensities) for intensity in isotope_intensities]
+        # find difference between real and theoretical isotopic distribution
+        isotope_intensity_ratios_diffs = [(isotope_ratios[i] - isotope_expected_ratios[i]) for i in range(len(isotope_ratios))]
 
     peak_id = actual_peaks_info[major_peak_index]['id']
 
     isotopic_features = {
         # 'isotopes mzs': actual_peaks_info[major_peak_index]['expected isotopes'],  # in case id is needed
-        'intensity_ratios_'+peak_id: isotope_intensity_ratios,
-        'intensity_ratios_diffs_'+peak_id: isotope_intensity_ratios_diffs,
-        'mass_diff_values_'+peak_id: isotope_mass_diff_values
+        'intensity_ratios_'+peak_id: isotope_intensity_ratios[1:],
+        'mass_diff_values_'+peak_id: isotope_mass_diff_values[1:],
+        'intensity_ratios_diffs_' + peak_id: isotope_intensity_ratios_diffs
     }
 
     return isotopic_features
@@ -441,8 +452,8 @@ def find_fragment_and_extract_features(major_peak_index, actual_peaks_info, peak
 
     fragmentation_features = {
         # 'fragments mzs': actual_peaks_info[major_peak_index]['expected fragments'],  # in case id is needed
-        'intensity_ratios_'+peak_id: fragment_intensity_ratios,
-        'mass_diff_values_'+peak_id: fragment_mass_diff_values
+        'intensity_ratios_'+peak_id: fragment_intensity_ratios[1:],
+        'mass_diff_values_'+peak_id: fragment_mass_diff_values[1:]
     }
 
     return fragmentation_features
@@ -498,9 +509,9 @@ def get_null_isotopic_features(actual_peak_info):
 
     missing_isotopic_features = {
         # 'isotopes mzs': actual_peak_info['expected isotopes'],  # in case id is needed
-        'intensity_ratios_'+peak_id: [-1 for value in actual_peak_info['expected_isotopes']],
-        'intensity_ratios_diffs_'+peak_id: [-1 for value in actual_peak_info['expected_isotopes']],
-        'mass_diff_values_'+peak_id: [-1 for value in actual_peak_info['expected_isotopes']]
+        'intensity_ratios_'+peak_id: [-1 for value in range(1, len(actual_peak_info['expected_isotopes']))],
+        'mass_diff_values_'+peak_id: [-1 for value in range(1, len(actual_peak_info['expected_isotopes']))],
+        'intensity_ratios_diffs_' + peak_id: [-1 for value in actual_peak_info['expected_isotopes']]
     }
 
     return missing_isotopic_features
@@ -514,8 +525,8 @@ def get_null_fragmentation_features(actual_peak_info):
 
     missing_fragmentation_features = {
         # 'fragments mzs': actual_peak_info['expected fragments'],  # in case id is needed
-        'intensity_ratios_'+peak_id: [-1 for value in actual_peak_info['expected_fragments']],
-        'mass_diff_values_'+peak_id: [-1 for value in actual_peak_info['expected_fragments']]
+        'intensity_ratios_'+peak_id: [-1 for value in range(1, len(actual_peak_info['expected_fragments']))],
+        'mass_diff_values_'+peak_id: [-1 for value in range(1, len(actual_peak_info['expected_fragments']))]
     }
 
     return missing_fragmentation_features
@@ -725,7 +736,7 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
         # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/20190405_QCmeth_Mix30_013.mzXML'
 
         # scan 19 should have almost all the expected peaks saturated
-        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_007.mzXML'
+        chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_007.mzXML'
 
         # # scan 61 should have some expected peaks saturated
         # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_042.mzXML'
@@ -733,9 +744,9 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
         # # Duncan's last qc
         # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/duncan_3_points_fit_bug.mzXML'
 
-        # spectra = list(mzxml.read(chemical_standard))
+        spectra = list(mzxml.read(chemical_standard))
 
-        # print('\n', time.time() - start_time, "seconds elapsed for reading")
+        print('\n', time.time() - start_time, "seconds elapsed for reading")
         pass
 
     else:
@@ -814,25 +825,25 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 if __name__ == '__main__':
 
     # path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/test2/'
-    path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/test1/'
+    # path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/test1/'
 
-    for root, dirs, files in os.walk(path_to_files):
-        for filename in files:
+    # for root, dirs, files in os.walk(path_to_files):
+    #     for filename in files:
+    #
+    #         if filename != '.DS_Store':
+    #
+    #             start_time = time.time()
+    #             print(filename, 'is being processed')
+    #
+    #             spectra = list(mzxml.read(path_to_files+filename))
+    #
+    #             ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': filename}
+    #             extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
+    #
+    #             print(files.index(filename)+1, '/', len(files), 'is processed within', time.time() - start_time, 's\n')
+    #
+    # print('All done. Well done!')
 
-            if filename != '.DS_Store':
-
-                start_time = time.time()
-                print(filename, 'is being processed')
-
-                spectra = list(mzxml.read(path_to_files+filename))
-
-                ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': filename}
-                extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
-
-                print(files.index(filename)+1, '/', len(files), 'is processed within', time.time() - start_time, 's\n')
-
-    print('All done. Well done!')
-
-    # # single file run
-    # ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': 'filename'}
-    # extract_features_from_ms_run([], ms_run_ids, in_test_mode=True)
+    # single file run
+    ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': 'filename'}
+    extract_features_from_ms_run([], ms_run_ids, in_test_mode=True)

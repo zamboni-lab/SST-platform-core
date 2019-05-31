@@ -166,22 +166,24 @@ def find_closest_centroids(mz_spectrum, centroids_indexes, expected_ions_info):
 def find_expected_isotopes_and_fragments(expected_peak_mz, isotopes_mz_lists, fragments_mz_lists, isotopic_ratios_lists):
     """ This method returns a list of expected isotopes and a list of expected fragments if there are any. """
 
+    # TODO: review & refactor: method was revisited since v.0.2.15, may be redundant now
+
     isotopes, fragments, ratios = [], [], []
 
     for isotope_list in isotopes_mz_lists:
         # if this is a major ion having the other isotopes
         if expected_peak_mz == isotope_list[0]:
             # add to the list the other isotopes
-            isotopes = isotope_list[1:len(isotope_list)]
+            isotopes = isotope_list[0:len(isotope_list)]
             index = isotopes_mz_lists.index(isotope_list)
-            ratios = isotopic_ratios_lists[index][1:len(isotopic_ratios_lists[index])]
+            ratios = isotopic_ratios_lists[index][0:len(isotopic_ratios_lists[index])]
             break
 
     for fragments_list in fragments_mz_lists:
         # if this is a major ion having potential fragments (may be fragmented)
         if expected_peak_mz == fragments_list[0]:
             # add to the list these potential fragments
-            fragments = fragments_list[1:len(fragments_list)]
+            fragments = fragments_list[0:len(fragments_list)]
             break
 
     return isotopes, ratios, fragments
@@ -374,7 +376,7 @@ def get_best_tic_scans_indexes(spectra, n=number_of_normal_scans, in_test_mode=F
 
     if in_test_mode:
         # # add saturated scans for testing
-        # best_tic_scans_indexes.append(18)  # for file 007 from test1
+        best_tic_scans_indexes.append(18)  # for file 007 from test1
         # best_tic_scans_indexes.append(60)  # for file 042 from test1
         pass
 

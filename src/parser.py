@@ -26,7 +26,7 @@ def parse_expected_ions(file_path, scan_type):
     with open(file_path) as input_file:
         all_expected_ions = json.load(input_file)
 
-    # correct ions names: all uppercase + no - in the end
+    # correct ions names: all uppercase with no '-' in the end
     for i in range(len(all_expected_ions[scan_type])):
         for j in range(1, len(all_expected_ions[scan_type][i])):
             if all_expected_ions[scan_type][i][j][-1] == '-':

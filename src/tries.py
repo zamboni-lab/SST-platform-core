@@ -39,4 +39,4 @@ from pyopenms import *
 
 a = [1,2,3,4,54,5,5]
 
-print(a.index(54))
+print(a[1:])
