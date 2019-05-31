@@ -1,6 +1,6 @@
 """ MS feature extractor """
 
-import time, numpy, datetime
+import time, numpy, datetime, os
 from scipy import signal
 from pyteomics import mzxml
 from matplotlib import pyplot as plt
@@ -613,6 +613,10 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
     # plt.plot(spectrum['m/z array'], spectrum['intensity array'])
     # plt.plot(spectrum['m/z array'][centroids_indexes], spectrum['intensity array'][centroids_indexes], 'gx')
     # plt.plot(spectrum['m/z array'][corrected_centroids_indexes], spectrum['intensity array'][corrected_centroids_indexes], 'rx')
+    #
+    # for xc in expected_ions_info['expected_mzs']:
+    #     plt.axvline(x=xc, color='black', linewidth=0.5)
+    #
     # plt.show()
 
     # get information about actual peaks in the spectrum in relation to expected ones and centroiding results
@@ -718,7 +722,7 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
     if in_test_mode:
 
         # # chemical mix by Michelle
-        chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/20190405_QCmeth_Mix30_013.mzXML'
+        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/20190405_QCmeth_Mix30_013.mzXML'
 
         # scan 19 should have almost all the expected peaks saturated
         # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_007.mzXML'
@@ -729,9 +733,10 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
         # # Duncan's last qc
         # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/duncan_3_points_fit_bug.mzXML'
 
-        spectra = list(mzxml.read(chemical_standard))
+        # spectra = list(mzxml.read(chemical_standard))
 
-        print('\n', time.time() - start_time, "seconds elapsed for reading")
+        # print('\n', time.time() - start_time, "seconds elapsed for reading")
+        pass
 
     else:
         pass
@@ -795,7 +800,7 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
     feature_matrix_row_names.extend(aggregated_chemical_noise_features_names)
     feature_matrix_row_names.extend(aggregated_instrument_noise_features_names)
 
-    print('\n', time.time() - start_time, "seconds elapsed for processing in total")
+    print('\n', time.time() - start_time, " seconds elapsed for processing in total", sep='')
     logger.print_qc_info("Feature extraction finished, " + str(time.time() - start_time) + " seconds elapsed")
 
     scans_processed = {'normal': main_features_scans_indexes,
@@ -808,5 +813,22 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
 if __name__ == '__main__':
 
-    ms_run_ids = {'date': 'next_time', 'original_filename': 'another_new_file'}
-    extract_features_from_ms_run([], ms_run_ids, in_test_mode=True)
+    # path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/test2/'
+    path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/test1/'
+
+    for root, dirs, files in os.walk(path_to_files):
+        for filename in files:
+
+            if filename != '.DS_Store':
+                start_time = time.time()
+                print(filename, 'is being processed')
+                spectra = list(mzxml.read(path_to_files+filename))
+                ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': filename}
+                extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
+                print(files.index(filename)+1, '/', len(files), 'is processed within', time.time() - start_time, 's\n')
+
+    print('All done. Well done!')
+
+    # # single file run
+    # ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': 'filename'}
+    # extract_features_from_ms_run([], ms_run_ids, in_test_mode=True)

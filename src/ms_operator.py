@@ -72,7 +72,7 @@ def correct_centroids_indexes(mz_spectrum, intensities, centroids_indexes, expec
             flat_apex_mz_values, flat_apex_mz_indexes = get_saturated_peak_mz_range(mz_spectrum, intensities,
                                                                                       centroids_indexes[closest_index-1])
             # find closest mz
-            mz_diffs = numpy.array(flat_apex_mz_values) - expected_peaks_list[i]
+            mz_diffs = abs(numpy.array(flat_apex_mz_values) - expected_peaks_list[i])
             left_min_mz_diffs = min(abs(mz_diffs))
             closest_mz_index = int(mz_diffs[numpy.where(mz_diffs == left_min_mz_diffs)])
 
@@ -89,7 +89,7 @@ def correct_centroids_indexes(mz_spectrum, intensities, centroids_indexes, expec
             flat_apex_mz_values, flat_apex_mz_indexes = get_saturated_peak_mz_range(mz_spectrum, intensities,
                                                                                       centroids_indexes[closest_index])
             # find closest mz
-            mz_diffs = numpy.array(flat_apex_mz_values) - expected_peaks_list[i]
+            mz_diffs = abs(numpy.array(flat_apex_mz_values) - expected_peaks_list[i])
             right_min_mz_diffs = min(abs(mz_diffs))
             closest_mz_index = int(mz_diffs[numpy.where(mz_diffs == right_min_mz_diffs)])
 
@@ -373,7 +373,9 @@ def get_best_tic_scans_indexes(spectra, n=number_of_normal_scans, in_test_mode=F
     best_tic_scans_indexes = [max_tic_scan[0]+i for i in range(n)]
 
     if in_test_mode:
-        # # add saturated scan for testing
-        best_tic_scans_indexes.append(18)
+        # # add saturated scans for testing
+        # best_tic_scans_indexes.append(18)  # for file 007 from test1
+        # best_tic_scans_indexes.append(60)  # for file 042 from test1
+        pass
 
     return best_tic_scans_indexes
