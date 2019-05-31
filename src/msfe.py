@@ -295,7 +295,7 @@ def form_frames_and_extract_instrument_noise_features(spectrum, centroids_indexe
     # define mz ranges to extract features from
     frames = []
 
-    ranges = [i * instrument_noise_mz_frame_size for i in range(1, instrument_noise_scan_number_of_frames+2)]
+    ranges = [50 + i * instrument_noise_mz_frame_size for i in range(instrument_noise_scan_number_of_frames+1)]
     for i in range(instrument_noise_scan_number_of_frames):
         frames.append([ranges[i], ranges[i + 1]])
 
@@ -323,7 +323,7 @@ def form_frames_and_extract_non_expected_features(spectrum, centroids_indexes, a
             frames.append([ranges[i], ranges[i+1]])
 
     elif scan_type == 'chemical_noise':
-        ranges = [i * chemical_noise_scan_mz_frame_size for i in range(1, chemical_noise_scan_number_of_frames+2)]
+        ranges = [50 + i * chemical_noise_scan_mz_frame_size for i in range(chemical_noise_scan_number_of_frames+1)]
         for i in range(chemical_noise_scan_number_of_frames):
             frames.append([ranges[i], ranges[i + 1]])
 
@@ -820,11 +820,15 @@ if __name__ == '__main__':
         for filename in files:
 
             if filename != '.DS_Store':
+
                 start_time = time.time()
                 print(filename, 'is being processed')
+
                 spectra = list(mzxml.read(path_to_files+filename))
+
                 ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': filename}
                 extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
+
                 print(files.index(filename)+1, '/', len(files), 'is processed within', time.time() - start_time, 's\n')
 
     print('All done. Well done!')
