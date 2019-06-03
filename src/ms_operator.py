@@ -264,6 +264,46 @@ def get_peak_fitting_region(spectrum, index):
     return [left_border, right_border]
 
 
+def get_peak_fitting_region_2(spectrum, index):
+    """ This method extracts the peak region indexes (peak with tails) for a peak of the given index.
+        This version of the method ignores scans 2 following points instead of one. So the tails are may ascend locally,
+        but globally are also descending. """
+
+    local_maximum = spectrum['intensity array'][index]
+
+    left_border = -1
+
+    step = 0
+    while left_border < 0:
+
+        if spectrum['intensity array'][index-step-1] <= spectrum['intensity array'][index-step]:
+            step += 1
+
+        elif spectrum['intensity array'][index-step] < spectrum['intensity array'][index-step-1] <= local_maximum \
+                and spectrum['intensity array'][index-step-2] <= spectrum['intensity array'][index-step-1]:
+            step += 1
+
+        else:
+            left_border = index-step
+
+    right_border = -1
+
+    step = 0
+    while right_border < 0:
+
+        if spectrum['intensity array'][index+step] >= spectrum['intensity array'][index+step+1]:
+            step += 1
+
+        elif spectrum['intensity array'][index+step] < spectrum['intensity array'][index+step+1] <= local_maximum \
+                and spectrum['intensity array'][index+step+2] <= spectrum['intensity array'][index+step+1]:
+            step += 1
+
+        else:
+            right_border = index+step
+
+    return [left_border, right_border]
+
+
 def get_peak_fitting_values(spectrum, peak_region):
     """ This method returns mz and intensity values according to the given peak region.
         The flat apex intensity values, however, are not included. """

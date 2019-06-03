@@ -136,8 +136,12 @@ def extract_width_features(continuous_mz, fitted_intensity):
     return widths
 
 
-def get_peak_fit(peak_region, spectrum, theoretical_mz):
+def get_peak_fit(spectrum, actual_peak_info):
     """ This method fits the peak with a model and returns the fitted curve with fit information. """
+
+    theoretical_mz = actual_peak_info['expected_mz']
+
+    peak_region = ms_operator.get_peak_fitting_region_2(spectrum, actual_peak_info['index'])
 
     x, y, is_apex_flat = ms_operator.get_peak_fitting_values(spectrum, peak_region)
 
@@ -150,9 +154,6 @@ def get_peak_fit(peak_region, spectrum, theoretical_mz):
 
     xc = numpy.linspace(predicted_peak_mz - prf * d, predicted_peak_mz + prf * d, 5000)
     yc = g_out.eval(x=xc)
-
-    # # debug
-    print()
 
     # now compose fit information
 
@@ -185,21 +186,10 @@ def fit_peak_and_extract_features(actual_peak, spectrum, centroids_indexes):
     """ This method takes index of peak, gets fitting region, fits the pick
         and extracts information out of fitted function. """
 
-    peak_region_indexes = ms_operator.get_peak_fitting_region(spectrum, actual_peak['index'])
-
-    if actual_peak['expected_mz'] == 614.9598137355999 or actual_peak['expected_mz'] == 370.9827579756:
-        print()
-
-    fitted_mz, fitted_intensity, fit_info = get_peak_fit(peak_region_indexes, spectrum, actual_peak['expected_mz'])
+    fitted_mz, fitted_intensity, fit_info = get_peak_fit(spectrum, actual_peak)
 
     peak_features = extract_peak_features(fitted_mz, fitted_intensity, fit_info,
                                           spectrum, centroids_indexes, actual_peak['id'])
-
-    # 614.9598137355999 - 2
-    # 370.9827579756 - 3
-
-    # # debug
-    print(actual_peak['expected_mz'])
 
     peak_fit = {
         'expected_mz': actual_peak['expected_mz'],  # this is an id of the peak
@@ -208,7 +198,6 @@ def fit_peak_and_extract_features(actual_peak, spectrum, centroids_indexes):
         'intensity': fitted_intensity,
         'info': fit_info
     }
-
 
     return peak_fit, peak_features
 
