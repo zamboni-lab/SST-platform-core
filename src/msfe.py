@@ -14,6 +14,7 @@ from src.constants import chemical_noise_scan_mz_frame_size, chemical_noise_scan
 from src.constants import instrument_noise_mz_frame_size, instrument_noise_scan_number_of_frames
 from src.constants import number_of_top_noisy_peaks_to_consider as n_top_guys
 from src.constants import frame_intensity_percentiles
+from src.constants import no_signal_intensity_value as no_signal
 from src.constants import chemical_noise_features_scans_indexes, instrument_noise_features_scans_indexes
 from src.constants import expected_peaks_file_path
 from src.constants import minimal_background_peak_intensity as min_bg_peak_intensity
@@ -150,6 +151,9 @@ def get_peak_fit(peak_region, spectrum, theoretical_mz):
     xc = numpy.linspace(predicted_peak_mz - prf * d, predicted_peak_mz + prf * d, 5000)
     yc = g_out.eval(x=xc)
 
+    # # debug
+    print()
+
     # now compose fit information
 
     # find absolute mass accuracy and ppm for signal related to fit
@@ -183,10 +187,19 @@ def fit_peak_and_extract_features(actual_peak, spectrum, centroids_indexes):
 
     peak_region_indexes = ms_operator.get_peak_fitting_region(spectrum, actual_peak['index'])
 
+    if actual_peak['expected_mz'] == 614.9598137355999 or actual_peak['expected_mz'] == 370.9827579756:
+        print()
+
     fitted_mz, fitted_intensity, fit_info = get_peak_fit(peak_region_indexes, spectrum, actual_peak['expected_mz'])
 
     peak_features = extract_peak_features(fitted_mz, fitted_intensity, fit_info,
                                           spectrum, centroids_indexes, actual_peak['id'])
+
+    # 614.9598137355999 - 2
+    # 370.9827579756 - 3
+
+    # # debug
+    print(actual_peak['expected_mz'])
 
     peak_fit = {
         'expected_mz': actual_peak['expected_mz'],  # this is an id of the peak
@@ -195,6 +208,7 @@ def fit_peak_and_extract_features(actual_peak, spectrum, centroids_indexes):
         'intensity': fitted_intensity,
         'info': fit_info
     }
+
 
     return peak_fit, peak_features
 
@@ -206,10 +220,10 @@ def extract_non_expected_features_from_one_frame(mz_frame, spectrum, centroids_i
 
     i = 0
     # go until left boundary of the frame is reached
-    while mz_frame[0] > spectrum['m/z array'][centroids_indexes[i]]:
+    while mz_frame[0] > spectrum['m/z array'][centroids_indexes[i]] and i+1 < len(centroids_indexes):
         i += 1
     # collect peaks between left and right boundaries
-    while mz_frame[0] < spectrum['m/z array'][centroids_indexes[i]] < mz_frame[1]:
+    while mz_frame[0] < spectrum['m/z array'][centroids_indexes[i]] < mz_frame[1] and i+1 < len(centroids_indexes):
 
         is_non_expected_peak = True
         # try looking for this peak among expected ones
@@ -235,16 +249,22 @@ def extract_non_expected_features_from_one_frame(mz_frame, spectrum, centroids_i
         if i == len(centroids_indexes):
             break
 
+    percentiles = list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)) if len(frame_peaks_intensities) > 0 else [no_signal for percent in frame_intensity_percentiles]
+
     top_peaks_intensities = sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys]
+    if len(top_peaks_intensities) < n_top_guys:
+        top_peaks_intensities.extend([no_signal for i in range(n_top_guys-len(top_peaks_intensities))])
+
+    top_percentiles = list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
 
     features_id = scan_type[0:4] + "_" + str(mz_frame[0]) + "_" + str(mz_frame[1])
 
     frame_features = {
         'number_of_peaks_'+features_id: len(frame_peaks_intensities),
         'intensity_sum_'+features_id: float(sum(frame_peaks_intensities)),
-        'percentiles_'+features_id: list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)),
+        'percentiles_'+features_id: percentiles,
         'top_peaks_intensities_'+features_id: top_peaks_intensities,
-        'top_percentiles_'+features_id: list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
+        'top_percentiles_'+features_id: top_percentiles
     }
 
     return frame_features
@@ -258,28 +278,30 @@ def extract_instrument_noise_features_from_one_frame(mz_frame, spectrum, centroi
 
     i = 0
     # go until left boundary of the frame is reached
-    while mz_frame[0] > spectrum['m/z array'][centroids_indexes[i]]:
+    while mz_frame[0] > spectrum['m/z array'][centroids_indexes[i]] and i+1 < len(centroids_indexes):
         i += 1
 
     # collect peaks between left and right boundaries
-    while mz_frame[0] < spectrum['m/z array'][centroids_indexes[i]] < mz_frame[1]:
+    while mz_frame[0] < spectrum['m/z array'][centroids_indexes[i]] < mz_frame[1] and i+1 < len(centroids_indexes):
         frame_peaks_intensities.append(int(spectrum['intensity array'][centroids_indexes[i]]))
         i += 1
 
-        # exit loop if there's no more centroids
-        if i == len(centroids_indexes):
-            break
+    percentiles = list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)) if len(frame_peaks_intensities) > 0 else [0. for percent in frame_intensity_percentiles]
 
     top_peaks_intensities = sorted(frame_peaks_intensities, reverse=True)[0:n_top_guys]
+    if len(top_peaks_intensities) < n_top_guys:
+        top_peaks_intensities.extend([no_signal for i in range(n_top_guys - len(top_peaks_intensities))])
+
+    top_percentiles = list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
 
     features_id = 'bg_' + str(mz_frame[0]) + "_" + str(mz_frame[1])
 
     frame_features = {
         'number_of_peaks_'+features_id: len(frame_peaks_intensities),
         'intensity_sum_'+features_id: sum(frame_peaks_intensities),
-        'percentiles_'+features_id: list(numpy.percentile(frame_peaks_intensities, frame_intensity_percentiles)),
+        'percentiles_'+features_id: percentiles,
         'top_peaks_intensities_'+features_id: top_peaks_intensities,
-        'top_percentiles_'+features_id: list(numpy.percentile(top_peaks_intensities, frame_intensity_percentiles))
+        'top_percentiles_'+features_id: top_percentiles
     }
 
     return frame_features
@@ -616,19 +638,19 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
     # parse expected peaks info
     expected_ions_info = parser.parse_expected_ions(expected_peaks_file_path, scan_type=scan_type)
 
-    # correct indexes of peaks (currently only flat peaks are processed)
-    corrected_centroids_indexes = ms_operator.correct_centroids_indexes(spectrum['m/z array'], spectrum['intensity array'],
-                                                                        centroids_indexes, expected_ions_info)
-
     # # debug
     # plt.plot(spectrum['m/z array'], spectrum['intensity array'])
     # plt.plot(spectrum['m/z array'][centroids_indexes], spectrum['intensity array'][centroids_indexes], 'gx')
     # plt.plot(spectrum['m/z array'][corrected_centroids_indexes], spectrum['intensity array'][corrected_centroids_indexes], 'rx')
-    #
+
     # for xc in expected_ions_info['expected_mzs']:
-    #     plt.axvline(x=xc, color='black', linewidth=0.5)
+    #     plt.axvline(x=xc, color='black', linewidth=0.25)
     #
     # plt.show()
+
+    # correct indexes of peaks (currently only flat peaks are processed)
+    corrected_centroids_indexes = ms_operator.correct_centroids_indexes(spectrum['m/z array'], spectrum['intensity array'],
+                                                                        centroids_indexes, expected_ions_info)
 
     # get information about actual peaks in the spectrum in relation to expected ones and centroiding results
     actual_peaks = ms_operator.find_closest_centroids(spectrum['m/z array'], corrected_centroids_indexes, expected_ions_info)
@@ -708,7 +730,8 @@ def aggregate_features(list_of_scans_features, features_names):
         for j in range(len(list_of_scans_features[0])):
             feature_values = []
             for i in range(len(list_of_scans_features)):
-                # ! adding -1 values (e.g., missing features) we allow estimations to be shifted significantly
+                # not adding -1 values (e.g., missing features) we allow estimations to be shifted significantly
+
                 feature_values.append(list_of_scans_features[i][j])
 
             # simple averaging and variance estimation
@@ -736,7 +759,7 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
         # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/20190405_QCmeth_Mix30_013.mzXML'
 
         # scan 19 should have almost all the expected peaks saturated
-        chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_007.mzXML'
+        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_007.mzXML'
 
         # # scan 61 should have some expected peaks saturated
         # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_042.mzXML'
@@ -744,9 +767,16 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
         # # Duncan's last qc
         # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/duncan_3_points_fit_bug.mzXML'
 
+        # # file from test2 causing bug
+        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/20190523_RefMat_131.mzXML'
+
+        # file from test2 causing warning
+        chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/20190523_RefMat_134.mzXML'
+
         spectra = list(mzxml.read(chemical_standard))
 
-        print('\n', time.time() - start_time, "seconds elapsed for reading")
+        print('\n', time.time() - start_time, " seconds elapsed for reading", sep="")
+
         pass
 
     else:

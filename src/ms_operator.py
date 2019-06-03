@@ -1,6 +1,6 @@
 
 import numpy
-from src.constants import allowed_ppm_error, number_of_normal_scans
+from src.constants import allowed_ppm_error, number_of_normal_scans, normal_scans_indexes_window
 
 
 def extract_mz_region(spectrum, mz_interval):
@@ -57,7 +57,7 @@ def correct_centroids_indexes(mz_spectrum, intensities, centroids_indexes, expec
 
         # find closest peak index to the expected one
         closest_index = 0
-        while mz_spectrum[centroids_indexes[closest_index]] < expected_peaks_list[i]:
+        while mz_spectrum[centroids_indexes[closest_index]] < expected_peaks_list[i] and closest_index+1 < len(centroids_indexes):
             closest_index += 1
 
         # check two neighboring peaks (left and right) for flat apex
@@ -194,7 +194,7 @@ def find_closest_peak_index(mz_spectrum, peaks_indexes, expected_peak_mz):
         If in the vicinity of allowed ppm there is no peak, the peak is considered to be missing. """
 
     closest_index = 0
-    while mz_spectrum[peaks_indexes[closest_index]] < expected_peak_mz:
+    while mz_spectrum[peaks_indexes[closest_index]] < expected_peak_mz and closest_index+1 < len(peaks_indexes):
         closest_index += 1
 
     previous_peak_ppm = abs(mz_spectrum[peaks_indexes[closest_index-1]] - expected_peak_mz) / expected_peak_mz * 10 ** 6
@@ -368,7 +368,9 @@ def get_best_tic_scans_indexes(spectra, n=number_of_normal_scans, in_test_mode=F
 
     max_tic_scan = (0, spectra[0][tic_field_name])
 
-    for i in range(1, len(spectra)):
+    number_from, number_to = normal_scans_indexes_window
+
+    for i in range(number_from, number_to):
         if spectra[i][tic_field_name] > max_tic_scan[1]:
             max_tic_scan = (i, spectra[i][tic_field_name])
 
@@ -376,7 +378,7 @@ def get_best_tic_scans_indexes(spectra, n=number_of_normal_scans, in_test_mode=F
 
     if in_test_mode:
         # # add saturated scans for testing
-        best_tic_scans_indexes.append(18)  # for file 007 from test1
+        # best_tic_scans_indexes.append(18)  # for file 007 from test1
         # best_tic_scans_indexes.append(60)  # for file 042 from test1
         pass
 

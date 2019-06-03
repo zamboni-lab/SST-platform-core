@@ -1,5 +1,5 @@
 
-msfe_version = '0.2.15'
+msfe_version = '0.2.18'
 chemical_mix_id = '1'
 
 # qc_log_location = "/mnt/nas2/fiaqc-out/qc_logs.txt"
@@ -23,8 +23,10 @@ minimal_background_peak_intensity = 1
 
 number_of_normal_scans = 3  # for Michelle's method main scans are defined by TIC maxima
 
-chemical_noise_features_scans_indexes = [17]  # for Michelle's method
-instrument_noise_features_scans_indexes = [174]  # for Michelle's method
+# for Michelle's method
+chemical_noise_features_scans_indexes = [17]
+instrument_noise_features_scans_indexes = [174]
+normal_scans_indexes_window = [25, 75]
 
 peak_widths_levels_of_interest = [0.2, 0.5, 0.8]
 
@@ -46,4 +48,5 @@ instrument_noise_mz_frame_size = 200  # for frames [50, 250], [250, 450] ... [85
 instrument_noise_scan_number_of_frames = 5
 
 number_of_top_noisy_peaks_to_consider = 10
+no_signal_intensity_value = 0.
 frame_intensity_percentiles = [25, 50, 75]
