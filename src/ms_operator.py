@@ -273,33 +273,37 @@ def get_peak_fitting_region_2(spectrum, index):
 
     left_border = -1
 
-    step = 0
+    step_left = 0
     while left_border < 0:
 
-        if spectrum['intensity array'][index-step-1] <= spectrum['intensity array'][index-step]:
-            step += 1
+        if spectrum['intensity array'][index-step_left-1] <= spectrum['intensity array'][index-step_left]:
+            step_left += 1
 
-        elif spectrum['intensity array'][index-step] < spectrum['intensity array'][index-step-1] <= local_maximum \
-                and spectrum['intensity array'][index-step-2] <= spectrum['intensity array'][index-step-1]:
-            step += 1
+        elif spectrum['intensity array'][index-step_left] < spectrum['intensity array'][index-step_left-1] <= local_maximum \
+                and spectrum['intensity array'][index-step_left-2] <= spectrum['intensity array'][index-step_left-1]:
+            step_left += 1
 
         else:
-            left_border = index-step
+            break
 
     right_border = -1
 
-    step = 0
+    step_right = 0
     while right_border < 0:
 
-        if spectrum['intensity array'][index+step] >= spectrum['intensity array'][index+step+1]:
-            step += 1
+        if spectrum['intensity array'][index+step_right] >= spectrum['intensity array'][index+step_right+1]:
+            step_right += 1
 
-        elif spectrum['intensity array'][index+step] < spectrum['intensity array'][index+step+1] <= local_maximum \
-                and spectrum['intensity array'][index+step+2] <= spectrum['intensity array'][index+step+1]:
-            step += 1
+        elif spectrum['intensity array'][index+step_right] < spectrum['intensity array'][index+step_right+1] <= local_maximum \
+                and spectrum['intensity array'][index+step_right+2] <= spectrum['intensity array'][index+step_right+1]:
+            step_right += 1
 
         else:
-            right_border = index+step
+            break
+
+    # a way to guarantee equal number of point to the left and to the right from the peak
+    left_border = index - min(step_left, step_right)
+    right_border = index + min(step_left, step_right)
 
     return [left_border, right_border]
 
