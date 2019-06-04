@@ -764,7 +764,7 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
         spectra = list(mzxml.read(chemical_standard))
 
-        print('\n', time.time() - start_time, " seconds elapsed for reading", sep="")
+        print(time.time() - start_time, " seconds elapsed for reading", sep="")
 
         pass
 
@@ -830,7 +830,7 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
     feature_matrix_row_names.extend(aggregated_chemical_noise_features_names)
     feature_matrix_row_names.extend(aggregated_instrument_noise_features_names)
 
-    print('\n', time.time() - start_time, " seconds elapsed for processing in total", sep='')
+    print(time.time() - start_time, " seconds elapsed for processing in total\n", sep='')
     logger.print_qc_info("Feature extraction finished, " + str(time.time() - start_time) + " seconds elapsed")
 
     scans_processed = {'normal': main_features_scans_indexes,
@@ -843,26 +843,26 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
 if __name__ == '__main__':
 
-    # path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/test2/'
+    path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/test2/'
     # path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/test1/'
 
-    # for root, dirs, files in os.walk(path_to_files):
-    #     for filename in files:
-    #
-    #         if filename != '.DS_Store':
-    #
-    #             start_time = time.time()
-    #             print(filename, 'is being processed')
-    #
-    #             spectra = list(mzxml.read(path_to_files+filename))
-    #
-    #             ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': filename}
-    #             extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
-    #
-    #             print(files.index(filename)+1, '/', len(files), 'is processed within', time.time() - start_time, 's\n')
-    #
-    # print('All done. Well done!')
+    for root, dirs, files in os.walk(path_to_files):
+        for filename in files:
 
-    # single file run
-    ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': 'filename'}
-    extract_features_from_ms_run([], ms_run_ids, in_test_mode=True)
+            if filename != '.DS_Store':
+
+                start_time = time.time()
+                print(filename, 'is being processed')
+
+                spectra = list(mzxml.read(path_to_files+filename))
+
+                ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': filename}
+                extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
+
+                print(files.index(filename)+1, '/', len(files), 'is processed within', time.time() - start_time, 's\n')
+
+    print('All done. Well done!')
+
+    # # single file run
+    # ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': 'filename'}
+    # extract_features_from_ms_run([], ms_run_ids, in_test_mode=True)
