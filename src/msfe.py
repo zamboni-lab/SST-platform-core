@@ -411,9 +411,9 @@ def find_isotope_and_extract_features(major_peak_index, actual_peaks_info, peak_
 
     isotopic_features = {
         # 'isotopes mzs': actual_peaks_info[major_peak_index]['expected isotopes'],  # in case id is needed
-        'intensity_ratios_'+peak_id: isotope_intensity_ratios[1:],
-        'mass_diff_values_'+peak_id: isotope_mass_diff_values[1:],
-        'intensity_ratios_diffs_' + peak_id: isotope_intensity_ratios_diffs
+        'isotopes_ratios_'+peak_id: isotope_intensity_ratios[1:],
+        'isotopes_mass_diffs_'+peak_id: isotope_mass_diff_values[1:],
+        'isotopes_ratios_diffs_' + peak_id: isotope_intensity_ratios_diffs
     }
 
     return isotopic_features
@@ -463,8 +463,8 @@ def find_fragment_and_extract_features(major_peak_index, actual_peaks_info, peak
 
     fragmentation_features = {
         # 'fragments mzs': actual_peaks_info[major_peak_index]['expected fragments'],  # in case id is needed
-        'intensity_ratios_'+peak_id: fragment_intensity_ratios[1:],
-        'mass_diff_values_'+peak_id: fragment_mass_diff_values[1:]
+        'fragments_ratios_'+peak_id: fragment_intensity_ratios[1:],
+        'fragments_mass_diffs_'+peak_id: fragment_mass_diff_values[1:]
     }
 
     return fragmentation_features
@@ -520,9 +520,9 @@ def get_null_isotopic_features(actual_peak_info):
 
     missing_isotopic_features = {
         # 'isotopes mzs': actual_peak_info['expected isotopes'],  # in case id is needed
-        'intensity_ratios_'+peak_id: [-1 for value in range(1, len(actual_peak_info['expected_isotopes']))],
-        'mass_diff_values_'+peak_id: [-1 for value in range(1, len(actual_peak_info['expected_isotopes']))],
-        'intensity_ratios_diffs_' + peak_id: [-1 for value in actual_peak_info['expected_isotopes']]
+        'isotopes_ratios_'+peak_id: [-1 for value in range(1, len(actual_peak_info['expected_isotopes']))],
+        'isotopes_mass_diffs_'+peak_id: [-1 for value in range(1, len(actual_peak_info['expected_isotopes']))],
+        'isotopes_ratios_diffs_' + peak_id: [-1 for value in actual_peak_info['expected_isotopes']]
     }
 
     return missing_isotopic_features
@@ -536,8 +536,8 @@ def get_null_fragmentation_features(actual_peak_info):
 
     missing_fragmentation_features = {
         # 'fragments mzs': actual_peak_info['expected fragments'],  # in case id is needed
-        'intensity_ratios_'+peak_id: [-1 for value in range(1, len(actual_peak_info['expected_fragments']))],
-        'mass_diff_values_'+peak_id: [-1 for value in range(1, len(actual_peak_info['expected_fragments']))]
+        'fragments_ratios_'+peak_id: [-1 for value in range(1, len(actual_peak_info['expected_fragments']))],
+        'fragments_mass_diffs_'+peak_id: [-1 for value in range(1, len(actual_peak_info['expected_fragments']))]
     }
 
     return missing_fragmentation_features
