@@ -127,7 +127,7 @@ def extract_width_features(continuous_mz, fitted_intensity):
         residuals = abs(fitted_intensity - intensity)
 
         # find mz value of desired intensity
-        mz = continuous_mz[numpy.where(residuals == min(residuals))]
+        mz = continuous_mz[numpy.where(residuals == min(residuals))][0]
 
         width = float(2 * abs((continuous_mz[numpy.where(fitted_intensity == max(fitted_intensity))] - mz)))  # symmetry -> * 2
 
@@ -152,7 +152,7 @@ def get_peak_fit(spectrum, actual_peak_info):
     # define d as peak resolution (i.e. width on the 50% of the height)
     d, predicted_peak_mz = ms_operator.get_peak_width_and_predicted_mz(peak_region, spectrum, g_out)
 
-    xc = numpy.linspace(predicted_peak_mz - prf * d, predicted_peak_mz + prf * d, 5000)
+    xc = numpy.linspace(predicted_peak_mz - prf * d, predicted_peak_mz + prf * d, 5001)
     yc = g_out.eval(x=xc)
 
     # now compose fit information
@@ -760,11 +760,14 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
         # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/20190523_RefMat_131.mzXML'
 
         # file from test2 causing warning
-        chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/20190523_RefMat_134.mzXML'
+        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/20190523_RefMat_134.mzXML'
 
-        spectra = list(mzxml.read(chemical_standard))
-
-        print(time.time() - start_time, " seconds elapsed for reading", sep="")
+        # file from test2 causing another bug
+        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/20190523_RefMat_012.mzXML'
+        #
+        # spectra = list(mzxml.read(chemical_standard))
+        #
+        # print(time.time() - start_time, " seconds elapsed for reading", sep="")
 
         pass
 
@@ -863,6 +866,6 @@ if __name__ == '__main__':
 
     print('All done. Well done!')
 
-    # # single file run
+    # single file run
     # ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': 'filename'}
     # extract_features_from_ms_run([], ms_run_ids, in_test_mode=True)
