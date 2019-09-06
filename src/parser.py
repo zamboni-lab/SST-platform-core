@@ -203,6 +203,19 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids, scans_
     """ This method gets results of single MS run feature extraction
         and updates the general feature matrix. """
 
+    new_ms_run = {
+        'date': ms_run_ids['date'],
+        'original_filename': ms_run_ids['original_filename'],
+        'chemical_mix_id': chemical_mix_id,
+        'msfe_version': msfe_version,
+        'scans_processed': scans_processed,
+        'features_values': extracted_features,
+        'features_names': features_names
+    }
+
+    # entry point for qcm to process new_ms_run and insert into QC database
+    pass
+
     if not os.path.isfile(feature_matrix_file_path):
         # if the file does not exist yet, create empty one
         f_matrix = {'ms_runs': []}
@@ -214,15 +227,7 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids, scans_
     with open(feature_matrix_file_path) as general_file:
         f_matrix = json.load(general_file)
 
-    f_matrix['ms_runs'].append({
-        'date': ms_run_ids['date'],
-        'original_filename': ms_run_ids['original_filename'],
-        'chemical_mix_id': chemical_mix_id,
-        'msfe_version': msfe_version,
-        'scans_processed': scans_processed,
-        'features_values': extracted_features,
-        'features_names': features_names
-    })
+    f_matrix['ms_runs'].append(new_ms_run)
 
     # dump updated file to the same place
     with open(feature_matrix_file_path, 'w') as updated_file:
