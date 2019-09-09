@@ -1,9 +1,7 @@
-from src import constants, ms_operator
+from src.msfe import ms_operator
 import numpy
 from scipy import signal
-from matplotlib import pyplot as plt
 from pyteomics import mzxml
-import time
 import operator
 
 if __name__ == '__main__':
@@ -12,7 +10,7 @@ if __name__ == '__main__':
 
     mid_spectrum = spectra[43]
 
-    mz_region, intensities = ms_operator.extract_mz_region(mid_spectrum,[600,900])
+    mz_region, intensities = ms_operator.extract_mz_region(mid_spectrum, [600, 900])
 
     # optimize peak picking with grid search
 

@@ -1,9 +1,8 @@
-
-from src.stuff import matlab_caller
-from src.ms_operator import extract_mz_region
+from src.msfe.stuff import matlab_caller
+from src.msfe.ms_operator import extract_mz_region
 from pyteomics import mzxml
 from matplotlib import pyplot as plt
-import numpy, time, signal
+import time, signal
 
 
 def get_corrected_peak_indices(cwt_peak_indices, intensities, step=3, min_intensity=50):

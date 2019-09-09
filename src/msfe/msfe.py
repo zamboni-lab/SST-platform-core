@@ -3,21 +3,20 @@
 import time, numpy, datetime, os
 from scipy import signal
 from pyteomics import mzxml
-from matplotlib import pyplot as plt
-from src import parser, ms_operator, logger
-from src.constants import peak_region_factor as prf
-from src.constants import peak_widths_levels_of_interest as widths_levels
-from src.constants import minimal_normal_peak_intensity, saturation_intensity
-from src.constants import maximum_number_of_subsequent_peaks_to_consider as max_sp_number
-from src.constants import normal_scan_mz_frame_size, normal_scan_number_of_frames
-from src.constants import chemical_noise_scan_mz_frame_size, chemical_noise_scan_number_of_frames
-from src.constants import instrument_noise_mz_frame_size, instrument_noise_scan_number_of_frames
-from src.constants import number_of_top_noisy_peaks_to_consider as n_top_guys
-from src.constants import frame_intensity_percentiles
-from src.constants import no_signal_intensity_value as no_signal
-from src.constants import chemical_noise_features_scans_indexes, instrument_noise_features_scans_indexes
-from src.constants import expected_peaks_file_path
-from src.constants import minimal_background_peak_intensity as min_bg_peak_intensity
+from src.msfe import ms_operator, parser, logger
+from src.msfe.constants import peak_region_factor as prf
+from src.msfe.constants import peak_widths_levels_of_interest as widths_levels
+from src.msfe.constants import minimal_normal_peak_intensity, saturation_intensity
+from src.msfe.constants import maximum_number_of_subsequent_peaks_to_consider as max_sp_number
+from src.msfe.constants import normal_scan_mz_frame_size, normal_scan_number_of_frames
+from src.msfe.constants import chemical_noise_scan_mz_frame_size, chemical_noise_scan_number_of_frames
+from src.msfe.constants import instrument_noise_mz_frame_size, instrument_noise_scan_number_of_frames
+from src.msfe.constants import number_of_top_noisy_peaks_to_consider as n_top_guys
+from src.msfe.constants import frame_intensity_percentiles
+from src.msfe.constants import no_signal_intensity_value as no_signal
+from src.msfe.constants import chemical_noise_features_scans_indexes, instrument_noise_features_scans_indexes
+from src.msfe.constants import expected_peaks_file_path
+from src.msfe.constants import minimal_background_peak_intensity as min_bg_peak_intensity
 from lmfit.models import GaussianModel
 
 
@@ -64,16 +63,16 @@ def extract_auc_features(spectrum, continuous_mz, fitted_intensity, predicted_pe
     """ This method extracts AUC (area under curve) features between real peak signal and fitted peak values. """
 
     # get raw peak data for integration within regions of interest
-    l_tail_y, l_tail_x = ms_operator.get_integration_arrays(spectrum['m/z array'], spectrum['intensity array'],continuous_mz[0], predicted_peak_mz)
-    r_tail_y, r_tail_x = ms_operator.get_integration_arrays(spectrum['m/z array'], spectrum['intensity array'],predicted_peak_mz, continuous_mz[-1])
+    l_tail_y, l_tail_x = ms_operator.get_integration_arrays(spectrum['m/z array'], spectrum['intensity array'], continuous_mz[0], predicted_peak_mz)
+    r_tail_y, r_tail_x = ms_operator.get_integration_arrays(spectrum['m/z array'], spectrum['intensity array'], predicted_peak_mz, continuous_mz[-1])
 
     # integrate raw peak data within boundaries
     left_raw_data_integral = numpy.trapz(l_tail_y, l_tail_x)
     right_raw_data_integral = numpy.trapz(r_tail_y, r_tail_x)
 
     # get predicted peak data for integration within regions of interest
-    l_tail_y, l_tail_x = ms_operator.get_integration_arrays(continuous_mz, fitted_intensity, continuous_mz[0],predicted_peak_mz)
-    r_tail_y, r_tail_x = ms_operator.get_integration_arrays(continuous_mz, fitted_intensity, predicted_peak_mz,continuous_mz[-1])
+    l_tail_y, l_tail_x = ms_operator.get_integration_arrays(continuous_mz, fitted_intensity, continuous_mz[0], predicted_peak_mz)
+    r_tail_y, r_tail_x = ms_operator.get_integration_arrays(continuous_mz, fitted_intensity, predicted_peak_mz, continuous_mz[-1])
 
     # integrate predicted peak data within boundaries
     left_predicted_data_integral = numpy.trapz(l_tail_y, l_tail_x)

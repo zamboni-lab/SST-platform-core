@@ -7,7 +7,7 @@ from lmfit.models import GaussianModel, LorentzianModel, VoigtModel
 from lmfit.models import Pearson7Model
 from lmfit.models import DampedOscillatorModel
 from lmfit.models import SkewedGaussianModel, SkewedVoigtModel, DonaichModel
-from src.ms_operator import get_peak_fitting_region
+from src.msfe.ms_operator import get_peak_fitting_region
 from matplotlib import pyplot as plt
 
 

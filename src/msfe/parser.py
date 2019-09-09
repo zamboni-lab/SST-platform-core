@@ -1,12 +1,10 @@
 
-from src.constants import parser_comment_symbol as sharp
-from src.constants import parser_description_symbols as brackets
-from src.constants import feature_matrix_file_path, ms_settings_matrix_file_path
-from src.constants import chemical_mix_id, msfe_version
-from src.constants import number_of_normal_scans
-from src.constants import chemical_noise_features_scans_indexes as chem_scans
-from src.constants import instrument_noise_features_scans_indexes as bg_scans
-from src import logger
+from src.msfe.constants import parser_comment_symbol as sharp
+from src.msfe.constants import parser_description_symbols as brackets
+from src.msfe.constants import feature_matrix_file_path, ms_settings_matrix_file_path
+from src.msfe.constants import chemical_mix_id, msfe_version
+from src.qcmg import metrics_generator
+from src.msfe import logger
 from pyopenms import EmpiricalFormula, CoarseIsotopePatternGenerator
 import json, os, datetime
 
@@ -214,7 +212,7 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids, scans_
     }
 
     # entry point for qcm to process new_ms_run and insert into QC database
-    pass
+    metrics_generator.calculate_and_save_qc_metrics_for_ms_run(new_ms_run)
 
     if not os.path.isfile(feature_matrix_file_path):
         # if the file does not exist yet, create empty one
@@ -224,9 +222,12 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids, scans_
     else:
         pass
 
+    # TODO: substitute JSON with SQLite as well, to save time reading (eventually) large files
+    # read existing file
     with open(feature_matrix_file_path) as general_file:
         f_matrix = json.load(general_file)
 
+    # add new processed ms run
     f_matrix['ms_runs'].append(new_ms_run)
 
     # dump updated file to the same place

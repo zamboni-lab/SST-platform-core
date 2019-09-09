@@ -1,6 +1,6 @@
 
 from pyteomics import mzxml
-from src import ms_operator
+from src.msfe import ms_operator
 
 annotated_peaks = [
     [204.92, 204.94],
@@ -32,7 +32,7 @@ accurate_peak_locations = []
 
 for mz_region in expected_peaks:
     print(mz_region, "is being processed...")
-    accurate_peak_locations.append(ms_operator.locate_annotated_peak(mz_region,mid_spectrum))
+    accurate_peak_locations.append(ms_operator.locate_annotated_peak(mz_region, mid_spectrum))
 
 print("Done!")
 print()
