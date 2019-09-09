@@ -1,5 +1,6 @@
 
 import json
+import os
 
 from src.qcmg import db_connector
 from src.msfe.constants import feature_matrix_file_path as f_matrix_path
@@ -10,6 +11,8 @@ from src.msfe.constants import instrument_noise_tic_features_names as noise_feat
 from src.msfe.constants import transmission_features_names, fragmentation_features_names, signal_features_names
 from src.msfe.constants import baseline_150_250_features_names, baseline_650_750_features_names
 from src.msfe.constants import s2b_features_names, s2n_features_names
+from src.msfe.constants import qc_database_path
+
 
 
 def add_resolution_metrics(qc_values, qc_names, ms_run):
@@ -253,7 +256,13 @@ def calculate_and_save_qc_metrics_for_ms_run(ms_run):
 
     print('QC characteristics for ', ms_run['original_filename'], 'has been computed successfully.')
 
-    db_connector.insert_new_qc_run(new_qc_run, debug=True)
+    if not os.path.isfile(qc_database_path):
+        # if there's yet no database
+        db_connector.create_and_fill_qc_database([new_qc_run])
+        print('New QC database has been created.')
+    else:
+        # if the database already exists
+        db_connector.insert_new_qc_run(new_qc_run, debug=True)
 
     print('QC database is now up-to-date.')
 

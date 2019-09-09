@@ -140,7 +140,7 @@ def create_and_fill_qc_database(qc_matrix, debug=False):
 
 
 def insert_new_qc_run(qc_run, debug=False):
-    """ This method form objects with pre-computed values to insert into the joint database. """
+    """ This method form objects with pre-computed values to insert into (already existing) database. """
 
     qc_database = create_connection(qc_database_path)
 
