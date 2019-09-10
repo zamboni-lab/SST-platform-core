@@ -832,7 +832,6 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
     feature_matrix_row_names.extend(aggregated_chemical_noise_features_names)
     feature_matrix_row_names.extend(aggregated_instrument_noise_features_names)
 
-    print(time.time() - start_time, " seconds elapsed for processing in total\n", sep='')
     logger.print_qc_info("Feature extraction finished, " + str(time.time() - start_time) + " seconds elapsed")
 
     scans_processed = {'normal': main_features_scans_indexes,
@@ -842,26 +841,35 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
     parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids, scans_processed)
     logger.print_qc_info("Feature matrix updated\n")
 
+    print(time.time() - start_time, " seconds elapsed for processing in total\n", sep='')
+
 
 if __name__ == '__main__':
 
-    path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/test2/'
+    path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/'
+    # path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/test2/'
     # path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/test1/'
 
     for root, dirs, files in os.walk(path_to_files):
-        for filename in files:
 
-            if filename != '.DS_Store':
+        # for filename in files:
+        for dir in sorted(dirs):
+
+            # if filename != '.DS_Store':
+            if dir != '.DS_Store':
 
                 start_time = time.time()
-                print(filename, 'is being processed')
+                print(dir, 'file is being processed')
 
-                spectra = list(mzxml.read(path_to_files+filename))
+                spectra = list(mzxml.read(path_to_files+dir+'/raw.mzXML'))
 
-                ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': filename}
+                # ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': filename}
+                ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': dir}
+
                 extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
 
-                print(files.index(filename)+1, '/', len(files), 'is processed within', time.time() - start_time, 's\n')
+                # print(files.index(filename)+1, '/', len(files), 'is processed within', time.time() - start_time, 's\n')
+                print(dirs.index(dir)+1, '/', len(dirs), 'is processed within', time.time() - start_time, 's\n')
 
     print('All done. Well done!')
 

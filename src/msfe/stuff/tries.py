@@ -25,6 +25,9 @@
 #
 # print(llist)
 
-a = [1,2,3,4,54,5,5]
+import os
 
-print(a[1:])
+for root, dirs, files in os.walk('/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/'):
+
+    for dir in sorted(dirs):
+        print(dir)
