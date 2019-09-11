@@ -25,9 +25,6 @@
 #
 # print(llist)
 
-import os
-
-for root, dirs, files in os.walk('/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/'):
-
-    for dir in sorted(dirs):
-        print(dir)
+a = []
+import numpy
+print(sum(numpy.array(a) != -1.))

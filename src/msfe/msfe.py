@@ -716,13 +716,23 @@ def aggregate_features(list_of_scans_features, features_names):
         for j in range(len(list_of_scans_features[0])):
             feature_values = []
             for i in range(len(list_of_scans_features)):
-                # not adding -1 values (e.g., missing features) we allow estimations to be shifted significantly
-
+                # just add all values
                 feature_values.append(list_of_scans_features[i][j])
 
-            # simple averaging and variance estimation
-            mean_estimate = float(numpy.mean(feature_values))
-            dispersion_estimate = float(numpy.std(feature_values))
+            feature_values = [v for v in feature_values if v != -1.]  # filter out missing values
+
+            if len(feature_values) > 1:
+                # simple averaging and variance estimation
+                mean_estimate = float(numpy.mean(feature_values))
+                dispersion_estimate = float(numpy.std(feature_values))
+
+            elif len(feature_values) == 1:
+                mean_estimate = float(feature_values[0])
+                dispersion_estimate = 0.
+
+            else:
+                mean_estimate = -1.
+                dispersion_estimate = -1.
 
             feature_names = [features_names[j]+"_mean", features_names[j]+"_std"]
 
@@ -843,7 +853,7 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
                        'instrument_noise': instrument_noise_features_scans_indexes}
 
     parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids, scans_processed)
-    logger.print_qc_info("Feature matrix updated\n")
+    logger.print_qc_info("Feature matrix has been updated\n")
 
     print(time.time() - start_time, " seconds elapsed for processing in total\n", sep='')
 

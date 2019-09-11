@@ -137,7 +137,7 @@ def create_and_fill_qc_database(qc_matrix, debug=False):
             print("inserted: meta:", last_row_number_1, 'values:', last_row_number_2)
 
 
-def insert_new_qc_run(qc_run, debug=False):
+def insert_new_qc_run(qc_run, in_debug_mode=False):
     """ This method form objects with pre-computed values to insert into (already existing) database. """
 
     qc_database = create_connection(qc_database_path)
@@ -163,7 +163,7 @@ def insert_new_qc_run(qc_run, debug=False):
     last_row_number_1 = insert_qc_meta(qc_database, run_meta)
     last_row_number_2 = insert_qc_values(qc_database, run_values)
 
-    if debug:
+    if in_debug_mode:
         print("inserted 1 row at position: meta:", last_row_number_1, 'values:', last_row_number_2)
 
 
