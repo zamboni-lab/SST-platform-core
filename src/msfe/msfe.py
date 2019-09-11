@@ -154,8 +154,6 @@ def get_peak_fit(spectrum, actual_peak_info):
     xc = numpy.linspace(predicted_peak_mz - prf * d, predicted_peak_mz + prf * d, 5001)
     yc = g_out.eval(x=xc)
 
-    # now compose fit information
-
     # find absolute mass accuracy and ppm for signal related to fit
     signal_fit_mass_diff = float(x[numpy.where(y == max(y))] - predicted_peak_mz)
     signal_fit_ppm = signal_fit_mass_diff / predicted_peak_mz * 10 ** 6
@@ -763,6 +761,12 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
         # file from test2 causing another bug
         # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/20190523_RefMat_012.mzXML'
+
+        # file from nas2 causing index out of range bug (only 86 scans in file)
+        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/2019-06-10T113612/raw.mzXML'
+
+        # file from nas2 causing error fitting peaks
+        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/2019-09-05T212603/raw.mzXML'
         #
         # spectra = list(mzxml.read(chemical_standard))
         #
@@ -852,8 +856,10 @@ if __name__ == '__main__':
 
     for root, dirs, files in os.walk(path_to_files):
 
+        dirs = sorted(dirs)  # to make it chronological
+
         # for filename in files:
-        for dir in sorted(dirs):
+        for dir in dirs:
 
             # if filename != '.DS_Store':
             if dir != '.DS_Store':

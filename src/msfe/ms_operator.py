@@ -266,8 +266,8 @@ def get_peak_fitting_region(spectrum, index):
 
 def get_peak_fitting_region_2(spectrum, index):
     """ This method extracts the peak region indexes (peak with tails) for a peak of the given index.
-        This version of the method ignores scans 2 following points instead of one. So the tails are may ascend locally,
-        but globally are also descending. """
+        This version of the method considers two following points instead of one. So the tails may ascend locally,
+        but globally they are also descending. """
 
     local_maximum = spectrum['intensity array'][index]
 
@@ -279,7 +279,7 @@ def get_peak_fitting_region_2(spectrum, index):
         if spectrum['intensity array'][index-step_left-1] <= spectrum['intensity array'][index-step_left]:
             step_left += 1
 
-        elif spectrum['intensity array'][index-step_left] < spectrum['intensity array'][index-step_left-1] <= local_maximum \
+        elif spectrum['intensity array'][index-step_left] < spectrum['intensity array'][index-step_left-1] < local_maximum \
                 and spectrum['intensity array'][index-step_left-2] <= spectrum['intensity array'][index-step_left-1]:
             step_left += 1
 
@@ -294,7 +294,7 @@ def get_peak_fitting_region_2(spectrum, index):
         if spectrum['intensity array'][index+step_right] >= spectrum['intensity array'][index+step_right+1]:
             step_right += 1
 
-        elif spectrum['intensity array'][index+step_right] < spectrum['intensity array'][index+step_right+1] <= local_maximum \
+        elif spectrum['intensity array'][index+step_right] < spectrum['intensity array'][index+step_right+1] < local_maximum \
                 and spectrum['intensity array'][index+step_right+2] <= spectrum['intensity array'][index+step_right+1]:
             step_right += 1
 
