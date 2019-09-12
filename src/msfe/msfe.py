@@ -880,7 +880,7 @@ if __name__ == '__main__':
                 spectra = list(mzxml.read(path_to_files+dir+'/raw.mzXML'))
 
                 # ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': filename}
-                ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': dir}
+                ms_run_ids = {'processing_date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': dir}
 
                 extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
 

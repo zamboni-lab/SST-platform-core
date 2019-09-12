@@ -1,5 +1,5 @@
 
-msfe_version = '0.3.7'
+msfe_version = '0.3.8'
 chemical_mix_id = '1'
 
 """ Mass-spec features extractor constants """

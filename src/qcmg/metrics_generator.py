@@ -344,21 +344,23 @@ def calculate_and_save_qc_metrics_for_ms_run(ms_run):
     qc_values = []
     qc_names = []
 
-    add_resolution_metrics(qc_values, qc_names, ms_run, in_debug_mode=True)
-    add_accuracy_metrics(qc_values, qc_names, ms_run, in_debug_mode=True)
-    add_dirt_metrics(qc_values, qc_names, ms_run, in_debug_mode=True)
-    add_noise_metrics(qc_values, qc_names, ms_run, in_debug_mode=True)
-    add_isotopic_abundance_metrics(qc_values, qc_names, ms_run, in_debug_mode=True)
-    add_transmission_metrics(qc_values, qc_names, ms_run, in_debug_mode=True)
-    add_fragmentation_metrics(qc_values, qc_names, ms_run, in_debug_mode=True)
-    add_baseline_metrics(qc_values, qc_names, ms_run, in_debug_mode=True)
-    add_signal_metrics(qc_values, qc_names, ms_run, in_debug_mode=True)
-    add_signal_to_background_metrics(qc_values, qc_names, ms_run, in_debug_mode=True)
-    add_signal_to_noise_metrics(qc_values, qc_names, ms_run, in_debug_mode=True)
+    in_debug_mode = False
+
+    add_resolution_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
+    add_accuracy_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
+    add_dirt_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
+    add_noise_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
+    add_isotopic_abundance_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
+    add_transmission_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
+    add_fragmentation_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
+    add_baseline_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
+    add_signal_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
+    add_signal_to_background_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
+    add_signal_to_noise_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
 
     new_qc_run = {
-        'date': ms_run['date'],
-        'original_filename': ms_run['original_filename'],
+        'processing_date': ms_run['processing_date'],
+        'acquisition_date': ms_run['acquisition_date'],
         'chemical_mix_id': ms_run['chemical_mix_id'],
         'msfe_version': ms_run['msfe_version'],
         'scans_processed': ms_run['scans_processed'],

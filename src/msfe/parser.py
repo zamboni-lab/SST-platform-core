@@ -204,8 +204,8 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids, scans_
         and updates the general feature matrix. """
 
     new_ms_run = {
-        'date': ms_run_ids['date'],
-        'original_filename': ms_run_ids['original_filename'],
+        'processing_date': ms_run_ids['processing_date'],
+        'acquisition_date': ms_run_ids['original_filename'],
         'chemical_mix_id': chemical_mix_id,
         'msfe_version': msfe_version,
         'scans_processed': scans_processed,
