@@ -365,7 +365,9 @@ def calculate_and_save_qc_metrics_for_ms_run(ms_run):
         'msfe_version': ms_run['msfe_version'],
         'scans_processed': ms_run['scans_processed'],
         'qc_values': qc_values,
-        'qc_names': qc_names
+        'qc_names': qc_names,
+        'user_comment': "",
+        'quality': 1
     }
 
     logger.print_qc_info('QC characteristics has been computed successfully')

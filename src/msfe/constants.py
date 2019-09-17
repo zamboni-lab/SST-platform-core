@@ -1,6 +1,6 @@
 
-msfe_version = '0.3.8'
-chemical_mix_id = '1'
+msfe_version = '0.3.10'
+chemical_mix_id = '20190522_4GHz'
 
 """ Mass-spec features extractor constants """
 
@@ -15,7 +15,7 @@ feature_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/re
 ms_settings_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/ms_settings_matrix.json"
 
 # expected_peaks_file_path = "/home/nzadmin/msqc/msfe/data/expected_peaks_v" + chemical_mix_id + ".json"
-expected_peaks_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/data/expected_peaks_v" + chemical_mix_id + ".json"
+expected_peaks_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/data/expected_peaks_v1_" + chemical_mix_id + ".json"
 
 parser_comment_symbol = '#'
 parser_description_symbols = '()'
