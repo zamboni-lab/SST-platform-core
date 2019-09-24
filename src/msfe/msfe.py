@@ -1,6 +1,6 @@
 """ MS feature extractor """
 
-import time, numpy, datetime, os
+import time, numpy, datetime, os, json
 from scipy import signal
 from pyteomics import mzxml
 from src.msfe import ms_operator, parser, logger
@@ -17,6 +17,7 @@ from src.msfe.constants import no_signal_intensity_value as no_signal
 from src.msfe.constants import chemical_noise_features_scans_indexes, instrument_noise_features_scans_indexes
 from src.msfe.constants import expected_peaks_file_path
 from src.msfe.constants import minimal_background_peak_intensity as min_bg_peak_intensity
+from src.msfe.constants import tunings_matrix_file_path
 from lmfit.models import GaussianModel
 
 
@@ -860,10 +861,14 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
 if __name__ == '__main__':
 
-    # path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/test1/'
-    # path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/test2/'
+    # get all instrument settings to provide correct acquisition dates later
+    with open(tunings_matrix_file_path) as tunes:
+        tunings_data = json.load(tunes)
 
-    # path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2_new_sample_test/'
+    acquisition_dates = []
+    for run in tunings_data['ms_runs']:
+        acquisition_dates.append(run['meta']['values'][1].split(".")[0].replace(":",""))
+
     path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/'
 
     for root, dirs, files in os.walk(path_to_files):
@@ -881,8 +886,9 @@ if __name__ == '__main__':
 
                 spectra = list(mzxml.read(path_to_files+dir+'/raw.mzXML'))
 
-                # ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': filename}
-                ms_run_ids = {'processing_date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': dir}
+                acq_date = acquisition_dates[dirs.index(dir)]
+
+                ms_run_ids = {'acquisition_date': acq_date, 'original_filename': dir}
 
                 extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
 

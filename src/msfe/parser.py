@@ -1,10 +1,9 @@
 
 from src.msfe.constants import parser_comment_symbol as sharp
 from src.msfe.constants import parser_description_symbols as brackets
-from src.msfe.constants import feature_matrix_file_path, ms_settings_matrix_file_path
+from src.msfe.constants import feature_matrix_file_path, tunings_matrix_file_path
 from src.msfe.constants import chemical_mix_id, msfe_version
 from src.msfe.constants import qc_database_path
-
 from src.qcmg import metrics_generator
 from src.msfe import logger
 from pyopenms import EmpiricalFormula, CoarseIsotopePatternGenerator
@@ -137,10 +136,10 @@ def parse_instrument_settings_from_multiple_ms_runs(list_of_paths):
     """ This method reads instrument settings from previously generated files (paths provided),
         and adds information to the general ms_settings_matrix, which is stored as another json. """
 
-    if not os.path.isfile(ms_settings_matrix_file_path):
+    if not os.path.isfile(tunings_matrix_file_path):
         # if the file does not exist yet, create empty one
         s_matrix = {'ms_runs': []}
-        with open(ms_settings_matrix_file_path, 'w') as new_file:
+        with open(tunings_matrix_file_path, 'w') as new_file:
             json.dump(s_matrix, new_file)
     else:
         pass
@@ -149,52 +148,63 @@ def parse_instrument_settings_from_multiple_ms_runs(list_of_paths):
         parse_ms_run_instrument_settings(path)
 
 
-def parse_ms_run_instrument_settings(file_path):
-    """ This method reads instrument settings from newly generated file (after it's uploaded on server)
-        and adds information to the general ms_settings_matrix, which is stored as another json. """
-
-    # read newly generated ms settings file
-    with open(file_path) as file:
-        new_data = json.load(file)
+def parse_ms_run_instrument_settings(file_path, empty=False):
+    """ This method reads instrument settings from newly generated file
+        and adds information to the general tunings_matrix, which is stored as another json. """
 
     # compose data structure to collect data
     meta = {'keys': [], 'values': []}
     actuals = {'keys': [], 'values': []}
     cals = {'keys': [], 'values': []}
 
-    for key in new_data:
+    if not empty:
 
-        if key == "Actuals":
-            for actual in new_data[key]:
-                actuals['keys'].append(actual.replace(" ","_"))
-                actuals['values'].append(new_data[key][actual])
+        # read newly generated ms settings file
+        with open(file_path) as file:
+            new_data = json.load(file)
 
-        elif key == "Cal":
-            for mode in ['defaultPos', 'defaultNeg']:
-                for type in ['traditional', 'polynomial']:
-                    for i in range(len(new_data[key][mode][type])):
-                        cals['keys'].append(mode + "_" + type + "_" + str(i))
-                        cals['values'].append(new_data[key][mode][type][i])
-        else:
-            meta["keys"].append(key)
-            meta["values"].append(new_data[key])
+        for key in new_data:
 
-    logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes collected")
+            if key == "Actuals":
+                for actual in new_data[key]:
+                    actuals['keys'].append(actual.replace(" ","_"))
+                    actuals['values'].append(new_data[key][actual])
 
-    # open old ms settings file
-    with open(ms_settings_matrix_file_path) as general_file:
-        s_matrix = json.load(general_file)
+            elif key == "Cal":
+                for mode in ['defaultPos', 'defaultNeg']:
+                    for type in ['traditional', 'polynomial']:
+                        for i in range(len(new_data[key][mode][type])):
+                            cals['keys'].append(mode + "_" + type + "_" + str(i))
+                            cals['values'].append(new_data[key][mode][type][i])
+            else:
+                meta["keys"].append(key)
+                meta["values"].append(new_data[key])
 
-    # add new data to old file
-    s_matrix['ms_runs'].append({
-        'meta': meta,
-        'actuals': actuals,
-        'cals': cals
-    })
+        logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes collected")
+    else:
+        logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": tunes are missing")
 
-    # dump updated file to the same place
-    with open(ms_settings_matrix_file_path, 'w') as updated_file:
-        json.dump(s_matrix, updated_file)
+    if not os.path.isfile(tunings_matrix_file_path):
+        # if the file does not exist yet, create empty one
+        s_matrix = {'ms_runs': [{'meta': meta, 'actuals': actuals, 'cals': cals}]}
+
+        with open(tunings_matrix_file_path, 'w') as new_file:
+            json.dump(s_matrix, new_file)
+    else:
+        # open old ms settings file
+        with open(tunings_matrix_file_path) as general_file:
+            s_matrix = json.load(general_file)
+
+            # add new data to old file
+            s_matrix['ms_runs'].append({
+                'meta': meta,
+                'actuals': actuals,
+                'cals': cals
+            })
+
+        # dump updated file to the same place
+        with open(tunings_matrix_file_path, 'w') as updated_file:
+            json.dump(s_matrix, updated_file)
 
     logger.print_tune_info("MS settings matrix updated\n")
 
@@ -204,8 +214,8 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids, scans_
         and updates the general feature matrix. """
 
     new_ms_run = {
-        'processing_date': ms_run_ids['processing_date'],
-        'acquisition_date': ms_run_ids['original_filename'],
+        'processing_date': ms_run_ids['original_filename'],
+        'acquisition_date': ms_run_ids['acquisition_date'],
         'chemical_mix_id': chemical_mix_id,
         'msfe_version': msfe_version,
         'scans_processed': scans_processed,
@@ -239,7 +249,25 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids, scans_
 
 if __name__ == "__main__":
 
-    # parse_instrument_settings_from_multiple_ms_runs(["/Users/andreidm/ETH/projects/ms_feature_extractor/data/ms_settings.json"])
+    path = '/Volumes/biol_imsb_sauer_2/fiaqc-data/'
+    filename = '/all.json'
 
-    print()
+    for dir in sorted(os.listdir(path)):
+
+        print(dir, "is being processed")
+
+        # errorful and ancient files excluded
+        if dir not in ['.DS_Store', '2019-05-17T115518', '2019-05-17T115432', '2019-05-17T115246', '2019-09-10T124004',
+                       '2019-05-17T115021', '2019-05-17T114715', '2019-05-16T165425', '2019-04-12T152701',
+                       '2019-04-12T152608', '2019-04-12T151912', '2019-04-11T200719', '2019-04-11T200714',
+                       '2019-06-10T113612']:
+
+            full_path = path + dir + filename
+            if not os.path.isfile(full_path):
+                # create empty data structure
+                parse_ms_run_instrument_settings(full_path, empty=True)
+            else:
+                parse_ms_run_instrument_settings(full_path)
+
+    print("All settings are pulled out.")
 

@@ -1,5 +1,5 @@
 
-msfe_version = '0.3.12'
+msfe_version = '0.3.14'
 chemical_mix_id = '20190522_4GHz'
 
 """ Mass-spec features extractor constants """
@@ -11,8 +11,8 @@ tune_log_location = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/tune_
 
 # feature_matrix_file_path = "/mnt/nas2/fiaqc-out/f_matrix.json"
 feature_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/feature_matrix.json"
-# ms_settings_matrix_file_path = "/mnt/nas2/fiaqc-out/s_matrix.json"
-ms_settings_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/ms_settings_matrix.json"
+# tunings_matrix_file_path = "/mnt/nas2/fiaqc-out/t_matrix.json"
+tunings_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/tunings_matrix.json"
 
 # expected_peaks_file_path = "/home/nzadmin/msqc/msfe/data/expected_peaks_v" + chemical_mix_id + ".json"
 expected_peaks_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/data/expected_peaks_v1_" + chemical_mix_id + ".json"
@@ -58,7 +58,7 @@ frame_intensity_percentiles = [25, 50, 75]
 
 qc_matrix_file_path = feature_matrix_file_path.replace('feature_matrix','qc_matrix')
 
-qc_database_path = '/Users/andreidm/ETH/projects/qc_metrics/res/qc_matrix.db'
+qc_database_path = qc_matrix_file_path.replace(".json", '.db')
 # qc_database_path = '/Users/andreidm/ETH/projects/ms_monitor/data/nas2_qc_matrix_sep18.db'  # new sample test passed
 
 # features names
