@@ -186,17 +186,17 @@ def parse_ms_run_instrument_settings(file_path, empty=False):
 
     if not os.path.isfile(tunings_matrix_file_path):
         # if the file does not exist yet, create empty one
-        s_matrix = {'ms_runs': [{'meta': meta, 'actuals': actuals, 'cals': cals}]}
+        t_matrix = {'ms_runs': [{'meta': meta, 'actuals': actuals, 'cals': cals}]}
 
         with open(tunings_matrix_file_path, 'w') as new_file:
-            json.dump(s_matrix, new_file)
+            json.dump(t_matrix, new_file)
     else:
         # open old ms settings file
         with open(tunings_matrix_file_path) as general_file:
-            s_matrix = json.load(general_file)
+            t_matrix = json.load(general_file)
 
             # add new data to old file
-            s_matrix['ms_runs'].append({
+            t_matrix['ms_runs'].append({
                 'meta': meta,
                 'actuals': actuals,
                 'cals': cals
@@ -204,7 +204,65 @@ def parse_ms_run_instrument_settings(file_path, empty=False):
 
         # dump updated file to the same place
         with open(tunings_matrix_file_path, 'w') as updated_file:
-            json.dump(s_matrix, updated_file)
+            json.dump(t_matrix, updated_file)
+
+    logger.print_tune_info("MS settings matrix updated\n")
+
+
+def parse_and_save_tunings(tunings):
+    """ This method reads instrument settings from newly generated file
+        and adds information to the general tunings_matrix, which is stored as another json. """
+
+    # compose data structure to collect data
+    meta = {'keys': [], 'values': []}
+    actuals = {'keys': [], 'values': []}
+    cals = {'keys': [], 'values': []}
+
+    if tunings == {}:
+        logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes are missing")
+    else:
+        # read newly generated ms settings file
+        for key in tunings:
+
+            if key == "Actuals":
+                for actual in tunings[key]:
+                    actuals['keys'].append(actual.replace(" ","_"))
+                    actuals['values'].append(tunings[key][actual])
+
+            elif key == "Cal":
+                for mode in ['defaultPos', 'defaultNeg']:
+                    for type in ['traditional', 'polynomial']:
+                        for i in range(len(tunings[key][mode][type])):
+                            cals['keys'].append(mode + "_" + type + "_" + str(i))
+                            cals['values'].append(tunings[key][mode][type][i])
+            else:
+                meta["keys"].append(key)
+                meta["values"].append(tunings[key])
+
+        logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes collected")
+
+    # now check for the common file and update if it exists
+    if not os.path.isfile(tunings_matrix_file_path):
+        # if the file does not exist yet, create empty one
+        t_matrix = {'ms_runs': [{'meta': meta, 'actuals': actuals, 'cals': cals}]}
+
+        with open(tunings_matrix_file_path, 'w') as new_file:
+            json.dump(t_matrix, new_file)
+    else:
+        # open old ms settings file
+        with open(tunings_matrix_file_path) as general_file:
+            t_matrix = json.load(general_file)
+
+            # add new data to old file
+            t_matrix['ms_runs'].append({
+                'meta': meta,
+                'actuals': actuals,
+                'cals': cals
+            })
+
+        # dump updated file to the same place
+        with open(tunings_matrix_file_path, 'w') as updated_file:
+            json.dump(t_matrix, updated_file)
 
     logger.print_tune_info("MS settings matrix updated\n")
 
