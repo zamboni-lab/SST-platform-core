@@ -98,6 +98,9 @@ def create_qc_database(db_path='/Users/andreidm/ETH/projects/qc_metrics/res/qc_m
     # create a database connection
     qc_database = create_connection(qc_database_path)
 
+    # debug: add journal mode that allows multiple users interaction
+    qc_database.execute('pragma journal_mode=wal')
+
     # create tables
     if qc_database is not None:
         # create projects table

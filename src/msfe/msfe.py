@@ -1,8 +1,7 @@
 """ MS feature extractor """
 
-import time, numpy, datetime, os, json
+import time, numpy, datetime
 from scipy import signal
-from pyteomics import mzxml
 from src.msfe import ms_operator, parser, logger
 from src.msfe.constants import peak_region_factor as prf
 from src.msfe.constants import peak_widths_levels_of_interest as widths_levels
@@ -17,7 +16,6 @@ from src.msfe.constants import no_signal_intensity_value as no_signal
 from src.msfe.constants import chemical_noise_features_scans_indexes, instrument_noise_features_scans_indexes
 from src.msfe.constants import expected_peaks_file_path
 from src.msfe.constants import minimal_background_peak_intensity as min_bg_peak_intensity
-from src.msfe.constants import tunings_matrix_file_path
 from lmfit.models import GaussianModel
 
 
@@ -629,7 +627,7 @@ def extract_main_features_from_scan(spectrum, scan_type, get_names=True):
     # plt.plot(spectrum['m/z array'], spectrum['intensity array'])
     # plt.plot(spectrum['m/z array'][centroids_indexes], spectrum['intensity array'][centroids_indexes], 'gx')
     # plt.plot(spectrum['m/z array'][corrected_centroids_indexes], spectrum['intensity array'][corrected_centroids_indexes], 'rx')
-
+    #
     # for xc in expected_ions_info['expected_mzs']:
     #     plt.axvline(x=xc, color='black', linewidth=0.25)
     #
@@ -750,44 +748,6 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
     start_time = time.time()
     logger.print_qc_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": feature extraction started")
 
-    if in_test_mode:
-
-        # # chemical mix by Michelle
-        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1/20190405_QCmeth_Mix30_013.mzXML'
-
-        # scan 19 should have almost all the expected peaks saturated
-        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_007.mzXML'
-
-        # # scan 61 should have some expected peaks saturated
-        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_saturation/20190523_RefMat_042.mzXML'
-        
-        # # Duncan's last qc
-        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/duncan_3_points_fit_bug.mzXML'
-
-        # # file from test2 causing bug
-        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/20190523_RefMat_131.mzXML'
-
-        # file from test2 causing warning
-        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/20190523_RefMat_134.mzXML'
-
-        # file from test2 causing another bug
-        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/20190523_RefMat_012.mzXML'
-
-        # file from nas2 causing index out of range bug (only 86 scans in file)
-        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/2019-06-10T113612/raw.mzXML'
-
-        # file from nas2 causing error fitting peaks
-        # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/2019-09-05T212603/raw.mzXML'
-        #
-        # spectra = list(mzxml.read(chemical_standard))
-        #
-        # print(time.time() - start_time, " seconds elapsed for reading", sep="")
-
-        pass
-
-    else:
-        pass
-
     feature_matrix_row = []
     feature_matrix_row_names = []
 
@@ -860,43 +820,5 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
 
 if __name__ == '__main__':
+    pass
 
-    # get all instrument settings to provide correct acquisition dates later
-    with open(tunings_matrix_file_path) as tunes:
-        tunings_data = json.load(tunes)
-
-    acquisition_dates = []
-    for run in tunings_data['ms_runs']:
-        acquisition_dates.append(run['meta']['values'][1].split(".")[0].replace(":",""))
-
-    path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/'
-
-    for root, dirs, files in os.walk(path_to_files):
-
-        dirs = sorted(dirs)  # to make it chronological
-
-        # for filename in files:
-        for dir in dirs:
-
-            # if filename != '.DS_Store':
-            if dir != '.DS_Store':
-
-                start_time = time.time()
-                print(dir, 'file is being processed')
-
-                spectra = list(mzxml.read(path_to_files+dir+'/raw.mzXML'))
-
-                acq_date = acquisition_dates[dirs.index(dir)]
-
-                ms_run_ids = {'acquisition_date': acq_date, 'original_filename': dir}
-
-                extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
-
-                # print(files.index(filename)+1, '/', len(files), 'is processed within', time.time() - start_time, 's\n')
-                print(dirs.index(dir)+1, '/', len(dirs), 'is processed within', time.time() - start_time, 's\n')
-
-    print('All done. Well done!')
-
-    # single file run
-    # ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': 'filename'}
-    # extract_features_from_ms_run([], ms_run_ids, in_test_mode=True)
