@@ -111,6 +111,7 @@ def run_msfe_in_test_mode():
 
 if __name__ == '__main__':
 
+    run_msfe_in_test_mode()
     pass
 
 

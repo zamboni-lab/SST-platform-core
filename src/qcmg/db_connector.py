@@ -24,10 +24,16 @@ def create_table(db, create_table_sql):
         print(e)
 
 
-def insert_qc_values(db, qc_values):
-    """ Adds last runs QC values to the table. """
+def insert_qc_metrics(db, qc_run):
+    """ Adds last runs QC  metrics values to the table. """
 
-    sql = ''' INSERT INTO qc_values(acquisition_date,quality,resolution_200,resolution_700,
+    qc_metrics = (
+        qc_run['acquisition_date'],
+        qc_run['quality'],
+        *qc_run['metrics_values']
+    )
+
+    sql = ''' INSERT INTO qc_metrics(acquisition_date,quality,resolution_200,resolution_700,
                                     average_accuracy,chemical_dirt,instrument_noise,isotopic_presence,
                                     transmission,fragmentation_305,fragmentation_712,baseline_25_150,
                                     baseline_50_150,baseline_25_650,baseline_50_650,signal,
@@ -36,14 +42,49 @@ def insert_qc_values(db, qc_values):
                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) '''
 
     cur = db.cursor()
-    cur.execute(sql, qc_values)
+    cur.execute(sql, qc_metrics)
     db.commit()
 
     return cur.lastrowid
 
 
-def insert_qc_meta(db, qc_meta):
+def insert_qc_features(db, new_qc_run):
+    """ Adds last runs QC features values to the table. """
+
+    qc_features = (
+        new_qc_run['acquisition_date'],
+        new_qc_run['quality'],
+        *new_qc_run['features_values']
+    )
+
+    sql = """ INSERT INTO qc_features("""
+    # not readable
+    sql += ",".join(new_qc_run["features_names"]) + """ ) VALUES( """  # features names
+    sql += ",".join(["?" for x in new_qc_run['features_values']]) + """) """  # question marks
+
+    cur = db.cursor()
+    cur.execute(sql, qc_features)
+    db.commit()
+
+    return cur.lastrowid
+
+
+def insert_qc_meta(db, qc_run):
     """ Adds last runs meta info to the table. """
+
+    qc_meta = (
+        qc_run['processing_date'],
+        qc_run['acquisition_date'],
+        qc_run['quality'],
+        qc_run['user_comment'],
+        qc_run['chemical_mix_id'],
+        qc_run['msfe_version'],
+        qc_run['scans_processed']['normal'][0],
+        qc_run['scans_processed']['normal'][1],
+        qc_run['scans_processed']['normal'][2],
+        qc_run['scans_processed']['chemical_noise'][0],
+        qc_run['scans_processed']['instrument_noise'][0]
+    )
 
     sql = ''' INSERT INTO qc_meta(processing_date,acquisition_date,quality,user_comment,
                                   chemical_mix_id,msfe_version,norm_scan_1,norm_scan_2,
@@ -58,7 +99,7 @@ def insert_qc_meta(db, qc_meta):
     return cur.lastrowid
 
 
-def create_qc_database(db_path='/Users/andreidm/ETH/projects/qc_metrics/res/qc_matrix.db'):
+def create_qc_database(new_qc_run):
 
     sql_create_qc_meta_table = """ CREATE TABLE IF NOT EXISTS qc_meta (
                                             processing_date text PRIMARY KEY,
@@ -74,7 +115,7 @@ def create_qc_database(db_path='/Users/andreidm/ETH/projects/qc_metrics/res/qc_m
                                             inst_scan_1 integer
                                         ); """
 
-    sql_create_qc_values_table = """ CREATE TABLE IF NOT EXISTS qc_values (
+    sql_create_qc_metrics_table = """ CREATE TABLE IF NOT EXISTS qc_metrics (
                                             acquisition_date text PRIMARY KEY,
                                             quality integer,
                                             resolution_200 integer,
@@ -95,6 +136,14 @@ def create_qc_database(db_path='/Users/andreidm/ETH/projects/qc_metrics/res/qc_m
                                             s2n real 
                                         ); """
 
+    # compose same sql query for qc features
+    sql_create_qc_features_table = """ CREATE TABLE IF NOT EXISTS qc_features (
+                                            acquisition_date text PRIMARY KEY,
+                                            quality integer, """
+
+    # not readable since there are thousands of features
+    sql_create_qc_features_table += " real,\n".join(new_qc_run["features_names"]) + " real\n ); """
+
     # create a database connection
     qc_database = create_connection(qc_database_path)
 
@@ -105,45 +154,25 @@ def create_qc_database(db_path='/Users/andreidm/ETH/projects/qc_metrics/res/qc_m
     if qc_database is not None:
         # create projects table
         create_table(qc_database, sql_create_qc_meta_table)
-        create_table(qc_database, sql_create_qc_values_table)
+        create_table(qc_database, sql_create_qc_metrics_table)
+        create_table(qc_database, sql_create_qc_features_table)
     else:
         print("Error! cannot create the database connection.")
 
 
-def create_and_fill_qc_database(qc_matrix, debug=False):
+def create_and_fill_qc_database(new_qc_run, debug=False):
     """ This method creates a new QC database out of a qc_matrix object. """
 
-    create_qc_database(qc_database_path)
+    create_qc_database(new_qc_run)
     qc_database = create_connection(qc_database_path)
 
-    for qc_run in qc_matrix['qc_runs']:
+    # inserting values into the new database
+    last_row_number_1 = insert_qc_meta(qc_database, new_qc_run)
+    last_row_number_2 = insert_qc_metrics(qc_database, new_qc_run)
+    last_row_number_3 = insert_qc_features(qc_database, new_qc_run)
 
-        run_meta = (
-            qc_run['processing_date'],
-            qc_run['acquisition_date'],
-            qc_run['quality'],
-            qc_run['user_comment'],
-            qc_run['chemical_mix_id'],
-            qc_run['msfe_version'],
-            qc_run['scans_processed']['normal'][0],
-            qc_run['scans_processed']['normal'][1],
-            qc_run['scans_processed']['normal'][2],
-            qc_run['scans_processed']['chemical_noise'][0],
-            qc_run['scans_processed']['instrument_noise'][0]
-        )
-
-        run_values = (
-            qc_run['acquisition_date'],
-            qc_run['quality'],
-            *qc_run['qc_values']
-        )
-
-        # inserting values into the new database
-        last_row_number_1 = insert_qc_meta(qc_database, run_meta)
-        last_row_number_2 = insert_qc_values(qc_database, run_values)
-
-        if debug:
-            print("inserted: meta:", last_row_number_1, 'values:', last_row_number_2)
+    if debug:
+        print("inserted: meta:", last_row_number_1, 'metrics:', last_row_number_2, 'features:', last_row_number_3)
 
 
 def insert_new_qc_run(qc_run, in_debug_mode=False):
@@ -151,32 +180,13 @@ def insert_new_qc_run(qc_run, in_debug_mode=False):
 
     qc_database = create_connection(qc_database_path)
 
-    run_meta = (
-        qc_run['processing_date'],
-        qc_run['acquisition_date'],
-        qc_run['quality'],
-        qc_run['user_comment'],
-        qc_run['chemical_mix_id'],
-        qc_run['msfe_version'],
-        qc_run['scans_processed']['normal'][0],
-        qc_run['scans_processed']['normal'][1],
-        qc_run['scans_processed']['normal'][2],
-        qc_run['scans_processed']['chemical_noise'][0],
-        qc_run['scans_processed']['instrument_noise'][0]
-    )
-
-    run_values = (
-        qc_run['acquisition_date'],
-        qc_run['quality'],
-        *qc_run['qc_values']
-    )
-
     # inserting values into the new database
-    last_row_number_1 = insert_qc_meta(qc_database, run_meta)
-    last_row_number_2 = insert_qc_values(qc_database, run_values)
+    last_row_number_1 = insert_qc_meta(qc_database, qc_run)
+    last_row_number_2 = insert_qc_metrics(qc_database, qc_run)
+    last_row_number_3 = insert_qc_features(qc_database, qc_run)
 
     if in_debug_mode:
-        print("inserted 1 row at position: meta:", last_row_number_1, 'values:', last_row_number_2)
+        print("inserted 1 row at position: meta:", last_row_number_1, 'metrics:', last_row_number_2, "features:", last_row_number_3)
 
 
 if __name__ == '__main__':

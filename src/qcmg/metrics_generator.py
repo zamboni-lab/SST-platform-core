@@ -338,25 +338,25 @@ def calculate_and_save_qc_matrix(path=None, output='sqlite'):
     print('Processing is done! Results saved to', qc_matrix_path)
 
 
-def calculate_and_save_qc_metrics_for_ms_run(ms_run):
+def calculate_metrics_and_update_qc_database(ms_run):
     """ This method computes QC metrics for a new ms_run and calls method to insert them into a database. """
 
-    qc_values = []
-    qc_names = []
+    metrics_values = []
+    metrics_names = []
 
     in_debug_mode = False
 
-    add_resolution_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
-    add_accuracy_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
-    add_dirt_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
-    add_noise_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
-    add_isotopic_abundance_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
-    add_transmission_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
-    add_fragmentation_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
-    add_baseline_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
-    add_signal_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
-    add_signal_to_background_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
-    add_signal_to_noise_metrics(qc_values, qc_names, ms_run, in_debug_mode=in_debug_mode)
+    add_resolution_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
+    add_accuracy_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
+    add_dirt_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
+    add_noise_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
+    add_isotopic_abundance_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
+    add_transmission_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
+    add_fragmentation_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
+    add_baseline_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
+    add_signal_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
+    add_signal_to_background_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
+    add_signal_to_noise_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
 
     new_qc_run = {
         'processing_date': ms_run['processing_date'],
@@ -364,8 +364,12 @@ def calculate_and_save_qc_metrics_for_ms_run(ms_run):
         'chemical_mix_id': ms_run['chemical_mix_id'],
         'msfe_version': ms_run['msfe_version'],
         'scans_processed': ms_run['scans_processed'],
-        'qc_values': qc_values,
-        'qc_names': qc_names,
+
+        'features_values': ms_run['features_values'],
+        'features_names': ms_run['features_names'],
+        'metrics_values': metrics_values,
+        'metrics_names': metrics_names,
+
         'user_comment': "",
         'quality': 1
     }
@@ -374,7 +378,7 @@ def calculate_and_save_qc_metrics_for_ms_run(ms_run):
 
     if not os.path.isfile(qc_database_path):
         # if there's yet no database
-        db_connector.create_and_fill_qc_database({'qc_runs': [new_qc_run]})
+        db_connector.create_and_fill_qc_database(new_qc_run)
         logger.print_qc_info('New QC database has been created (SQLite)')
     else:
         # if the database already exists

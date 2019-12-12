@@ -282,27 +282,7 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids, scans_
     }
 
     # entry point for qcm to process new_ms_run and insert into QC database
-    metrics_generator.calculate_and_save_qc_metrics_for_ms_run(new_ms_run)
-
-    if not os.path.isfile(feature_matrix_file_path):
-        # if the file does not exist yet, create empty one
-        f_matrix = {'ms_runs': []}
-        with open(feature_matrix_file_path, 'w') as new_file:
-            json.dump(f_matrix, new_file)
-    else:
-        pass
-
-    # TODO: substitute JSON with SQLite as well, to save time reading (eventually) large files
-    # read existing file
-    with open(feature_matrix_file_path) as general_file:
-        f_matrix = json.load(general_file)
-
-    # add new processed ms run
-    f_matrix['ms_runs'].append(new_ms_run)
-
-    # dump updated file to the same place
-    with open(feature_matrix_file_path, 'w') as updated_file:
-        json.dump(f_matrix, updated_file)
+    metrics_generator.calculate_metrics_and_update_qc_database(new_ms_run)
 
 
 if __name__ == "__main__":

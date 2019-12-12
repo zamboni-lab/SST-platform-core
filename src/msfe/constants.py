@@ -1,5 +1,5 @@
 
-msfe_version = '0.3.16'
+msfe_version = '0.3.17'
 chemical_mix_id = '20190522_4GHz'
 
 """ Mass-spec features extractor constants """
@@ -59,7 +59,7 @@ frame_intensity_percentiles = [25, 50, 75]
 # qc_matrix_file_path = "/mnt/nas2/fiaqc-out/qc_matrix.json"
 qc_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/qc_matrix.json"
 # qc_database_path = "/mnt/nas2/fiaqc-out/qc_database.db"
-qc_database_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/qc_database.db"
+qc_database_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/qc_database.sqlite"
 
 # features names
 resolution_200_features_names = ['absolute_mass_accuracy_Caffeine_i1_mean', 'widths_Caffeine_i1_1_mean']  # 193.0725512871
