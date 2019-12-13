@@ -51,7 +51,7 @@ def parse_expected_ions(file_path, scan_type):
             # get the list of mzs of ions fragments including mz of the main guy
             fragments_list = [EmpiricalFormula(fragment).getMonoWeight() for fragment in ion[1:]]
             # add ids of the ion fragments
-            ids.extend([ion[0] + "_f" + str(i+1) for i in range(len(fragments_list[1:]))])
+            ids.extend([ion[0].replace(" ", "_") + "_f" + str(i+1) for i in range(len(fragments_list[1:]))])
 
         else:
             fragments_list = []

@@ -1,5 +1,5 @@
 
-msfe_version = '0.3.17'
+msfe_version = '0.3.19'
 chemical_mix_id = '20190522_4GHz'
 
 """ Mass-spec features extractor constants """
@@ -68,12 +68,12 @@ resolution_700_features_names = ['absolute_mass_accuracy_Perfluorotetradecanoic_
 
 accuracy_features_names = ['absolute_mass_accuracy_Caffeine_i1_mean', 'absolute_mass_accuracy_Caffeine_i2_mean', 'absolute_mass_accuracy_Caffeine_i3_mean', 'absolute_mass_accuracy_Caffeine_f1_mean',
                            'absolute_mass_accuracy_Fluconazole_i1_mean', 'absolute_mass_accuracy_Fluconazole_i2_mean', 'absolute_mass_accuracy_Fluconazole_i3_mean', 'absolute_mass_accuracy_Fluconazole_f1_mean',
-                           'absolute_mass_accuracy_3-(Heptadecafluorooctyl)aniline_i1_mean', 'absolute_mass_accuracy_3-(Heptadecafluorooctyl)aniline_i2_mean', 'absolute_mass_accuracy_3-(Heptadecafluorooctyl)aniline_i3_mean',
+                           'absolute_mass_accuracy_3Heptadecafluorooctylaniline_i1_mean', 'absolute_mass_accuracy_3Heptadecafluorooctylaniline_i2_mean', 'absolute_mass_accuracy_3Heptadecafluorooctylaniline_i3_mean',
                            'absolute_mass_accuracy_Albendazole_i1_mean', 'absolute_mass_accuracy_Albendazole_i2_mean', 'absolute_mass_accuracy_Albendazole_i3_mean', 'absolute_mass_accuracy_Albendazole_f1_mean', 'absolute_mass_accuracy_Albendazole_f2_mean',
-                           'absolute_mass_accuracy_Triamcinolone_acetonide_i1_mean', 'absolute_mass_accuracy_Triamcinolone_acetonide_i2_mean', 'absolute_mass_accuracy_Triamcinolone_acetonide_i3_mean', 'absolute_mass_accuracy_Triamcinolone acetonide_f1_mean', 'absolute_mass_accuracy_Triamcinolone acetonide_f2_mean',
-                           'absolute_mass_accuracy_Perfluorodecanoic_acid_i1_mean', 'absolute_mass_accuracy_Perfluorodecanoic_acid_i2_mean', 'absolute_mass_accuracy_Perfluorodecanoic_acid_i3_mean', 'absolute_mass_accuracy_Perfluorodecanoic acid_f1_mean',
-                           'absolute_mass_accuracy_Tricosafluorododecanoic_acid_i1_mean', 'absolute_mass_accuracy_Tricosafluorododecanoic_acid_i2_mean', 'absolute_mass_accuracy_Tricosafluorododecanoic_acid_i3_mean', 'absolute_mass_accuracy_Tricosafluorododecanoic acid_f1_mean',
-                           'absolute_mass_accuracy_Perfluorotetradecanoic_acid_i1_mean', 'absolute_mass_accuracy_Perfluorotetradecanoic_acid_i2_mean', 'absolute_mass_accuracy_Perfluorotetradecanoic_acid_i3_mean', 'absolute_mass_accuracy_Perfluorotetradecanoic acid_f1_mean', 'absolute_mass_accuracy_Perfluorotetradecanoic acid_f2_mean',
+                           'absolute_mass_accuracy_Triamcinolone_acetonide_i1_mean', 'absolute_mass_accuracy_Triamcinolone_acetonide_i2_mean', 'absolute_mass_accuracy_Triamcinolone_acetonide_i3_mean', 'absolute_mass_accuracy_Triamcinolone_acetonide_f1_mean', 'absolute_mass_accuracy_Triamcinolone_acetonide_f2_mean',
+                           'absolute_mass_accuracy_Perfluorodecanoic_acid_i1_mean', 'absolute_mass_accuracy_Perfluorodecanoic_acid_i2_mean', 'absolute_mass_accuracy_Perfluorodecanoic_acid_i3_mean', 'absolute_mass_accuracy_Perfluorodecanoic_acid_f1_mean',
+                           'absolute_mass_accuracy_Tricosafluorododecanoic_acid_i1_mean', 'absolute_mass_accuracy_Tricosafluorododecanoic_acid_i2_mean', 'absolute_mass_accuracy_Tricosafluorododecanoic_acid_i3_mean', 'absolute_mass_accuracy_Tricosafluorododecanoic_acid_f1_mean',
+                           'absolute_mass_accuracy_Perfluorotetradecanoic_acid_i1_mean', 'absolute_mass_accuracy_Perfluorotetradecanoic_acid_i2_mean', 'absolute_mass_accuracy_Perfluorotetradecanoic_acid_i3_mean', 'absolute_mass_accuracy_Perfluorotetradecanoic_acid_f1_mean', 'absolute_mass_accuracy_Perfluorotetradecanoic_acid_f2_mean',
                            'absolute_mass_accuracy_Pentadecafluoroheptyl_i1_mean', 'absolute_mass_accuracy_Pentadecafluoroheptyl_i2_mean', 'absolute_mass_accuracy_Pentadecafluoroheptyl_i3_mean']
 
 dirt_features_names = ['intensity_sum_chem_50_150', 'intensity_sum_chem_150_250', 'intensity_sum_chem_250_350', 'intensity_sum_chem_350_450', 'intensity_sum_chem_450_550',
@@ -86,7 +86,7 @@ instrument_noise_percentiles_features_names = ['percentiles_bg_50_250_1', 'perce
 
 isotopic_presence_features_names = ['isotopes_ratios_diffs_Caffeine_i1_0_mean', 'isotopes_ratios_diffs_Caffeine_i1_1_mean', 'isotopes_ratios_diffs_Caffeine_i1_2_mean',
                                     'isotopes_ratios_diffs_Fluconazole_i1_0_mean', 'isotopes_ratios_diffs_Fluconazole_i1_1_mean', 'isotopes_ratios_diffs_Fluconazole_i1_2_mean',
-                                    'isotopes_ratios_diffs_3-(Heptadecafluorooctyl)aniline_i1_0_mean', 'isotopes_ratios_diffs_3-(Heptadecafluorooctyl)aniline_i1_1_mean', 'isotopes_ratios_diffs_3-(Heptadecafluorooctyl)aniline_i1_2_mean',
+                                    'isotopes_ratios_diffs_3Heptadecafluorooctylaniline_i1_0_mean', 'isotopes_ratios_diffs_3Heptadecafluorooctylaniline_i1_1_mean', 'isotopes_ratios_diffs_3Heptadecafluorooctylaniline_i1_2_mean',
                                     'isotopes_ratios_diffs_Albendazole_i1_0_mean', 'isotopes_ratios_diffs_Albendazole_i1_1_mean', 'isotopes_ratios_diffs_Albendazole_i1_2_mean',
                                     'isotopes_ratios_diffs_Triamcinolone_acetonide_i1_0_mean', 'isotopes_ratios_diffs_Triamcinolone_acetonide_i1_1_mean', 'isotopes_ratios_diffs_Triamcinolone_acetonide_i1_2_mean',
                                     'isotopes_ratios_diffs_Perfluorodecanoic_acid_i1_0_mean', 'isotopes_ratios_diffs_Perfluorodecanoic_acid_i1_1_mean', 'isotopes_ratios_diffs_Perfluorodecanoic_acid_i1_2_mean',
@@ -105,7 +105,7 @@ baseline_650_750_features_names = ['percentiles_chem_650_750_0', 'percentiles_ch
 signal_features_names = [feature_name.replace('absolute_mass_accuracy', 'intensity') for feature_name in accuracy_features_names]
 
 
-s2b_features_names = ['intensity_3-(Heptadecafluorooctyl)aniline_i1_mean', 'percentiles_norm_500_550_0_mean']
+s2b_features_names = ['intensity_3Heptadecafluorooctylaniline_i1_mean', 'percentiles_norm_500_550_0_mean']
 
-s2n_features_names = ['intensity_3-(Heptadecafluorooctyl)aniline_i1_mean', 'percentiles_norm_500_550_0_mean', 'percentiles_norm_500_550_1_mean']
+s2n_features_names = ['intensity_3Heptadecafluorooctylaniline_i1_mean', 'percentiles_norm_500_550_0_mean', 'percentiles_norm_500_550_1_mean']
 

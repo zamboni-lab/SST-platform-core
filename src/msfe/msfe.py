@@ -52,7 +52,7 @@ def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, c
         'left_tail_auc_'+peak_id: float(left_tail_auc),
         'right_tail_auc_'+peak_id: float(right_tail_auc),
         'symmetry_'+peak_id: float(symmetry),
-        'goodness-of-fit_'+peak_id: [float(metric) for metric in fit_info['goodness-of-fit']]
+        'goodness_of_fit_'+peak_id: [float(metric) for metric in fit_info['goodness_of_fit']]
     }
 
     return peak_features
@@ -163,7 +163,7 @@ def get_peak_fit(spectrum, actual_peak_info):
 
     fit_info = {
         'model': 'gaussian',
-        'goodness-of-fit': [g_out.redchi, g_out.aic, g_out.bic],  # goodness-of-fit is reduced chi-squared
+        'goodness_of_fit': [g_out.redchi, g_out.aic, g_out.bic],  # goodness_of_fit is reduced chi-squared
         'fit_theory_absolute_ma': fit_theory_mass_diff,  # fitted absolute mass accuracy
         'fit_theory_ppm': fit_theory_ppm,  # ppm between fitted peak mz and expected (theoretical) mz
         'resolution': d,
@@ -488,7 +488,7 @@ def get_null_peak_features(peak_id):
         'left_tail_auc_'+peak_id: -1,
         'right_tail_auc_'+peak_id: -1,
         'symmetry_'+peak_id: -1,
-        'goodness-of-fit_'+peak_id: [-1, -1, -1]
+        'goodness_of_fit_'+peak_id: [-1, -1, -1]
     }
 
     return missing_peak_features
@@ -814,7 +814,6 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
                        'instrument_noise': instrument_noise_features_scans_indexes}
 
     parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids, scans_processed)
-    logger.print_qc_info("Feature matrix has been updated\n")
 
     print(time.time() - start_time, " seconds elapsed for processing in total\n", sep='')
 

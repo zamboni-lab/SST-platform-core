@@ -21,7 +21,7 @@ def create_table(db, create_table_sql):
         c = db.cursor()
         c.execute(create_table_sql)
     except Exception as e:
-        print(e)
+        print("Error creating table:", e)
 
 
 def insert_qc_metrics(db, qc_run):
@@ -49,21 +49,34 @@ def insert_qc_metrics(db, qc_run):
 
 
 def insert_qc_features(db, new_qc_run):
-    """ Adds last runs QC features values to the table. """
+    """ Adds last runs QC features values to two tables: features are splitted in two parts,
+        since SQLite only has 2000 cols at max for a single table. """
 
-    qc_features = (
+    qc_features_1 = (
         new_qc_run['acquisition_date'],
         new_qc_run['quality'],
-        *new_qc_run['features_values']
+        *new_qc_run['features_values'][:1998]
     )
 
-    sql = """ INSERT INTO qc_features("""
-    # not readable
-    sql += ",".join(new_qc_run["features_names"]) + """ ) VALUES( """  # features names
-    sql += ",".join(["?" for x in new_qc_run['features_values']]) + """) """  # question marks
+    qc_features_2 = (
+        new_qc_run['acquisition_date'],
+        new_qc_run['quality'],
+        *new_qc_run['features_values'][1998:]
+    )
+
+    # first portion
+    sql_1 = """ INSERT INTO qc_features_1(acquisition_date,quality,"""
+    sql_1 += ",".join(new_qc_run["features_names"][:1998]) + """ ) VALUES("""  # features names
+    sql_1 += ",".join(["?" for x in range(2000)]) + """) """  # 2000 question marks
+
+    # second portion
+    sql_2 = """ INSERT INTO qc_features_2(acquisition_date,quality,"""
+    sql_2 += ",".join(new_qc_run["features_names"][1998:]) + """ ) VALUES("""  # features names
+    sql_2 += ",".join(["?" for x in range(len(new_qc_run['features_values']) - 1998 + 2)]) + """) """  # question marks for the rest of values
 
     cur = db.cursor()
-    cur.execute(sql, qc_features)
+    cur.execute(sql_1, qc_features_1)
+    cur.execute(sql_2, qc_features_2)
     db.commit()
 
     return cur.lastrowid
@@ -136,13 +149,21 @@ def create_qc_database(new_qc_run):
                                             s2n real 
                                         ); """
 
-    # compose same sql query for qc features
-    sql_create_qc_features_table = """ CREATE TABLE IF NOT EXISTS qc_features (
+    # compose same sql query for qc features (first part) - splitting in parts because SQLite has at max 2000 cols
+    sql_create_qc_features_1_table = """ CREATE TABLE IF NOT EXISTS qc_features_1 (
                                             acquisition_date text PRIMARY KEY,
-                                            quality integer, """
+                                            quality integer, 
+                                            """
+
+    # compose same sql query for qc features (second part)
+    sql_create_qc_features_2_table = """ CREATE TABLE IF NOT EXISTS qc_features_2 (
+                                            acquisition_date text PRIMARY KEY,
+                                            quality integer, 
+                                            """
 
     # not readable since there are thousands of features
-    sql_create_qc_features_table += " real,\n".join(new_qc_run["features_names"]) + " real\n ); """
+    sql_create_qc_features_1_table += " real,\n".join(new_qc_run["features_names"][:1998]) + " real\n ); """
+    sql_create_qc_features_2_table += " real,\n".join(new_qc_run["features_names"][1998:]) + " real\n ); """
 
     # create a database connection
     qc_database = create_connection(qc_database_path)
@@ -155,12 +176,13 @@ def create_qc_database(new_qc_run):
         # create projects table
         create_table(qc_database, sql_create_qc_meta_table)
         create_table(qc_database, sql_create_qc_metrics_table)
-        create_table(qc_database, sql_create_qc_features_table)
+        create_table(qc_database, sql_create_qc_features_1_table)
+        create_table(qc_database, sql_create_qc_features_2_table)
     else:
-        print("Error! cannot create the database connection.")
+        print("Error! Cannot create database connection.")
 
 
-def create_and_fill_qc_database(new_qc_run, debug=False):
+def create_and_fill_qc_database(new_qc_run, in_debug_mode=False):
     """ This method creates a new QC database out of a qc_matrix object. """
 
     create_qc_database(new_qc_run)
@@ -171,7 +193,7 @@ def create_and_fill_qc_database(new_qc_run, debug=False):
     last_row_number_2 = insert_qc_metrics(qc_database, new_qc_run)
     last_row_number_3 = insert_qc_features(qc_database, new_qc_run)
 
-    if debug:
+    if in_debug_mode:
         print("inserted: meta:", last_row_number_1, 'metrics:', last_row_number_2, 'features:', last_row_number_3)
 
 

@@ -330,7 +330,7 @@ def calculate_and_save_qc_matrix(path=None, output='sqlite'):
             json.dump(qc_matrix, output)
 
     elif output == 'sqlite':
-        db_connector.create_and_fill_qc_database(qc_matrix, debug=True)
+        db_connector.create_and_fill_qc_database(qc_matrix, in_debug_mode=True)
 
     else:
         pass
@@ -378,11 +378,11 @@ def calculate_metrics_and_update_qc_database(ms_run):
 
     if not os.path.isfile(qc_database_path):
         # if there's yet no database
-        db_connector.create_and_fill_qc_database(new_qc_run)
+        db_connector.create_and_fill_qc_database(new_qc_run, in_debug_mode=in_debug_mode)
         logger.print_qc_info('New QC database has been created (SQLite)')
     else:
         # if the database already exists
-        db_connector.insert_new_qc_run(new_qc_run)
+        db_connector.insert_new_qc_run(new_qc_run, in_debug_mode=in_debug_mode)
         logger.print_qc_info('QC database has been updated')
 
 

@@ -99,12 +99,12 @@ def run_msfe_in_test_mode():
     # file from nas2 causing error fitting peaks
     # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/2019-09-05T212603/raw.mzXML'
 
-    chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/2019-06-17T175027/raw.mzXML'
+    chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/2019-11-16T123924/raw.mzXML'
 
     spectra = list(mzxml.read(chemical_standard))
     print(time.time() - start_time, " seconds elapsed for reading", sep="")
 
-    ms_run_ids = {'acquisition_date': "", 'original_filename': "2019-06-17T175027"}
+    ms_run_ids = {'acquisition_date': "2", 'original_filename': "2"}
 
     msfe.extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
 
