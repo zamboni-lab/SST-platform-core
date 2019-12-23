@@ -1,6 +1,8 @@
+import datetime
 import time, os, json
 from pyteomics import mzxml
 from src.msfe.constants import tunings_matrix_file_path
+from src.msfe.constants import instrument_noise_features_scans_indexes
 from src.msfe import msfe
 
 
@@ -26,7 +28,7 @@ def process_all_tunes_and_files_at_once():
         for dir in dirs:
 
             # if filename != '.DS_Store':
-            if dir != '.DS_Store':
+            if dir != '.DS_Store' and dir > "2019-11-08T124000":
                 start_time = time.time()
                 print(dir, 'file is being processed')
 
@@ -42,10 +44,6 @@ def process_all_tunes_and_files_at_once():
                 print(dirs.index(dir) + 1, '/', len(dirs), 'is processed within', time.time() - start_time, 's\n')
 
     print('All done. Well done!')
-
-    # single file run
-    # ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': 'filename'}
-    # extract_features_from_ms_run([], ms_run_ids, in_test_mode=True)
 
 
 def check_instrument_noise_outliers():
@@ -99,12 +97,15 @@ def run_msfe_in_test_mode():
     # file from nas2 causing error fitting peaks
     # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/2019-09-05T212603/raw.mzXML'
 
-    chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/2019-11-16T123924/raw.mzXML'
+    # file from nas2 causing index out of range bug (less number of scans than supposed to be)
+    chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/2019-11-08T124046/raw.mzXML'
+
+    chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/2019-11-08T131837/raw.mzXML'
 
     spectra = list(mzxml.read(chemical_standard))
     print(time.time() - start_time, " seconds elapsed for reading", sep="")
 
-    ms_run_ids = {'acquisition_date': "2", 'original_filename': "2"}
+    ms_run_ids = {'date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': '2019-11-08T131837'}
 
     msfe.extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
 
@@ -112,7 +113,7 @@ def run_msfe_in_test_mode():
 if __name__ == '__main__':
 
     run_msfe_in_test_mode()
-    pass
+    # process_all_tunes_and_files_at_once()
 
 
 

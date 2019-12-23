@@ -379,11 +379,11 @@ def calculate_metrics_and_update_qc_database(ms_run):
     if not os.path.isfile(qc_database_path):
         # if there's yet no database
         db_connector.create_and_fill_qc_database(new_qc_run, in_debug_mode=in_debug_mode)
-        logger.print_qc_info('New QC database has been created (SQLite)')
+        logger.print_qc_info('New QC database has been created (SQLite)\n')
     else:
         # if the database already exists
         db_connector.insert_new_qc_run(new_qc_run, in_debug_mode=in_debug_mode)
-        logger.print_qc_info('QC database has been updated')
+        logger.print_qc_info('QC database has been updated\n')
 
 
 if __name__ == '__main__':

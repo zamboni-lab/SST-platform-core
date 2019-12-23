@@ -741,79 +741,129 @@ def aggregate_features(list_of_scans_features, features_names):
         return aggregated_main_features, aggregated_main_features_names
 
 
+def validate_input_data(spectra, normal_scans_indexes, in_test_mode=False):
+    """ This methods checks that input spectra make sense to be processed:
+        1) Number of scans is >= 175.
+        2) TIC of the scans: instrument noise < chemical noise < normal.
+        3) To be added...
+        Validation message is returned to be printed in the log file. """
+
+    validation_message = ""
+
+    # check condition 1)
+    if len(spectra) <= instrument_noise_features_scans_indexes[0]:
+        validation_message += "Wrong number of scans in a run: " + str(len(spectra))
+        return validation_message
+
+    # get TIC values for all the scans
+    if in_test_mode:
+        # for mzxml data structure
+        tic_field_name = "totIonCurrent"
+    else:
+        # for custom data structure built on mz5
+        tic_field_name = "tic"
+
+    instrument_tic = spectra[instrument_noise_features_scans_indexes[0]][tic_field_name]
+    chemical_tic = spectra[chemical_noise_features_scans_indexes[0]][tic_field_name]
+    normal_tic_1 = spectra[normal_scans_indexes[0]][tic_field_name]
+    normal_tic_2 = spectra[normal_scans_indexes[1]][tic_field_name]
+    normal_tic_3 = spectra[normal_scans_indexes[2]][tic_field_name]
+
+    # check condition 2)
+    if chemical_tic >= normal_tic_1 or chemical_tic >= normal_tic_2 or chemical_tic >= normal_tic_3:
+        validation_message += "Wrong TIC: chemical noise is higher than normal\n"
+    elif chemical_tic < instrument_tic:
+        validation_message += "Wrong TIC: instrument noise is higher than chemical noise\n"
+    elif instrument_tic >= normal_tic_1 or instrument_tic >= normal_tic_2 or instrument_tic >= normal_tic_3:
+        validation_message += "Wrong TIC: instrument noise is higher than normal\n"
+    else:
+        pass
+
+    return validation_message
+
+
 def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
     """ This is main method of the module. It extracts all the features from a single ms run (several scans)
         and returns single row of feature matrix (list) together with feature names (list)."""
 
     start_time = time.time()
-    logger.print_qc_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": feature extraction started")
 
     feature_matrix_row = []
     feature_matrix_row_names = []
 
     main_features_scans_indexes = ms_operator.get_best_tic_scans_indexes(spectra, in_test_mode=in_test_mode)
 
-    # get main features for every scan
-    main_features = []
-    main_features_names = []
-    for scan_index in main_features_scans_indexes:
+    logger.print_qc_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": input validation started for file " + ms_run_ids['original_filename'])
+    validation_result = validate_input_data(spectra, main_features_scans_indexes, in_test_mode=in_test_mode)
 
-        if len(main_features_names) > 0:
-            scan_features, _ = extract_main_features_from_scan(spectra[scan_index], scan_type='normal', get_names=False)
-        else:
-            scan_features, main_features_names = extract_main_features_from_scan(spectra[scan_index],scan_type='normal')
+    if validation_result != "":
+        logger.print_qc_info(validation_result)
+        logger.print_qc_info("File " + ms_run_ids['original_filename'] + " omitted\n")
 
-        main_features.append(scan_features)
+    else:
+        logger.print_qc_info("Valid. Feature extraction started...")
 
-    # aggregate main features and add to the feature matrix
-    aggregated_main_features, aggregated_main_features_names = aggregate_features(main_features, main_features_names)
+        # get main features for every scan
+        main_features = []
+        main_features_names = []
+        for scan_index in main_features_scans_indexes:
 
-    # get chemical noise features for every scan
-    chemical_noise_features = []
-    chemical_noise_features_names = []
-    for scan_index in chemical_noise_features_scans_indexes:
+            if len(main_features_names) > 0:
+                scan_features, _ = extract_main_features_from_scan(spectra[scan_index], scan_type='normal', get_names=False)
+            else:
+                scan_features, main_features_names = extract_main_features_from_scan(spectra[scan_index],scan_type='normal')
 
-        if len(chemical_noise_features_names) > 0:
-            scan_features, _ = extract_main_features_from_scan(spectra[scan_index], scan_type='chemical_noise', get_names=False)
-        else:
-            scan_features, chemical_noise_features_names = extract_main_features_from_scan(spectra[scan_index], scan_type='chemical_noise')
+            main_features.append(scan_features)
 
-        chemical_noise_features.append(scan_features)
+        # aggregate main features and add to the feature matrix
+        aggregated_main_features, aggregated_main_features_names = aggregate_features(main_features, main_features_names)
 
-    # aggregate chemical noise features and add to the feature matrix
-    aggregated_chemical_noise_features, aggregated_chemical_noise_features_names = aggregate_features(chemical_noise_features, chemical_noise_features_names)
+        # get chemical noise features for every scan
+        chemical_noise_features = []
+        chemical_noise_features_names = []
+        for scan_index in chemical_noise_features_scans_indexes:
 
-    # get features related to instrument noise for every scan
-    instrument_noise_features = []
-    instrument_noise_features_names = []
-    for scan_index in instrument_noise_features_scans_indexes:
-        if len(instrument_noise_features_names) > 0:
-            scan_features, _ = extract_background_features_from_scan(spectra[scan_index], get_names=False)
-        else:
-            scan_features, instrument_noise_features_names = extract_background_features_from_scan(spectra[scan_index])
+            if len(chemical_noise_features_names) > 0:
+                scan_features, _ = extract_main_features_from_scan(spectra[scan_index], scan_type='chemical_noise', get_names=False)
+            else:
+                scan_features, chemical_noise_features_names = extract_main_features_from_scan(spectra[scan_index], scan_type='chemical_noise')
 
-        instrument_noise_features.append(scan_features)
+            chemical_noise_features.append(scan_features)
 
-    # aggregate instrument noise features and add to the feature matrix
-    aggregated_instrument_noise_features, aggregated_instrument_noise_features_names = aggregate_features(instrument_noise_features, instrument_noise_features_names)
+        # aggregate chemical noise features and add to the feature matrix
+        aggregated_chemical_noise_features, aggregated_chemical_noise_features_names = aggregate_features(chemical_noise_features, chemical_noise_features_names)
 
-    # compose feature matrix row (values)
-    feature_matrix_row.extend(aggregated_main_features)
-    feature_matrix_row.extend(aggregated_chemical_noise_features)
-    feature_matrix_row.extend(aggregated_instrument_noise_features)
+        # get features related to instrument noise for every scan
+        instrument_noise_features = []
+        instrument_noise_features_names = []
+        for scan_index in instrument_noise_features_scans_indexes:
+            if len(instrument_noise_features_names) > 0:
+                scan_features, _ = extract_background_features_from_scan(spectra[scan_index], get_names=False)
+            else:
+                scan_features, instrument_noise_features_names = extract_background_features_from_scan(spectra[scan_index])
 
-    # compose feature matrix row (names)
-    feature_matrix_row_names.extend(aggregated_main_features_names)
-    feature_matrix_row_names.extend(aggregated_chemical_noise_features_names)
-    feature_matrix_row_names.extend(aggregated_instrument_noise_features_names)
+            instrument_noise_features.append(scan_features)
 
-    logger.print_qc_info("Feature extraction finished, " + str(time.time() - start_time) + " seconds elapsed")
+        # aggregate instrument noise features and add to the feature matrix
+        aggregated_instrument_noise_features, aggregated_instrument_noise_features_names = aggregate_features(instrument_noise_features, instrument_noise_features_names)
 
-    scans_processed = {'normal': main_features_scans_indexes,
-                       'chemical_noise': chemical_noise_features_scans_indexes,
-                       'instrument_noise': instrument_noise_features_scans_indexes}
+        # compose feature matrix row (values)
+        feature_matrix_row.extend(aggregated_main_features)
+        feature_matrix_row.extend(aggregated_chemical_noise_features)
+        feature_matrix_row.extend(aggregated_instrument_noise_features)
 
-    parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids, scans_processed)
+        # compose feature matrix row (names)
+        feature_matrix_row_names.extend(aggregated_main_features_names)
+        feature_matrix_row_names.extend(aggregated_chemical_noise_features_names)
+        feature_matrix_row_names.extend(aggregated_instrument_noise_features_names)
+
+        logger.print_qc_info("Feature extraction finished, " + str(time.time() - start_time) + " seconds elapsed")
+
+        scans_processed = {'normal': main_features_scans_indexes,
+                           'chemical_noise': chemical_noise_features_scans_indexes,
+                           'instrument_noise': instrument_noise_features_scans_indexes}
+
+        parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids, scans_processed)
 
     print(time.time() - start_time, " seconds elapsed for processing in total\n", sep='')
 
