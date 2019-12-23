@@ -1,7 +1,6 @@
 
 import json, os, numpy
 
-from src.qcmg import db_connector
 from src.msfe.constants import feature_matrix_file_path as f_matrix_path
 from src.msfe.constants import qc_matrix_file_path as qc_matrix_path
 from src.msfe.constants import resolution_200_features_names, resolution_700_features_names
@@ -11,7 +10,7 @@ from src.msfe.constants import transmission_features_names, fragmentation_featur
 from src.msfe.constants import baseline_150_250_features_names, baseline_650_750_features_names
 from src.msfe.constants import s2b_features_names, s2n_features_names
 from src.msfe.constants import qc_database_path
-from src.msfe import logger
+from src.msfe import logger, db_connector
 from src.qcmg import qcm_validator
 
 

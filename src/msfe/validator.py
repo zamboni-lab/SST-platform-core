@@ -28,7 +28,7 @@ def process_all_tunes_and_files_at_once():
         for dir in dirs:
 
             # if filename != '.DS_Store':
-            if dir != '.DS_Store' and dir > "2019-11-08T124000":
+            if dir != '.DS_Store':  # and dir > "2019-11-12T102201":
                 start_time = time.time()
                 print(dir, 'file is being processed')
 
@@ -112,8 +112,8 @@ def run_msfe_in_test_mode():
 
 if __name__ == '__main__':
 
-    run_msfe_in_test_mode()
-    # process_all_tunes_and_files_at_once()
+    # run_msfe_in_test_mode()
+    process_all_tunes_and_files_at_once()
 
 
 

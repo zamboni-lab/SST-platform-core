@@ -133,7 +133,7 @@ def parse_expected_ions_old_version(file_path):
 
 
 def parse_instrument_settings_from_multiple_ms_runs(list_of_paths):
-    """ This method reads instrument settings from previously generated files (paths provided),
+    """ Not used currently. This method reads instrument settings from previously generated files (paths provided),
         and adds information to the general ms_settings_matrix, which is stored as another json. """
 
     if not os.path.isfile(tunings_matrix_file_path):
@@ -148,9 +148,9 @@ def parse_instrument_settings_from_multiple_ms_runs(list_of_paths):
         parse_ms_run_instrument_settings(path)
 
 
-def parse_ms_run_instrument_settings(file_path, empty=False):
-    """ This method reads instrument settings from newly generated file
-        and adds information to the general tunings_matrix, which is stored as another json. """
+def parse_ms_run_instrument_settings(file_path, tune_file_id, empty=False):
+    """ This method is used to locally read instrument settings from tune files
+        and add information to the general tunings_matrix, which is stored as another json. """
 
     # compose data structure to collect data
     meta = {'keys': [], 'values': []}
@@ -180,7 +180,7 @@ def parse_ms_run_instrument_settings(file_path, empty=False):
                 meta["keys"].append(key)
                 meta["values"].append(new_data[key])
 
-        logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes collected")
+        logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes collected for file " + tune_file_id)
     else:
         logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": tunes are missing")
 
@@ -209,9 +209,9 @@ def parse_ms_run_instrument_settings(file_path, empty=False):
     logger.print_tune_info("MS settings matrix updated\n")
 
 
-def parse_and_save_tunings(tunings):
-    """ This method reads instrument settings from newly generated file
-        and adds information to the general tunings_matrix, which is stored as another json. """
+def parse_and_save_tunings(tunings, tune_filename):
+    """ This method is called from msqc (joint project) to read instrument settings from newly generated file
+        and add information to the general tunings_matrix, which is stored as another json. """
 
     # compose data structure to collect data
     meta = {'keys': [], 'values': []}
@@ -219,7 +219,7 @@ def parse_and_save_tunings(tunings):
     cals = {'keys': [], 'values': []}
 
     if tunings == {}:
-        logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes are missing")
+        logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes are missing for file " + tune_filename)
     else:
         # read newly generated ms settings file
         for key in tunings:
@@ -239,7 +239,7 @@ def parse_and_save_tunings(tunings):
                 meta["keys"].append(key)
                 meta["values"].append(tunings[key])
 
-        logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes collected")
+        logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes collected for file " + tune_filename)
 
     # now check for the common file and update if it exists
     if not os.path.isfile(tunings_matrix_file_path):
@@ -304,9 +304,9 @@ if __name__ == "__main__":
             full_path = path + dir + filename
             if not os.path.isfile(full_path):
                 # create empty data structure
-                parse_ms_run_instrument_settings(full_path, empty=True)
+                parse_ms_run_instrument_settings(full_path, dir, empty=True)
             else:
-                parse_ms_run_instrument_settings(full_path)
+                parse_ms_run_instrument_settings(full_path, dir)
 
     print("All settings are pulled out.")
 

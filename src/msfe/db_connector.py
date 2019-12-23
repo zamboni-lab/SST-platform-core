@@ -24,6 +24,15 @@ def create_table(db, create_table_sql):
         print("Error creating table:", e)
 
 
+def fetch_table(conn, table_name):
+    """ Gets data from the table_name given connection. """
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM " + table_name)
+    colnames = [description[0] for description in cur.description]
+
+    return cur.fetchall(), colnames
+
+
 def insert_qc_metrics(db, qc_run):
     """ Adds last runs QC  metrics values to the table. """
 
@@ -115,8 +124,8 @@ def insert_qc_meta(db, qc_run):
 def create_qc_database(new_qc_run):
 
     sql_create_qc_meta_table = """ CREATE TABLE IF NOT EXISTS qc_meta (
-                                            processing_date text PRIMARY KEY,
-                                            acquisition_date text,
+                                            processing_date text,
+                                            acquisition_date text PRIMARY KEY,
                                             quality integer,
                                             user_comment text,
                                             chemical_mix_id integer,

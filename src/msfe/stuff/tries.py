@@ -1,15 +1,44 @@
-
-
-from src.qcmg import db_connector
-
-
 # path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/test_database.db"
 # db_connector.create_qc_database(path)
 
-a = [1,2,3,4]
+import sqlite3
 
-assert len(a) >= 3
-assert a[0] == 1
-assert a[2] == 12
+def create_connection(db_file):
+    """ create a database connection to the SQLite database
+        specified by the db_file
+    :param db_file: database file
+    :return: Connection object or None
+    """
+    conn = None
+    try:
+        conn = sqlite3.connect(db_file)
+    except Exception as e:
+        print(str(e))
 
-print("hello")
+    return conn
+
+
+def select_all_tasks(conn, table_name):
+    """
+    Query all rows in the tasks table
+    :param conn: the Connection object
+    :return:
+    """
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM " + table_name)
+
+    colnames = [description[0] for description in cur.description]
+
+    return cur.fetchall(), colnames
+
+
+if __name__ == "__main__":
+
+    path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/qc_database.sqlite"
+
+    conn = create_connection(path)
+    data, colnames = select_all_tasks(conn, "qc_meta")
+
+    print()
+
+

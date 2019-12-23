@@ -1,6 +1,6 @@
 """ MS feature extractor """
 
-import time, numpy, datetime
+import time, numpy, datetime, os
 from scipy import signal
 from src.msfe import ms_operator, parser, logger
 from src.msfe.constants import peak_region_factor as prf
@@ -17,6 +17,8 @@ from src.msfe.constants import chemical_noise_features_scans_indexes, instrument
 from src.msfe.constants import expected_peaks_file_path
 from src.msfe.constants import minimal_background_peak_intensity as min_bg_peak_intensity
 from lmfit.models import GaussianModel
+from src.msfe import db_connector
+from src.msfe.constants import qc_database_path
 
 
 def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, centroids_indexes, peak_id):
@@ -741,14 +743,31 @@ def aggregate_features(list_of_scans_features, features_names):
         return aggregated_main_features, aggregated_main_features_names
 
 
-def validate_input_data(spectra, normal_scans_indexes, in_test_mode=False):
+def validate_input_data(spectra, normal_scans_indexes, ms_run_ids, in_test_mode=False):
     """ This methods checks that input spectra make sense to be processed:
         1) Number of scans is >= 175.
         2) TIC of the scans: instrument noise < chemical noise < normal.
-        3) To be added...
+        3) Run id (acquisition date) is not yet in the existing database.
+        4) To be added...
         Validation message is returned to be printed in the log file. """
 
     validation_message = ""
+
+    # if the database already exists, check condition 3)
+    if os.path.isfile(qc_database_path):
+
+        acquisition_date = ms_run_ids['acquisition_date']
+        # fetch database to look for entry with the same run id
+        conn = db_connector.create_connection(qc_database_path)
+        database, _ = db_connector.fetch_table(conn, "qc_meta")
+
+        # look for the same acquisiton_date in the database
+        for run in database:
+            if run[1] == acquisition_date:
+                validation_message += "File with acquisition date" + acquisition_date + " is already in the database"
+                return validation_message
+    else:
+        pass
 
     # check condition 1)
     if len(spectra) <= instrument_noise_features_scans_indexes[0]:
@@ -771,11 +790,11 @@ def validate_input_data(spectra, normal_scans_indexes, in_test_mode=False):
 
     # check condition 2)
     if chemical_tic >= normal_tic_1 or chemical_tic >= normal_tic_2 or chemical_tic >= normal_tic_3:
-        validation_message += "Wrong TIC: chemical noise is higher than normal\n"
+        validation_message += "Wrong TIC: chemical noise is higher than normal"
     elif chemical_tic < instrument_tic:
-        validation_message += "Wrong TIC: instrument noise is higher than chemical noise\n"
+        validation_message += "Wrong TIC: instrument noise is higher than chemical noise"
     elif instrument_tic >= normal_tic_1 or instrument_tic >= normal_tic_2 or instrument_tic >= normal_tic_3:
-        validation_message += "Wrong TIC: instrument noise is higher than normal\n"
+        validation_message += "Wrong TIC: instrument noise is higher than normal"
     else:
         pass
 
@@ -794,7 +813,7 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
     main_features_scans_indexes = ms_operator.get_best_tic_scans_indexes(spectra, in_test_mode=in_test_mode)
 
     logger.print_qc_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": input validation started for file " + ms_run_ids['original_filename'])
-    validation_result = validate_input_data(spectra, main_features_scans_indexes, in_test_mode=in_test_mode)
+    validation_result = validate_input_data(spectra, main_features_scans_indexes, ms_run_ids, in_test_mode=in_test_mode)
 
     if validation_result != "":
         logger.print_qc_info(validation_result)
@@ -803,67 +822,72 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
     else:
         logger.print_qc_info("Valid. Feature extraction started...")
 
-        # get main features for every scan
-        main_features = []
-        main_features_names = []
-        for scan_index in main_features_scans_indexes:
+        try:
+            # get main features for every scan
+            main_features = []
+            main_features_names = []
+            for scan_index in main_features_scans_indexes:
 
-            if len(main_features_names) > 0:
-                scan_features, _ = extract_main_features_from_scan(spectra[scan_index], scan_type='normal', get_names=False)
-            else:
-                scan_features, main_features_names = extract_main_features_from_scan(spectra[scan_index],scan_type='normal')
+                if len(main_features_names) > 0:
+                    scan_features, _ = extract_main_features_from_scan(spectra[scan_index], scan_type='normal', get_names=False)
+                else:
+                    scan_features, main_features_names = extract_main_features_from_scan(spectra[scan_index],scan_type='normal')
 
-            main_features.append(scan_features)
+                main_features.append(scan_features)
 
-        # aggregate main features and add to the feature matrix
-        aggregated_main_features, aggregated_main_features_names = aggregate_features(main_features, main_features_names)
+            # aggregate main features and add to the feature matrix
+            aggregated_main_features, aggregated_main_features_names = aggregate_features(main_features, main_features_names)
 
-        # get chemical noise features for every scan
-        chemical_noise_features = []
-        chemical_noise_features_names = []
-        for scan_index in chemical_noise_features_scans_indexes:
+            # get chemical noise features for every scan
+            chemical_noise_features = []
+            chemical_noise_features_names = []
+            for scan_index in chemical_noise_features_scans_indexes:
 
-            if len(chemical_noise_features_names) > 0:
-                scan_features, _ = extract_main_features_from_scan(spectra[scan_index], scan_type='chemical_noise', get_names=False)
-            else:
-                scan_features, chemical_noise_features_names = extract_main_features_from_scan(spectra[scan_index], scan_type='chemical_noise')
+                if len(chemical_noise_features_names) > 0:
+                    scan_features, _ = extract_main_features_from_scan(spectra[scan_index], scan_type='chemical_noise', get_names=False)
+                else:
+                    scan_features, chemical_noise_features_names = extract_main_features_from_scan(spectra[scan_index], scan_type='chemical_noise')
 
-            chemical_noise_features.append(scan_features)
+                chemical_noise_features.append(scan_features)
 
-        # aggregate chemical noise features and add to the feature matrix
-        aggregated_chemical_noise_features, aggregated_chemical_noise_features_names = aggregate_features(chemical_noise_features, chemical_noise_features_names)
+            # aggregate chemical noise features and add to the feature matrix
+            aggregated_chemical_noise_features, aggregated_chemical_noise_features_names = aggregate_features(chemical_noise_features, chemical_noise_features_names)
 
-        # get features related to instrument noise for every scan
-        instrument_noise_features = []
-        instrument_noise_features_names = []
-        for scan_index in instrument_noise_features_scans_indexes:
-            if len(instrument_noise_features_names) > 0:
-                scan_features, _ = extract_background_features_from_scan(spectra[scan_index], get_names=False)
-            else:
-                scan_features, instrument_noise_features_names = extract_background_features_from_scan(spectra[scan_index])
+            # get features related to instrument noise for every scan
+            instrument_noise_features = []
+            instrument_noise_features_names = []
+            for scan_index in instrument_noise_features_scans_indexes:
+                if len(instrument_noise_features_names) > 0:
+                    scan_features, _ = extract_background_features_from_scan(spectra[scan_index], get_names=False)
+                else:
+                    scan_features, instrument_noise_features_names = extract_background_features_from_scan(spectra[scan_index])
 
-            instrument_noise_features.append(scan_features)
+                instrument_noise_features.append(scan_features)
 
-        # aggregate instrument noise features and add to the feature matrix
-        aggregated_instrument_noise_features, aggregated_instrument_noise_features_names = aggregate_features(instrument_noise_features, instrument_noise_features_names)
+            # aggregate instrument noise features and add to the feature matrix
+            aggregated_instrument_noise_features, aggregated_instrument_noise_features_names = aggregate_features(instrument_noise_features, instrument_noise_features_names)
 
-        # compose feature matrix row (values)
-        feature_matrix_row.extend(aggregated_main_features)
-        feature_matrix_row.extend(aggregated_chemical_noise_features)
-        feature_matrix_row.extend(aggregated_instrument_noise_features)
+            # compose feature matrix row (values)
+            feature_matrix_row.extend(aggregated_main_features)
+            feature_matrix_row.extend(aggregated_chemical_noise_features)
+            feature_matrix_row.extend(aggregated_instrument_noise_features)
 
-        # compose feature matrix row (names)
-        feature_matrix_row_names.extend(aggregated_main_features_names)
-        feature_matrix_row_names.extend(aggregated_chemical_noise_features_names)
-        feature_matrix_row_names.extend(aggregated_instrument_noise_features_names)
+            # compose feature matrix row (names)
+            feature_matrix_row_names.extend(aggregated_main_features_names)
+            feature_matrix_row_names.extend(aggregated_chemical_noise_features_names)
+            feature_matrix_row_names.extend(aggregated_instrument_noise_features_names)
 
-        logger.print_qc_info("Feature extraction finished, " + str(time.time() - start_time) + " seconds elapsed")
+            logger.print_qc_info("Feature extraction finished, " + str(time.time() - start_time) + " seconds elapsed")
 
-        scans_processed = {'normal': main_features_scans_indexes,
-                           'chemical_noise': chemical_noise_features_scans_indexes,
-                           'instrument_noise': instrument_noise_features_scans_indexes}
+            scans_processed = {'normal': main_features_scans_indexes,
+                               'chemical_noise': chemical_noise_features_scans_indexes,
+                               'instrument_noise': instrument_noise_features_scans_indexes}
 
-        parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids, scans_processed)
+            parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids, scans_processed)
+
+        except Exception as error_message:
+            logger.print_qc_info("Unexpected error occured: ", str(error_message))
+            logger.print_qc_info("File " + ms_run_ids['original_filename'] + " omitted\n")
 
     print(time.time() - start_time, " seconds elapsed for processing in total\n", sep='')
 
