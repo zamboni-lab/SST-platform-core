@@ -1,6 +1,6 @@
 """ MS feature extractor """
 
-import time, numpy, datetime, os
+import time, numpy, datetime, os, traceback
 from scipy import signal
 from src.msfe import ms_operator, parser, logger
 from src.msfe.constants import peak_region_factor as prf
@@ -764,7 +764,7 @@ def validate_input_data(spectra, normal_scans_indexes, ms_run_ids, in_test_mode=
         # look for the same acquisiton_date in the database
         for run in database:
             if run[1] == acquisition_date:
-                validation_message += "File with acquisition date" + acquisition_date + " is already in the database"
+                validation_message += "File with acquisition date " + acquisition_date + " is already in the database"
                 return validation_message
     else:
         pass
@@ -885,9 +885,9 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
             parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids, scans_processed)
 
-        except Exception as error_message:
-            logger.print_qc_info("Unexpected error occured: ", str(error_message))
-            logger.print_qc_info("File " + ms_run_ids['original_filename'] + " omitted\n")
+        except Exception:
+            logger.print_qc_info("Unexpected error occured!")
+            logger.print_qc_info(traceback.format_exc() + "File " + ms_run_ids['original_filename'] + " omitted\n")
 
     print(time.time() - start_time, " seconds elapsed for processing in total\n", sep='')
 
