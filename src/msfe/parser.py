@@ -3,7 +3,6 @@ from src.msfe.constants import parser_comment_symbol as sharp
 from src.msfe.constants import parser_description_symbols as brackets
 from src.msfe.constants import feature_matrix_file_path, tunings_matrix_file_path
 from src.msfe.constants import chemical_mix_id, msfe_version
-from src.msfe.constants import qc_database_path
 from src.qcmg import metrics_generator
 from src.msfe import logger
 from pyopenms import EmpiricalFormula, CoarseIsotopePatternGenerator
@@ -272,8 +271,13 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids, scans_
         and updates the general feature matrix. """
 
     new_ms_run = {
-        'processing_date': ms_run_ids['original_filename'],
+        'md5': ms_run_ids['md5'],
+        'original_filename': ms_run_ids['original_filename'],
+        'instrument': ms_run_ids['instrument'],
+        'user': ms_run_ids['user'],
+        'processing_date': ms_run_ids['processing_date'],
         'acquisition_date': ms_run_ids['acquisition_date'],
+
         'chemical_mix_id': chemical_mix_id,
         'msfe_version': msfe_version,
         'scans_processed': scans_processed,

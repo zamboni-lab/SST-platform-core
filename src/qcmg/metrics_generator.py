@@ -2,14 +2,13 @@
 import json, os, numpy
 
 from src.msfe.constants import feature_matrix_file_path as f_matrix_path
-from src.msfe.constants import qc_matrix_file_path as qc_matrix_path
 from src.msfe.constants import resolution_200_features_names, resolution_700_features_names
 from src.msfe.constants import accuracy_features_names, dirt_features_names, isotopic_presence_features_names
 from src.msfe.constants import instrument_noise_tic_features_names as noise_features_names
 from src.msfe.constants import transmission_features_names, fragmentation_features_names, signal_features_names
 from src.msfe.constants import baseline_150_250_features_names, baseline_650_750_features_names
 from src.msfe.constants import s2b_features_names, s2n_features_names
-from src.msfe.constants import qc_database_path
+from src.msfe.constants import qc_metrics_database_path, qc_features_database_path
 from src.msfe import logger, db_connector
 from src.qcmg import qcm_validator
 
@@ -281,8 +280,10 @@ def add_signal_to_noise_metrics(qc_values, qc_names, ms_run, in_debug_mode=False
 
 
 def calculate_and_save_qc_matrix(path=None, output='sqlite'):
-    """ This method creates a new QC matrix out of the feature matrix and fills it with the QC characteristics
+    """ Outdated in v.0.3.24. This method creates a new QC matrix out of the feature matrix and fills it with the QC characteristics
         calculated out of the feature matrix. """
+
+    qc_matrix_path = ""  # added to avoid declaration error here
 
     if path is None:
         path = f_matrix_path
@@ -329,7 +330,7 @@ def calculate_and_save_qc_matrix(path=None, output='sqlite'):
             json.dump(qc_matrix, output)
 
     elif output == 'sqlite':
-        db_connector.create_and_fill_qc_database(qc_matrix, in_debug_mode=True)
+        db_connector.create_and_fill_qc_databases(qc_matrix, in_debug_mode=True)
 
     else:
         pass
@@ -358,6 +359,12 @@ def calculate_metrics_and_update_qc_database(ms_run):
     add_signal_to_noise_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
 
     new_qc_run = {
+
+        'md5': ms_run['md5'],
+        'original_filename': ms_run['original_filename'],
+        'instrument': ms_run['instrument'],
+        'user': ms_run['user'],
+
         'processing_date': ms_run['processing_date'],
         'acquisition_date': ms_run['acquisition_date'],
         'chemical_mix_id': ms_run['chemical_mix_id'],
@@ -375,9 +382,9 @@ def calculate_metrics_and_update_qc_database(ms_run):
 
     logger.print_qc_info('QC characteristics has been computed successfully')
 
-    if not os.path.isfile(qc_database_path):
+    if not os.path.isfile(qc_metrics_database_path):
         # if there's yet no database
-        db_connector.create_and_fill_qc_database(new_qc_run, in_debug_mode=in_debug_mode)
+        db_connector.create_and_fill_qc_databases(new_qc_run, in_debug_mode=in_debug_mode)
         logger.print_qc_info('New QC database has been created (SQLite)\n')
     else:
         # if the database already exists

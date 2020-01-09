@@ -18,7 +18,7 @@ from src.msfe.constants import expected_peaks_file_path
 from src.msfe.constants import minimal_background_peak_intensity as min_bg_peak_intensity
 from lmfit.models import GaussianModel
 from src.msfe import db_connector
-from src.msfe.constants import qc_database_path
+from src.msfe.constants import qc_metrics_database_path, qc_features_database_path
 
 
 def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, centroids_indexes, peak_id):
@@ -754,17 +754,18 @@ def validate_input_data(spectra, normal_scans_indexes, ms_run_ids, in_test_mode=
     validation_message = ""
 
     # if the database already exists, check condition 3)
-    if os.path.isfile(qc_database_path):
+    if os.path.isfile(qc_metrics_database_path):
 
+        md5_hash = ms_run_ids['md5']
         acquisition_date = ms_run_ids['acquisition_date']
         # fetch database to look for entry with the same run id
-        conn = db_connector.create_connection(qc_database_path)
+        conn = db_connector.create_connection(qc_metrics_database_path)
         database, _ = db_connector.fetch_table(conn, "qc_meta")
 
         # look for the same acquisiton_date in the database
         for run in database:
-            if run[1] == acquisition_date:
-                validation_message += "File with acquisition date " + acquisition_date + " is already in the database"
+            if run[1] == md5_hash:
+                validation_message += "File with md5-hash corresponding to acquisition date " + acquisition_date + " is already in the database"
                 return validation_message
     else:
         pass
@@ -812,6 +813,7 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
     main_features_scans_indexes = ms_operator.get_best_tic_scans_indexes(spectra, in_test_mode=in_test_mode)
 
+    # validate input data
     logger.print_qc_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": input validation started for file " + ms_run_ids['original_filename'])
     validation_result = validate_input_data(spectra, main_features_scans_indexes, ms_run_ids, in_test_mode=in_test_mode)
 
@@ -885,7 +887,7 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
 
             parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids, scans_processed)
 
-        except Exception:
+        except Exception as e:
             logger.print_qc_info("Unexpected error occured!")
             logger.print_qc_info(traceback.format_exc() + "File " + ms_run_ids['original_filename'] + " omitted\n")
 

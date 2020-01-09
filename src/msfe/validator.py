@@ -10,13 +10,21 @@ def process_all_tunes_and_files_at_once():
     """ This method runs msfe on all the files given full tunings matrix for them.
         Used usually to process all QC files from the beginning, to create updated f_matrix. """
 
-    # get all instrument settings to provide correct acquisition dates later
+    # get all instrument settings to provide metadata later
     with open(tunings_matrix_file_path) as tunes:
         tunings_data = json.load(tunes)
 
     acquisition_dates = []
+    md5_hashes = []
+    users = []
     for run in tunings_data['ms_runs']:
-        acquisition_dates.append(run['meta']['values'][1].split(".")[0].replace(":", ""))
+        acquisition_dates.append(run['meta']['values'][1].split(".")[0].replace("T", " "))
+        md5_hashes.append(run['meta']['values'][2])
+        try:
+            user = run['meta']['values'][0].split("\\")[-1].split("_")[2].replace(".d","")
+        except Exception:
+            user = ""
+        users.append(user)
 
     path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/'
 
@@ -28,15 +36,24 @@ def process_all_tunes_and_files_at_once():
         for dir in dirs:
 
             # if filename != '.DS_Store':
-            if dir != '.DS_Store':  # and dir > "2019-11-12T102201":
+            if dir != '.DS_Store':  # and dir > "2019-12-08T193254":
                 start_time = time.time()
                 print(dir, 'file is being processed')
 
                 spectra = list(mzxml.read(path_to_files + dir + '/raw.mzXML'))
 
                 acq_date = acquisition_dates[dirs.index(dir)]
+                md5 = md5_hashes[dirs.index(dir)]
+                user = users[dirs.index(dir)]
 
-                ms_run_ids = {'acquisition_date': acq_date, 'original_filename': dir}
+                ms_run_ids = {
+                                'md5': md5,
+                                'acquisition_date': acq_date,
+                                'original_filename': dir,
+                                'processing_date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"),
+                                'instrument': '6550-1',
+                                'user': user
+                }
 
                 msfe.extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
 
@@ -112,8 +129,8 @@ def run_msfe_in_test_mode():
 
 if __name__ == '__main__':
 
-    run_msfe_in_test_mode()
-    # process_all_tunes_and_files_at_once()
+    # run_msfe_in_test_mode()
+    process_all_tunes_and_files_at_once()
 
 
 
