@@ -276,13 +276,13 @@ def insert_new_qc_run(qc_run, in_debug_mode=False):
 
     qc_database = create_connection(qc_metrics_database_path)
 
-    # inserting qc metrics into a new database
+    # inserting qc metrics into a database
     last_row_number_1 = insert_qc_meta(qc_database, qc_run)
     last_row_number_2 = insert_qc_metrics(qc_database, qc_run, last_row_number_1)
 
     qc_database = create_connection(qc_features_database_path)
 
-    # inserting qc features into another new database
+    # inserting qc features into another database
     last_row_number_1 = insert_qc_meta(qc_database, qc_run)
     last_row_number_3 = insert_qc_features(qc_database, qc_run, last_row_number_1)
 
