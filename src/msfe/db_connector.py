@@ -1,5 +1,5 @@
 import os, sqlite3, json
-from src.msfe.constants import qc_metrics_database_path, qc_features_database_path
+from src.msfe.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path
 
 
 def create_connection(db_file):
@@ -94,6 +94,36 @@ def insert_qc_features(db, new_qc_run, meta_id):
     return cur.lastrowid
 
 
+def insert_qc_tunes(db, new_qc_run, meta_id):
+    """ Adds last runs QC tunes to a table. """
+
+    single_names_string = ",".join(new_qc_run['tunes_names'][0]) + ","
+    single_names_string += ",".join(new_qc_run['tunes_names'][1]) + ","
+    single_names_string += ",".join(new_qc_run['tunes_names'][2])
+    single_names_string = single_names_string.replace(":","_").replace(".","_").replace("(","_").replace(")","").replace("/","_")
+
+    single_values_list = new_qc_run["tunes_values"][0]
+    single_values_list.extend(new_qc_run["tunes_values"][1])
+    single_values_list.extend(new_qc_run["tunes_values"][2])
+
+    qc_tunes = (
+        meta_id,
+        new_qc_run['acquisition_date'],
+        new_qc_run['quality'],
+        *single_values_list
+    )
+
+    sql = """ INSERT INTO qc_tunes(meta_id,acquisition_date,quality,"""
+    sql += single_names_string + """ ) VALUES("""  # tunes names
+    sql += ",".join(["?" for x in range(len(single_values_list) + 3)]) + """) """  # question marks
+
+    cur = db.cursor()
+    cur.execute(sql, qc_tunes)
+    db.commit()
+
+    return cur.lastrowid
+
+
 def insert_qc_meta(db, qc_run):
     """ Adds last runs meta info to the table. """
 
@@ -127,7 +157,7 @@ def insert_qc_meta(db, qc_run):
     return cur.lastrowid
 
 
-def create_qc_values_database():
+def create_qc_metrics_database():
 
     sql_create_qc_meta_table = """ CREATE TABLE IF NOT EXISTS qc_meta (
                                             id integer PRIMARY KEY AUTOINCREMENT,
@@ -185,6 +215,59 @@ def create_qc_values_database():
         # create projects table
         create_table(qc_database, sql_create_qc_meta_table)
         create_table(qc_database, sql_create_qc_metrics_table)
+    else:
+        print("Error! Cannot create database connection.")
+
+
+def create_qc_tunes_database(new_qc_run):
+
+    sql_create_qc_meta_table = """ CREATE TABLE IF NOT EXISTS qc_meta (
+                                            id integer PRIMARY KEY AUTOINCREMENT,
+                                            md5 text,
+                                            processing_date text,
+                                            acquisition_date text,
+                                            instr integer,
+                                            quality integer,
+                                            user text,
+                                            user_comment text,
+                                            chemical_mix_id integer,
+                                            msfe_version text,
+                                            norm_scan_1 integer,
+                                            norm_scan_2 integer,
+                                            norm_scan_3 integer,
+                                            chem_scan_1 integer,
+                                            inst_scan_1 integer
+                                        ); """
+
+    sql_create_qc_tunes_table = """ CREATE TABLE IF NOT EXISTS qc_tunes (
+                                            id integer PRIMARY KEY AUTOINCREMENT,
+                                            meta_id integer,
+                                            acquisition_date text,
+                                            quality integer,
+                                            """
+
+    ending = """ constraint fk_meta foreign key (meta_id) 
+                        references qc_meta(id) 
+                        on delete cascade 
+                        on update cascade  
+                ); """
+
+    # not readable since there are thousands of features
+    sql_create_qc_tunes_table += " text,\n".join(new_qc_run['tunes_names'][0]).replace(":","_").replace(".","_").replace("(","_").replace(")","").replace("/","_") + " text,\n "
+    sql_create_qc_tunes_table += " real,\n".join(new_qc_run['tunes_names'][1]).replace(":","_").replace(".","_").replace("(","_").replace(")","").replace("/","_") + " real,\n "
+    sql_create_qc_tunes_table += " real,\n".join(new_qc_run['tunes_names'][2]).replace(":","_").replace(".","_").replace("(","_").replace(")","").replace("/","_") + " real,\n " + ending
+
+    # create a database connection
+    qc_database = create_connection(qc_tunes_database_path)
+
+    # debug: add journal mode that allows multiple users interaction
+    qc_database.execute('pragma journal_mode=wal')
+
+    # create tables
+    if qc_database is not None:
+        # create projects table
+        create_table(qc_database, sql_create_qc_meta_table)
+        create_table(qc_database, sql_create_qc_tunes_table)
     else:
         print("Error! Cannot create database connection.")
 
@@ -254,7 +337,7 @@ def create_qc_features_database(new_qc_run):
 def create_and_fill_qc_databases(new_qc_run, in_debug_mode=False):
     """ This method creates a new QC database out of a qc_matrix object. """
 
-    create_qc_values_database()  # values of qc metrics
+    create_qc_metrics_database()  # values of qc metrics
     qc_metrics_database = create_connection(qc_metrics_database_path)
 
     # inserting values into the new database
@@ -267,27 +350,39 @@ def create_and_fill_qc_databases(new_qc_run, in_debug_mode=False):
     last_row_number_1 = insert_qc_meta(qc_features_database, new_qc_run)
     last_row_number_3 = insert_qc_features(qc_features_database, new_qc_run, last_row_number_1)
 
+    create_qc_tunes_database(new_qc_run)  # values of instrument settings
+    qc_tunes_database = create_connection(qc_tunes_database_path)
+
+    last_row_number_1 = insert_qc_meta(qc_tunes_database, new_qc_run)
+    last_row_number_4 = insert_qc_tunes(qc_tunes_database, new_qc_run, last_row_number_1)
+
     if in_debug_mode:
-        print("inserted: meta:", last_row_number_1, 'metrics:', last_row_number_2, 'features:', last_row_number_3)
+        print("inserted: meta:", last_row_number_1, 'metrics:', last_row_number_2, 'features:', last_row_number_3, 'tunes:', last_row_number_4)
 
 
 def insert_new_qc_run(qc_run, in_debug_mode=False):
     """ This method form objects with pre-computed values to insert into (already existing) database. """
 
-    qc_database = create_connection(qc_metrics_database_path)
+    qc_metrics_database = create_connection(qc_metrics_database_path)
 
     # inserting qc metrics into a database
-    last_row_number_1 = insert_qc_meta(qc_database, qc_run)
-    last_row_number_2 = insert_qc_metrics(qc_database, qc_run, last_row_number_1)
+    last_row_number_1 = insert_qc_meta(qc_metrics_database, qc_run)
+    last_row_number_2 = insert_qc_metrics(qc_metrics_database, qc_run, last_row_number_1)
 
-    qc_database = create_connection(qc_features_database_path)
+    qc_features_database = create_connection(qc_features_database_path)
 
     # inserting qc features into another database
-    last_row_number_1 = insert_qc_meta(qc_database, qc_run)
-    last_row_number_3 = insert_qc_features(qc_database, qc_run, last_row_number_1)
+    last_row_number_1 = insert_qc_meta(qc_features_database, qc_run)
+    last_row_number_3 = insert_qc_features(qc_features_database, qc_run, last_row_number_1)
+
+    qc_tunes_database = create_connection(qc_tunes_database_path)
+
+    # inserting qc features into a third database
+    last_row_number_1 = insert_qc_meta(qc_tunes_database, qc_run)
+    last_row_number_4 = insert_qc_tunes(qc_tunes_database, qc_run, last_row_number_1)
 
     if in_debug_mode:
-        print("inserted 1 row at position: meta:", last_row_number_1, 'metrics:', last_row_number_2, "features:", last_row_number_3)
+        print("inserted 1 row at position: meta:", last_row_number_1, 'metrics:', last_row_number_2, "features:", last_row_number_3, 'tunes:', last_row_number_4)
 
 
 if __name__ == '__main__':

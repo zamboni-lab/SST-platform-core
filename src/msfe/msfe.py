@@ -802,7 +802,7 @@ def validate_input_data(spectra, normal_scans_indexes, ms_run_ids, in_test_mode=
     return validation_message
 
 
-def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
+def extract_features_from_ms_run(spectra, ms_run_ids, tunes, in_test_mode=False):
     """ This is main method of the module. It extracts all the features from a single ms run (several scans)
         and returns single row of feature matrix (list) together with feature names (list)."""
 
@@ -885,7 +885,7 @@ def extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=False):
                                'chemical_noise': chemical_noise_features_scans_indexes,
                                'instrument_noise': instrument_noise_features_scans_indexes}
 
-            parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids, scans_processed)
+            parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids, tunes, scans_processed, in_test_mode=in_test_mode)
 
         except Exception as e:
             logger.print_qc_info("Unexpected error occured!")

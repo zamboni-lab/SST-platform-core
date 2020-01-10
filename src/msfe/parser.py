@@ -209,7 +209,8 @@ def parse_ms_run_instrument_settings(file_path, tune_file_id, empty=False):
 
 
 def parse_and_save_tunings(tunings, tune_filename):
-    """ This method is called from msqc (joint project) to read instrument settings from newly generated file
+    """ Deprecated since v.0.3.25, when QC tunes database was created.
+        This method is called from msqc (joint project) to read instrument settings from newly generated file
         and add information to the general tunings_matrix, which is stored as another json. """
 
     # compose data structure to collect data
@@ -266,9 +267,52 @@ def parse_and_save_tunings(tunings, tune_filename):
     logger.print_tune_info("MS settings matrix updated\n")
 
 
-def update_feature_matrix(extracted_features, features_names, ms_run_ids, scans_processed):
+def extract_tunes_from_dict(tunings, in_test_mode=False):
+    """ This method takes dict with tunes and returns two lists with tunes names and values.
+        Reformatting simplifies dumping tunes in the database. """
+
+    names = [[], [], []]  # [meta], [actuals], [cals]
+    values = [[], [], []]
+
+    if not in_test_mode:
+        # when called on the server
+        for key in tunings:
+
+            if key == "Cal":
+                for mode in ['defaultPos', 'defaultNeg']:
+                    for type in ['traditional', 'polynomial']:
+                        for i in range(len(tunings[key][mode][type])):
+                            names[2].append(mode + "_" + type + "_" + str(i))
+                            values[2].append(tunings[key][mode][type][i])
+
+            elif key == "Actuals":
+                for actual in tunings[key]:
+                    names[1].append(actual.replace(" ", "_"))
+                    values[1].append(tunings[key][actual])
+
+            else:
+                names[0].append(key)
+                values[0].append(tunings[key])
+
+    else:
+        # in testing / debugging mode different data structure for tunes is used
+        names[0] = tunings['meta']['keys']
+        values[0] = tunings['meta']['values']
+
+        names[1] = tunings['actuals']['keys']
+        values[1] = tunings['actuals']['values']
+
+        names[2] = tunings['cals']['keys']
+        values[2] = tunings['cals']['values']
+
+    return names, values
+
+
+def update_feature_matrix(extracted_features, features_names, ms_run_ids, tunes, scans_processed, in_test_mode=False):
     """ This method gets results of single MS run feature extraction
         and updates the general feature matrix. """
+
+    tunes_names, tunes_values = extract_tunes_from_dict(tunes, in_test_mode=in_test_mode)
 
     new_ms_run = {
         'md5': ms_run_ids['md5'],
@@ -282,14 +326,17 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids, scans_
         'msfe_version': msfe_version,
         'scans_processed': scans_processed,
         'features_values': extracted_features,
-        'features_names': features_names
+        'features_names': features_names,
+        'tunes_values': tunes_values,
+        'tunes_names': tunes_names
     }
 
     # entry point for qcm to process new_ms_run and insert into QC database
-    metrics_generator.calculate_metrics_and_update_qc_database(new_ms_run)
+    metrics_generator.calculate_metrics_and_update_qc_databases(new_ms_run)
 
 
-if __name__ == "__main__":
+def process_all_qc_runs_to_extract_tunes():
+    """ This method is called to pull out all the instrument settings for QC runs stored on the server. """
 
     path = '/Volumes/biol_imsb_sauer_2/fiaqc-data/'
     filename = '/all.json'
@@ -314,3 +361,7 @@ if __name__ == "__main__":
 
     print("All settings are pulled out.")
 
+
+if __name__ == "__main__":
+
+    pass

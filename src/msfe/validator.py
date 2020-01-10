@@ -45,6 +45,7 @@ def process_all_tunes_and_files_at_once():
                 acq_date = acquisition_dates[dirs.index(dir)]
                 md5 = md5_hashes[dirs.index(dir)]
                 user = users[dirs.index(dir)]
+                tunes = tunings_data['ms_runs'][dirs.index(dir)]
 
                 ms_run_ids = {
                                 'md5': md5,
@@ -55,7 +56,7 @@ def process_all_tunes_and_files_at_once():
                                 'user': user
                 }
 
-                msfe.extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
+                msfe.extract_features_from_ms_run(spectra, ms_run_ids, tunes, in_test_mode=True)
 
                 # print(files.index(filename)+1, '/', len(files), 'is processed within', time.time() - start_time, 's\n')
                 print(dirs.index(dir) + 1, '/', len(dirs), 'is processed within', time.time() - start_time, 's\n')

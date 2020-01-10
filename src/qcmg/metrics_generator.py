@@ -8,7 +8,7 @@ from src.msfe.constants import instrument_noise_tic_features_names as noise_feat
 from src.msfe.constants import transmission_features_names, fragmentation_features_names, signal_features_names
 from src.msfe.constants import baseline_150_250_features_names, baseline_650_750_features_names
 from src.msfe.constants import s2b_features_names, s2n_features_names
-from src.msfe.constants import qc_metrics_database_path, qc_features_database_path
+from src.msfe.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path
 from src.msfe import logger, db_connector
 from src.qcmg import qcm_validator
 
@@ -338,7 +338,7 @@ def calculate_and_save_qc_matrix(path=None, output='sqlite'):
     print('Processing is done! Results saved to', qc_matrix_path)
 
 
-def calculate_metrics_and_update_qc_database(ms_run):
+def calculate_metrics_and_update_qc_databases(ms_run):
     """ This method computes QC metrics for a new ms_run and calls method to insert them into a database. """
 
     metrics_values = []
@@ -375,21 +375,25 @@ def calculate_metrics_and_update_qc_database(ms_run):
         'features_names': ms_run['features_names'],
         'metrics_values': metrics_values,
         'metrics_names': metrics_names,
+        'tunes_values': ms_run['tunes_values'],
+        'tunes_names': ms_run['tunes_names'],
 
         'user_comment': "",
         'quality': 1
     }
 
-    logger.print_qc_info('QC characteristics has been computed successfully')
+    logger.print_qc_info('QC characteristics have been computed successfully')
 
-    if not os.path.isfile(qc_metrics_database_path):
-        # if there's yet no database
+    if not (os.path.isfile(qc_metrics_database_path) or os.path.isfile(qc_features_database_path)
+            or os.path.isfile(qc_tunes_database_path)):
+
+        # if there's yet no databases
         db_connector.create_and_fill_qc_databases(new_qc_run, in_debug_mode=in_debug_mode)
-        logger.print_qc_info('New QC database has been created (SQLite)\n')
+        logger.print_qc_info('New QC databases have been created (SQLite)\n')
     else:
-        # if the database already exists
+        # if the databases already exist
         db_connector.insert_new_qc_run(new_qc_run, in_debug_mode=in_debug_mode)
-        logger.print_qc_info('QC database has been updated\n')
+        logger.print_qc_info('QC databases have been updated\n')
 
 
 if __name__ == '__main__':
