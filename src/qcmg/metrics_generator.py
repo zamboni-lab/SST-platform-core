@@ -1,7 +1,6 @@
 
 import json, os, numpy
 
-from src.msfe.constants import feature_matrix_file_path as f_matrix_path
 from src.msfe.constants import resolution_200_features_names, resolution_700_features_names
 from src.msfe.constants import accuracy_features_names, dirt_features_names, isotopic_presence_features_names
 from src.msfe.constants import instrument_noise_tic_features_names as noise_features_names
@@ -284,9 +283,6 @@ def calculate_and_save_qc_matrix(path=None, output='sqlite'):
         calculated out of the feature matrix. """
 
     qc_matrix_path = ""  # added to avoid declaration error here
-
-    if path is None:
-        path = f_matrix_path
 
     with open(path) as input:
         f_matrix = json.load(input)

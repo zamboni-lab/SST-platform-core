@@ -1,16 +1,12 @@
 
-msfe_version = '0.3.25'
+msfe_version = '0.3.26'
 chemical_mix_id = '20190522_4GHz'
 
 """ Mass-spec features extractor constants """
 
 # qc_log_location = "/mnt/nas2/fiaqc-out/qc_logs.txt"
 qc_log_location = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/qc_logs.txt"
-# tune_log_location = "/mnt/nas2/fiaqc-out/tune_logs.txt"
-tune_log_location = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/tune_logs.txt"
 
-# feature_matrix_file_path = "/mnt/nas2/fiaqc-out/f_matrix.json"
-feature_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/feature_matrix.json"
 # tunings_matrix_file_path = "/mnt/nas2/fiaqc-out/t_matrix.json"
 tunings_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/tunings_matrix.json"
 

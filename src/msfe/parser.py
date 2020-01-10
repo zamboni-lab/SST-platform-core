@@ -1,10 +1,9 @@
 
 from src.msfe.constants import parser_comment_symbol as sharp
 from src.msfe.constants import parser_description_symbols as brackets
-from src.msfe.constants import feature_matrix_file_path, tunings_matrix_file_path
+from src.msfe.constants import tunings_matrix_file_path
 from src.msfe.constants import chemical_mix_id, msfe_version
 from src.qcmg import metrics_generator
-from src.msfe import logger
 from pyopenms import EmpiricalFormula, CoarseIsotopePatternGenerator
 import json, os, datetime
 
@@ -179,9 +178,9 @@ def parse_ms_run_instrument_settings(file_path, tune_file_id, empty=False):
                 meta["keys"].append(key)
                 meta["values"].append(new_data[key])
 
-        logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes collected for file " + tune_file_id)
+        print(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes collected for file " + tune_file_id)
     else:
-        logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": tunes are missing")
+        print(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": tunes are missing")
 
     if not os.path.isfile(tunings_matrix_file_path):
         # if the file does not exist yet, create empty one
@@ -205,11 +204,11 @@ def parse_ms_run_instrument_settings(file_path, tune_file_id, empty=False):
         with open(tunings_matrix_file_path, 'w') as updated_file:
             json.dump(t_matrix, updated_file)
 
-    logger.print_tune_info("MS settings matrix updated\n")
+    print("MS settings matrix updated\n")
 
 
 def parse_and_save_tunings(tunings, tune_filename):
-    """ Deprecated since v.0.3.25, when QC tunes database was created.
+    """ Deprecated since v.0.3.25, when QC tunes SQLite database is used instead.
         This method is called from msqc (joint project) to read instrument settings from newly generated file
         and add information to the general tunings_matrix, which is stored as another json. """
 
@@ -219,7 +218,7 @@ def parse_and_save_tunings(tunings, tune_filename):
     cals = {'keys': [], 'values': []}
 
     if tunings == {}:
-        logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes are missing for file " + tune_filename)
+        print(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes are missing for file " + tune_filename)
     else:
         # read newly generated ms settings file
         for key in tunings:
@@ -239,7 +238,7 @@ def parse_and_save_tunings(tunings, tune_filename):
                 meta["keys"].append(key)
                 meta["values"].append(tunings[key])
 
-        logger.print_tune_info(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes collected for file " + tune_filename)
+        print(datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S") + ": new tunes collected for file " + tune_filename)
 
     # now check for the common file and update if it exists
     if not os.path.isfile(tunings_matrix_file_path):
@@ -264,7 +263,7 @@ def parse_and_save_tunings(tunings, tune_filename):
         with open(tunings_matrix_file_path, 'w') as updated_file:
             json.dump(t_matrix, updated_file)
 
-    logger.print_tune_info("MS settings matrix updated\n")
+    print("MS settings matrix updated\n")
 
 
 def extract_tunes_from_dict(tunings, in_test_mode=False):
