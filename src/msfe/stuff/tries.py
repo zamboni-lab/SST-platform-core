@@ -34,11 +34,18 @@ def select_all_tasks(conn, table_name):
 
 if __name__ == "__main__":
 
-    path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/qc_database.sqlite"
+    # path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/qc_database.sqlite"
+    #
+    # conn = create_connection(path)
+    # data, colnames = select_all_tasks(conn, "qc_meta")
+    #
+    # print()
 
-    conn = create_connection(path)
-    data, colnames = select_all_tasks(conn, "qc_meta")
+    from pyteomics import mzxml
 
-    print()
+    data = list(mzxml.read("/Volumes/biol_imsb_sauer_1/users/Andrei/from Michelle/all of it/20200108_QC/mzXML/20190522_4GHz_Reid_001.mzXML"))
+    # data = list(mzxml.read("/Volumes/biol_imsb_sauer_1/users/Andrei/from Michelle/all of it/20191108_QC/mzXML/20190522_4GHz_Reid_001.mzXML"))
+
+    pass
 
 

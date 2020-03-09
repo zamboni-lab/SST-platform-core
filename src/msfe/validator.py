@@ -83,6 +83,40 @@ def check_instrument_noise_outliers():
     return True
 
 
+def check_6546_test_runs():
+    """ This method check that msfe works fine for 6546 instrument:
+        ONLY RUN IN DEBUG.  """
+
+    path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/6546_test/'
+
+    for root, dirs, files in os.walk(path_to_files):
+
+        # for filename in files:
+        for file in files:
+
+            if file != '.DS_Store':
+                start_time = time.time()
+                print(file, 'file is being processed')
+
+                spectra = list(mzxml.read(path_to_files + file, huge_tree=True))
+
+                ms_run_ids = {
+                    'md5': "",
+                    'acquisition_date': "",
+                    'original_filename': file,
+                    'processing_date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"),
+                    'instrument': '6550-1',
+                    'user': "Alaa"
+                }
+
+                msfe.extract_features_from_ms_run(spectra, ms_run_ids, {}, in_test_mode=True)
+
+                # print(files.index(filename)+1, '/', len(files), 'is processed within', time.time() - start_time, 's\n')
+                print(files.index(file) + 1, '/', len(files), 'is processed within', time.time() - start_time, 's\n')
+
+    print('All done. Well done!')
+
+
 def run_msfe_in_test_mode():
     """ This method runs msfe on a specified mzXML file. """
 
@@ -131,8 +165,8 @@ def run_msfe_in_test_mode():
 if __name__ == '__main__':
 
     # run_msfe_in_test_mode()
-    process_all_tunes_and_files_at_once()
-
+    # process_all_tunes_and_files_at_once()
+    check_6546_test_runs()
 
 
 
