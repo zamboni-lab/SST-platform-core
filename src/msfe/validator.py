@@ -1,8 +1,7 @@
 import datetime
 import time, os, json
 from pyteomics import mzxml
-from src.msfe.constants import tunings_matrix_file_path
-from src.msfe.constants import instrument_noise_features_scans_indexes
+from src.constants import tunings_matrix_file_path
 from src.msfe import msfe
 
 

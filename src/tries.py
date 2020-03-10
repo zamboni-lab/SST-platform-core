@@ -1,7 +1,7 @@
 # path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/test_database.db"
 # db_connector.create_qc_database(path)
 
-import sqlite3
+import sqlite3, numpy, scipy
 
 def create_connection(db_file):
     """ create a database connection to the SQLite database
@@ -34,17 +34,11 @@ def select_all_tasks(conn, table_name):
 
 if __name__ == "__main__":
 
-    # path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/qc_database.sqlite"
-    #
-    # conn = create_connection(path)
-    # data, colnames = select_all_tasks(conn, "qc_meta")
-    #
-    # print()
+    from scipy.stats import chi2_contingency
 
-    from pyteomics import mzxml
+    obs = numpy.array([[10, 10, 20], [20, 20, 20],[20, 30, 20], [20, 30, 40]])
 
-    data = list(mzxml.read("/Volumes/biol_imsb_sauer_1/users/Andrei/from Michelle/all of it/20200108_QC/mzXML/20190522_4GHz_Reid_001.mzXML"))
-    # data = list(mzxml.read("/Volumes/biol_imsb_sauer_1/users/Andrei/from Michelle/all of it/20191108_QC/mzXML/20190522_4GHz_Reid_001.mzXML"))
+    print(chi2_contingency(obs))
 
     pass
 

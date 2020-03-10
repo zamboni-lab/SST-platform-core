@@ -1,5 +1,5 @@
-import os, sqlite3, json
-from src.msfe.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path
+import sqlite3
+from src.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path
 
 
 def create_connection(db_file):

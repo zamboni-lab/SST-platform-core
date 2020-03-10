@@ -1,5 +1,6 @@
 
-import json, seaborn, pandas, matplotlib
+import numpy, pandas
+import json, seaborn, matplotlib
 import matplotlib.pyplot as plt
 from scipy.stats import ks_2samp
 
@@ -60,11 +61,10 @@ def plot_by_type_and_save(normal_values, spoilt_values, metrics_names, plot_titl
     fig, axes = plt.subplots(nrows=4, ncols=4, figsize=(23, 9.5))
 
     for i in range(len(metrics_names)):
-
         _, p = ks_2samp(normal_df[metrics_names[i]], spoiled_df[metrics_names[i]])
 
-        seaborn.violinplot(y=metrics_names[i], x='type', palette='muted', data=combined_df, ax=axes[int(i/4), i%4])\
-            .set_title("p = " + str(round(p,3)),fontdict={'fontsize': 10,'fontweight': 'medium'})
+        seaborn.violinplot(y=metrics_names[i], x='type', palette='muted', data=combined_df, ax=axes[int(i / 4), i % 4]) \
+            .set_title("p = " + str(round(p, 3)), fontdict={'fontsize': 10, 'fontweight': 'medium'})
 
     plt.suptitle(plot_title, fontweight='bold')
 
@@ -86,7 +86,6 @@ def plot_by_metric_and_save(normal_values, metrics_names, all_spoilt_values, all
     assert len(all_spoilt_values) == len(all_types)
 
     for i in range(len(all_types)):
-
         spoiled_df = pandas.DataFrame(all_spoilt_values[i]).T
         spoiled_df.columns = metrics_names
         spoiled_df['type'] = all_types[i]
@@ -95,19 +94,21 @@ def plot_by_metric_and_save(normal_values, metrics_names, all_spoilt_values, all
 
     for i in range(len(metrics_names)):
 
-        fig, ax = plt.subplots(figsize=(15,8))
+        fig, ax = plt.subplots(figsize=(15, 8))
 
         seaborn.set()
-        seaborn.violinplot(y=metrics_names[i], x='type', palette='muted', data=combined_df, ax=ax)\
-            .set_title(metrics_names[i], fontdict={'fontsize': 12,'fontweight': 'bold'})
+        seaborn.violinplot(y=metrics_names[i], x='type', palette='muted', data=combined_df, ax=ax) \
+            .set_title(metrics_names[i], fontdict={'fontsize': 12, 'fontweight': 'bold'})
 
         if to_show:
             plt.show()
 
-        plt.savefig(path_to_save_to.replace('.png', '_'+str(i)+'.png'), figsize=(15,8), dpi=300)
+        plt.savefig(path_to_save_to.replace('.png', '_' + str(i) + '.png'), figsize=(15, 8), dpi=300)
 
 
-if __name__ == '__main__':
+def compare_groups_test_1_test_2():
+    """ This method operates on the preliminary data for project 1. It compares different experiment runs
+        in terms of metrics computed with msfe. """
 
     qc_matrix_file_path = '/Users/andreidm/ETH/projects/ms_feature_extractor/res/test1/qc_matrix.json'
 
@@ -177,7 +178,3 @@ if __name__ == '__main__':
                             ['saturation_1', 'saturation_2', 'contamination_1',
                              'contamination_2', 'dead_volume_1', 'dead_volume_2'],
                             '/Users/andreidm/ETH/projects/qc_metrics/res/test2/images/normal_vs_all.png')
-
-
-
-    print()

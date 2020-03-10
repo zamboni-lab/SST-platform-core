@@ -1,8 +1,8 @@
 
-from src.msfe.constants import parser_comment_symbol as sharp
-from src.msfe.constants import parser_description_symbols as brackets
-from src.msfe.constants import tunings_matrix_file_path
-from src.msfe.constants import chemical_mix_id, msfe_version
+from src.constants import parser_comment_symbol as sharp
+from src.constants import parser_description_symbols as brackets
+from src.constants import tunings_matrix_file_path
+from src.constants import chemical_mix_id, msfe_version
 from src.qcmg import metrics_generator
 from pyopenms import EmpiricalFormula, CoarseIsotopePatternGenerator
 import json, os, datetime

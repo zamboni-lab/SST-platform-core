@@ -3,22 +3,22 @@
 import time, numpy, datetime, os, traceback
 from scipy import signal
 from src.msfe import ms_operator, parser, logger
-from src.msfe.constants import peak_region_factor as prf
-from src.msfe.constants import peak_widths_levels_of_interest as widths_levels
-from src.msfe.constants import minimal_normal_peak_intensity, saturation_intensity
-from src.msfe.constants import maximum_number_of_subsequent_peaks_to_consider as max_sp_number
-from src.msfe.constants import normal_scan_mz_frame_size, normal_scan_number_of_frames
-from src.msfe.constants import chemical_noise_scan_mz_frame_size, chemical_noise_scan_number_of_frames
-from src.msfe.constants import instrument_noise_mz_frame_size, instrument_noise_scan_number_of_frames
-from src.msfe.constants import number_of_top_noisy_peaks_to_consider as n_top_guys
-from src.msfe.constants import frame_intensity_percentiles
-from src.msfe.constants import no_signal_intensity_value as no_signal
-from src.msfe.constants import chemical_noise_features_scans_indexes, instrument_noise_features_scans_indexes
-from src.msfe.constants import expected_peaks_file_path
-from src.msfe.constants import minimal_background_peak_intensity as min_bg_peak_intensity
+from src.constants import peak_region_factor as prf
+from src.constants import peak_widths_levels_of_interest as widths_levels
+from src.constants import minimal_normal_peak_intensity, saturation_intensity
+from src.constants import maximum_number_of_subsequent_peaks_to_consider as max_sp_number
+from src.constants import normal_scan_mz_frame_size, normal_scan_number_of_frames
+from src.constants import chemical_noise_scan_mz_frame_size, chemical_noise_scan_number_of_frames
+from src.constants import instrument_noise_mz_frame_size, instrument_noise_scan_number_of_frames
+from src.constants import number_of_top_noisy_peaks_to_consider as n_top_guys
+from src.constants import frame_intensity_percentiles
+from src.constants import no_signal_intensity_value as no_signal
+from src.constants import chemical_noise_features_scans_indexes, instrument_noise_features_scans_indexes
+from src.constants import expected_peaks_file_path
+from src.constants import minimal_background_peak_intensity as min_bg_peak_intensity
 from lmfit.models import GaussianModel
 from src.msfe import db_connector
-from src.msfe.constants import qc_metrics_database_path, qc_features_database_path
+from src.constants import qc_metrics_database_path
 
 
 def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, centroids_indexes, peak_id):

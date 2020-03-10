@@ -1,13 +1,13 @@
 
 import json, os, numpy
 
-from src.msfe.constants import resolution_200_features_names, resolution_700_features_names
-from src.msfe.constants import accuracy_features_names, dirt_features_names, isotopic_presence_features_names
-from src.msfe.constants import instrument_noise_tic_features_names as noise_features_names
-from src.msfe.constants import transmission_features_names, fragmentation_features_names, signal_features_names
-from src.msfe.constants import baseline_150_250_features_names, baseline_650_750_features_names
-from src.msfe.constants import s2b_features_names, s2n_features_names
-from src.msfe.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path
+from src.constants import resolution_200_features_names, resolution_700_features_names
+from src.constants import accuracy_features_names, dirt_features_names, isotopic_presence_features_names
+from src.constants import instrument_noise_tic_features_names as noise_features_names
+from src.constants import transmission_features_names, fragmentation_features_names, signal_features_names
+from src.constants import baseline_150_250_features_names, baseline_650_750_features_names
+from src.constants import s2b_features_names, s2n_features_names
+from src.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path
 from src.msfe import logger, db_connector
 from src.qcmg import qcm_validator
 

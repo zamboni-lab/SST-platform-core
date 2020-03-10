@@ -1,6 +1,6 @@
 
 import numpy
-from src.msfe.constants import allowed_ppm_error, number_of_normal_scans, normal_scans_indexes_window
+from src.constants import allowed_ppm_error, number_of_normal_scans, normal_scans_indexes_window
 
 
 def extract_mz_region(spectrum, mz_interval):

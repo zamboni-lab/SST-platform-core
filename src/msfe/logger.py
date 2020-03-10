@@ -1,5 +1,5 @@
 
-from src.msfe.constants import qc_log_location
+from src.constants import qc_log_location
 
 
 def print_qc_info(info, file=qc_log_location):
