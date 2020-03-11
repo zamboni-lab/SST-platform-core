@@ -40,7 +40,7 @@ def perform_sparse_pca():
     print(fraction_explained)
 
 
-def assess_correlations(data_matrix, columns_names, type='continuous', method="", level=0.7):
+def assess_cross_correlations(data_matrix, columns_names, type='continuous', method="", level=0.7):
 
     if type == 'continuous':
 
@@ -222,6 +222,42 @@ def get_theils_u_correlation(x,y):
         return (s_x - s_xy) / s_x
 
 
+def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes, tunes_names, tunes_type="continuous", method=""):
+    """ This method calculates correlations between tunes and metrics. """
+
+    if tunes_type == "continuous":
+
+        # create dataframe to store correlations
+        df = pandas.DataFrame(numpy.empty([len(metrics_names), len(tunes_names)]), index=metrics_names)
+
+        # change names for better display
+        for i in range(len(tunes_names)):
+            tunes_names[i] = tunes_names[i].replace("default", "").replace("traditional", "trad").replace("polynomial", "poly")
+
+        df.columns = tunes_names
+
+        if method == "pearson":
+            # calculate correlations and fill the dataframe
+            for i in range(df.shape[0]):
+                for j in range(df.shape[1]):
+                    df.iloc[i, j] = scipy.stats.pearsonr(metrics[:, i], tunes[:, j])[0]
+        else:
+            # use spearman correlation coefficient
+            for i in range(df.shape[0]):
+                for j in range(df.shape[1]):
+                    df.iloc[i, j] = scipy.stats.spearmanr(metrics[:, i], tunes[:, j])[0]
+
+        print(df)
+
+        # plot a heatmap
+        seaborn.heatmap(df, xticklabels=df.columns, yticklabels=df.index)
+        plt.tight_layout()
+        plt.show()
+
+    else:
+        pass
+
+
 if __name__ == "__main__":
 
     qc_tunes_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"
@@ -270,8 +306,28 @@ if __name__ == "__main__":
     continuous_tunes = numpy.array(continuous_tunes).T
     categorical_tunes = numpy.array(categorical_tunes).T
 
-    # assess_correlations(continuous_tunes, continuous_names, type='continuous', level=0.65)
-    assess_correlations(categorical_tunes, categorical_names, type='categorical', level=0.65)
+    if False:
+        # check cross-correlations in tunes
+        assess_cross_correlations(continuous_tunes, continuous_names, type='continuous', level=0.65)
+        assess_cross_correlations(categorical_tunes, categorical_names, type='categorical', level=0.65)
+
+    # read qc metrics
+    qc_metrics_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_metrics_database.sqlite"
+
+    conn = db_connector.create_connection(qc_metrics_database_path)
+    database, colnames = db_connector.fetch_table(conn, "qc_metrics")
+
+    metrics = numpy.array(database)
+
+    # remove meta info columns
+    metrics = numpy.delete(metrics, range(4), 1)
+    metrics_names = colnames[4:]
+
+    # convert to float
+    metrics = metrics.astype(numpy.float)
+
+    assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names,
+                                                  tunes_type='continuous', method="spearman")
 
     pass
 
