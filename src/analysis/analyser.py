@@ -377,6 +377,9 @@ if __name__ == "__main__":
 
     metrics = numpy.array(database)
 
+    good_quality = metrics[:, 3] == '1'
+    bad_quality = metrics[:, 3] == '0'
+
     # remove meta info columns
     metrics = numpy.delete(metrics, range(4), 1)
     metrics_names = colnames[4:]
@@ -391,6 +394,6 @@ if __name__ == "__main__":
         assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names,
                                                   tunes_type='categorical')
 
-
+    pass
 
 
