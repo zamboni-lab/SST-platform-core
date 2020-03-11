@@ -1,9 +1,10 @@
-import numpy, pandas, matplotlib, scipy, seaborn
+import numpy, pandas, matplotlib, scipy, seaborn, math
 from sklearn import preprocessing
 from sklearn.decomposition import SparsePCA
 from src.msfe import db_connector
 import matplotlib.pyplot as plt
 from scipy.stats import ks_2samp
+from collections import Counter
 
 
 def perform_sparse_pca():
@@ -39,12 +40,15 @@ def perform_sparse_pca():
     print(fraction_explained)
 
 
-def assess_correlations(data_matrix, columns_names, type='continuous', level=0.7):
+def assess_correlations(data_matrix, columns_names, type='continuous', method="", level=0.7):
 
     if type == 'continuous':
 
         # get correlation matrix for continuous
-        df = pandas.DataFrame(data_matrix).corr()
+        if method in ['pearson', 'spearman']:
+            df = pandas.DataFrame(data_matrix).corr(method=method)
+        else:
+            df = pandas.DataFrame(data_matrix).corr()
 
         # change names for better display
         for i in range(len(columns_names)):
@@ -102,10 +106,16 @@ def assess_correlations(data_matrix, columns_names, type='continuous', level=0.7
         df = pandas.DataFrame(numpy.empty([len(columns_names), len(columns_names)]))
         df.columns = columns_names
 
-        # calculate Cramer's V correlation and fill the dataframe
-        for i in range(df.shape[0]):
-            for j in range(df.shape[1]):
-                df.iloc[i,j] = get_cramers_v_correlation(data_matrix[:,i], data_matrix[:,j])
+        if method == 'cramers_v':
+            # calculate Cramer's V correlation and fill the dataframe
+            for i in range(df.shape[0]):
+                for j in range(df.shape[1]):
+                    df.iloc[i,j] = get_cramers_v_correlation(data_matrix[:,i], data_matrix[:,j])
+        else:
+            # calculate Theil's U correlation and fill the dataframe
+            for i in range(df.shape[0]):
+                for j in range(df.shape[1]):
+                    df.iloc[i,j] = get_theils_u_correlation(data_matrix[:,i], data_matrix[:,j])
 
         print(df)
 
@@ -168,6 +178,48 @@ def get_cramers_v_correlation(x, y):
     kcorr = k-((k-1)**2)/(n-1)
 
     return numpy.sqrt(phi2corr/min((kcorr-1),(rcorr-1)))
+
+
+def get_conditional_entropy(x,y):
+    """ Adapted from: https://github.com/shakedzy/dython/blob/master/dython/nominal.py
+        This method calculates the conditional entropy of x given y: S(x|y).
+        It's used to calculate Theil's u correlation.
+
+        **Returns:** float """
+
+    y_counter = Counter(y)
+    xy_counter = Counter(list(zip(x, y)))
+    total_occurrences = sum(y_counter.values())
+    entropy = 0.0
+
+    for xy in xy_counter.keys():
+        p_xy = xy_counter[xy] / total_occurrences
+        p_y = y_counter[xy[1]] / total_occurrences
+        entropy += p_xy * math.log(p_y / p_xy)
+
+    return entropy
+
+
+def get_theils_u_correlation(x,y):
+    """ Adapted from: https://github.com/shakedzy/dython/blob/master/dython/nominal.py
+
+        This method calculates Theil's U statistic (Uncertainty coefficient) for categorical-categorical association.
+        This is the uncertainty of x given y: value is on the range of [0,1] - where 0 means y provides no information
+        about x, and 1 means y provides full information about x.
+        This is an asymmetric coefficient: U(x,y) != U(y,x)
+
+        **Returns:** float in the range of [0,1] """
+
+    s_xy = get_conditional_entropy(x, y)
+    x_counter = Counter(x)
+    total_occurrences = sum(x_counter.values())
+    p_x = list(map(lambda n: n / total_occurrences, x_counter.values()))
+    s_x = scipy.stats.entropy(p_x)
+
+    if s_x == 0:
+        return 1
+    else:
+        return (s_x - s_xy) / s_x
 
 
 if __name__ == "__main__":
