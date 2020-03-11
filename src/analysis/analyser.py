@@ -38,6 +38,56 @@ def perform_sparse_pca():
     print(fraction_explained)
 
 
+def assess_correlations(data_matrix, columns_names, type='continuous', level=0.7):
+
+    if type == 'continuous':
+
+        # get correlation matrix for continuous
+        df = pandas.DataFrame(data_matrix).corr()
+
+        # change names for better display
+        for i in range(len(columns_names)):
+            columns_names[i] = columns_names[i].replace("default", "").replace("traditional", "trad").replace(
+                "polynomial", "poly")
+
+        df.columns = columns_names
+
+        # list cross correlated features
+        correlated_groups = []
+
+        for i in range(df.shape[0]):
+            i_correlated_with = [i]
+            for j in range(i + 1, df.shape[0]):
+                if abs(df.iloc[i, j]) > level:
+                    i_correlated_with.append(j)
+
+            if len(i_correlated_with) > 1:
+                # now check if this group is fully in another group
+                is_part_of_another_group = False
+                for group in correlated_groups:
+                    # if all indices are founf inside any group
+                    if sum([index in group for index in i_correlated_with]) == len(i_correlated_with):
+                        is_part_of_another_group = True
+
+                if not is_part_of_another_group:
+                    correlated_groups.append(i_correlated_with)
+
+        # get names of correlated tunes
+        correlated_group_names = []
+        for group in correlated_groups:
+            tunes_names = [columns_names[index] for index in group]
+            group_name = "-".join(tunes_names)
+            correlated_group_names.append(group_name)
+
+        print("Correlated groups:")
+        print(correlated_group_names)
+
+        # plot a heatmap
+        seaborn.heatmap(df, xticklabels=df.columns, yticklabels=df.columns)
+        plt.tight_layout()
+        plt.show()
+
+
 if __name__ == "__main__":
 
     qc_tunes_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"
@@ -70,6 +120,7 @@ if __name__ == "__main__":
     continuous_names, categorical_names = [], []
 
     for i in range(informative_tunes.shape[1]):
+        # let 12 be a max number of values for a tune to be categorical
         if len(set(informative_tunes[:, i])) > 12:
             continuous_tunes.append(informative_tunes[:, i])
             continuous_names.append(informative_colnames[i])
@@ -80,12 +131,53 @@ if __name__ == "__main__":
     continuous_tunes = numpy.array(continuous_tunes).T
     categorical_tunes = numpy.array(categorical_tunes).T
 
-    # get correlation matrix for continuous
-    df = pandas.DataFrame(continuous_tunes).corr()
+    # assess_correlations(continuous_tunes, continuous_names, type='continuous', level=0.65)
+
+
+
+    # get correlation matrix for categorical
+    df = pandas.DataFrame(data_matrix).corr()
+
+    # change names for better display
+    for i in range(len(columns_names)):
+        columns_names[i] = columns_names[i].replace("default", "").replace("traditional", "trad").replace(
+            "polynomial", "poly")
+
+    df.columns = columns_names
+
+    # list cross correlated features
+    correlated_groups = []
+
+    for i in range(df.shape[0]):
+        i_correlated_with = [i]
+        for j in range(i + 1, df.shape[0]):
+            if abs(df.iloc[i, j]) > level:
+                i_correlated_with.append(j)
+
+        if len(i_correlated_with) > 1:
+            # now check if this group is fully in another group
+            is_part_of_another_group = False
+            for group in correlated_groups:
+                # if all indices are founf inside any group
+                if sum([index in group for index in i_correlated_with]) == len(i_correlated_with):
+                    is_part_of_another_group = True
+
+            if not is_part_of_another_group:
+                correlated_groups.append(i_correlated_with)
+
+    # get names of correlated tunes
+    correlated_group_names = []
+    for group in correlated_groups:
+        tunes_names = [columns_names[index] for index in group]
+        group_name = "-".join(tunes_names)
+        correlated_group_names.append(group_name)
+
+    print("Correlated groups:")
+    print(correlated_group_names)
 
     # plot a heatmap
     seaborn.heatmap(df, xticklabels=df.columns, yticklabels=df.columns)
+    plt.tight_layout()
     plt.show()
 
-    pass
 

@@ -1,5 +1,5 @@
 
-msfe_version = '0.3.31'
+msfe_version = '0.3.32'
 chemical_mix_id = '20190522_4GHz'
 
 """ Mass-spec features extractor constants """
