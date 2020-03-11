@@ -222,6 +222,39 @@ def get_theils_u_correlation(x,y):
         return (s_x - s_xy) / s_x
 
 
+def get_correlation_ratio(categories, measurements):
+    """ Adapted from: https://github.com/shakedzy/dython/blob/master/dython/nominal.py
+
+        Calculates the Correlation Ratio (sometimes marked by the greek letter Eta) for categorical-continuous association.
+        Answers the question - given a continuous value of a measurement, is it possible to know which category is it associated with?
+
+        Value is in the range [0,1], where 0 means a category cannot be determined by a continuous measurement,
+        and 1 means a category can be determined with absolute certainty.
+
+        **Returns:** float in the range of [0,1] """
+
+    fcat, _ = pandas.factorize(categories)
+    cat_num = numpy.max(fcat) + 1
+    y_avg_array = numpy.zeros(cat_num)
+    n_array = numpy.zeros(cat_num)
+
+    for i in range(0, cat_num):
+        cat_measures = measurements[numpy.argwhere(fcat == i).flatten()]
+        n_array[i] = len(cat_measures)
+        y_avg_array[i] = numpy.average(cat_measures)
+
+    y_total_avg = numpy.sum(numpy.multiply(y_avg_array, n_array)) / numpy.sum(n_array)
+    numerator = numpy.sum(numpy.multiply(n_array, numpy.power(numpy.subtract(y_avg_array, y_total_avg), 2)))
+    denominator = numpy.sum(numpy.power(numpy.subtract(measurements, y_total_avg), 2))
+
+    if numerator == 0:
+        eta = 0.0
+    else:
+        eta = numpy.sqrt(numerator / denominator)
+
+    return eta
+
+
 def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes, tunes_names, tunes_type="continuous", method=""):
     """ This method calculates correlations between tunes and metrics. """
 
@@ -255,7 +288,32 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
         plt.show()
 
     else:
-        pass
+        # tunes are categorical here
+
+        # create dataframe to store correlations
+        df = pandas.DataFrame(numpy.empty([len(metrics_names), len(tunes_names)]), index=metrics_names)
+
+        # change names for better display
+        for i in range(len(tunes_names)):
+            if len(tunes_names[i]) > 12:
+                # shorten too long names
+                elements = tunes_names[i].split("_")
+                shortened_name = "_".join([element[:3] for element in elements])
+                tunes_names[i] = shortened_name
+
+        df.columns = tunes_names
+
+        # calculate correlations and fill the dataframe
+        for i in range(df.shape[0]):
+            for j in range(df.shape[1]):
+                df.iloc[i, j] = get_correlation_ratio(tunes[:, j], metrics[:, i])
+
+        print(df)
+
+        # plot a heatmap
+        seaborn.heatmap(df, xticklabels=df.columns, yticklabels=df.index)
+        plt.tight_layout()
+        plt.show()
 
 
 if __name__ == "__main__":
@@ -326,10 +384,13 @@ if __name__ == "__main__":
     # convert to float
     metrics = metrics.astype(numpy.float)
 
-    assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names,
-                                                  tunes_type='continuous', method="spearman")
+    if False:
+        # explore general correlations between tunes and metrics
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names,
+                                                      tunes_type='continuous', method="spearman")
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names,
+                                                  tunes_type='categorical')
 
-    pass
 
 
 
