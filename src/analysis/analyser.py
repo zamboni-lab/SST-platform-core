@@ -5,6 +5,7 @@ from src.msfe import db_connector
 import matplotlib.pyplot as plt
 from scipy.stats import ks_2samp
 
+
 def perform_sparse_pca():
     """ This method performs sparse PCA on the qc_features_database (local file of some version provided),
         prints sparsity value and variance fraction explained by first N components. """
@@ -87,6 +88,87 @@ def assess_correlations(data_matrix, columns_names, type='continuous', level=0.7
         plt.tight_layout()
         plt.show()
 
+    elif type == 'categorical':
+
+        # change names for better display
+        for i in range(len(columns_names)):
+            if len(columns_names[i]) > 12:
+                # shorten too long names
+                elements = columns_names[i].split("_")
+                shortened_name = "_".join([element[:3] for element in elements])
+                columns_names[i] = shortened_name
+
+        # create empty correlation matrix for categorical tunes
+        df = pandas.DataFrame(numpy.empty([len(columns_names), len(columns_names)]))
+        df.columns = columns_names
+
+        # calculate Cramer's V correlation and fill the dataframe
+        for i in range(df.shape[0]):
+            for j in range(df.shape[1]):
+                df.iloc[i,j] = get_cramers_v_correlation(data_matrix[:,i], data_matrix[:,j])
+
+        print(df)
+
+        # list cross correlated features
+        correlated_groups = []
+
+        for i in range(df.shape[0]):
+            i_correlated_with = [i]
+            for j in range(i + 1, df.shape[0]):
+                if abs(df.iloc[i, j]) > level:
+                    i_correlated_with.append(j)
+
+            if len(i_correlated_with) > 1:
+                # now check if this group is fully in another group
+                is_part_of_another_group = False
+                for group in correlated_groups:
+                    # if all indices are founf inside any group
+                    if sum([index in group for index in i_correlated_with]) == len(i_correlated_with):
+                        is_part_of_another_group = True
+
+                if not is_part_of_another_group:
+                    correlated_groups.append(i_correlated_with)
+
+        # get names of correlated tunes
+        correlated_group_names = []
+        for group in correlated_groups:
+            tunes_names = [columns_names[index] for index in group]
+            group_name = "-".join(tunes_names)
+            correlated_group_names.append(group_name)
+
+        print("Correlated groups:")
+        print(correlated_group_names)
+
+        # plot a heatmap
+        seaborn.heatmap(df, xticklabels=df.columns, yticklabels=df.columns)
+        plt.tight_layout()
+        plt.show()
+
+    else:
+        pass
+
+
+def get_cramers_v_correlation(x, y):
+    """ Adapted from: https://github.com/shakedzy/dython/blob/master/dython/nominal.py
+
+        This method calculates Cramer's V statistic for categorical-categorical association.
+        Uses correction from Bergsma and Wicher, Journal of the Korean Statistical Society 42 (2013): 323-328.
+        This is a symmetric coefficient: V(x,y) = V(y,x)
+        Original function taken from: https://stackoverflow.com/a/46498792/5863503
+
+        **Returns:** float in the range of [0,1] """
+
+    confusion_matrix = pandas.crosstab(x,y)
+    chi2 = scipy.stats.chi2_contingency(confusion_matrix)[0]
+    n = confusion_matrix.sum().sum()
+    phi2 = chi2 / n
+    r, k = confusion_matrix.shape
+    phi2corr = max(0, phi2-((k-1)*(r-1))/(n-1))
+    rcorr = r-((r-1)**2)/(n-1)
+    kcorr = k-((k-1)**2)/(n-1)
+
+    return numpy.sqrt(phi2corr/min((kcorr-1),(rcorr-1)))
+
 
 if __name__ == "__main__":
 
@@ -101,8 +183,13 @@ if __name__ == "__main__":
     indices = [10, 13, 16]
     indices.extend([i for i in range(18,151)])
 
+    # compose arrays
     tunes = numpy.vstack([tunes[:, i].astype(numpy.float) for i in indices]).T
     colnames = numpy.array(colnames)[indices]
+
+    # remove nans
+    tunes = numpy.delete(tunes, range(89, 116), 1)  # these columns contain only zeros and nans
+    colnames = numpy.delete(colnames, range(89, 116), 0)
 
     # set full display
     pandas.set_option('display.max_rows', None)
@@ -132,52 +219,9 @@ if __name__ == "__main__":
     categorical_tunes = numpy.array(categorical_tunes).T
 
     # assess_correlations(continuous_tunes, continuous_names, type='continuous', level=0.65)
+    assess_correlations(categorical_tunes, categorical_names, type='categorical', level=0.65)
 
+    pass
 
-
-    # get correlation matrix for categorical
-    df = pandas.DataFrame(data_matrix).corr()
-
-    # change names for better display
-    for i in range(len(columns_names)):
-        columns_names[i] = columns_names[i].replace("default", "").replace("traditional", "trad").replace(
-            "polynomial", "poly")
-
-    df.columns = columns_names
-
-    # list cross correlated features
-    correlated_groups = []
-
-    for i in range(df.shape[0]):
-        i_correlated_with = [i]
-        for j in range(i + 1, df.shape[0]):
-            if abs(df.iloc[i, j]) > level:
-                i_correlated_with.append(j)
-
-        if len(i_correlated_with) > 1:
-            # now check if this group is fully in another group
-            is_part_of_another_group = False
-            for group in correlated_groups:
-                # if all indices are founf inside any group
-                if sum([index in group for index in i_correlated_with]) == len(i_correlated_with):
-                    is_part_of_another_group = True
-
-            if not is_part_of_another_group:
-                correlated_groups.append(i_correlated_with)
-
-    # get names of correlated tunes
-    correlated_group_names = []
-    for group in correlated_groups:
-        tunes_names = [columns_names[index] for index in group]
-        group_name = "-".join(tunes_names)
-        correlated_group_names.append(group_name)
-
-    print("Correlated groups:")
-    print(correlated_group_names)
-
-    # plot a heatmap
-    seaborn.heatmap(df, xticklabels=df.columns, yticklabels=df.columns)
-    plt.tight_layout()
-    plt.show()
 
 
