@@ -351,6 +351,22 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, good_quality, bad
         return pandas.concat([df, boolean_result], axis=0)
 
 
+def get_contingency_table(tunes, index, good_quality, bad_quality):
+    """ This method create a continjency table for chi2 testing. """
+
+    all_possible_values = set(tunes[:, index])
+
+    good_values = list(tunes[good_quality, index])
+    bad_values = list(tunes[bad_quality, index])
+
+
+
+
+
+    pass
+
+
+
 if __name__ == "__main__":
 
     qc_tunes_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"
@@ -433,6 +449,11 @@ if __name__ == "__main__":
         # test tunes grouped by quality
         testing_results = test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_quality, bad_quality, tunes_type="continuous")
 
+
+    for i in range(categorical_tunes.shape[1]):
+
+        categorical_tunes[good_quality, i]
+        categorical_tunes[bad_quality, i]
 
 
 
