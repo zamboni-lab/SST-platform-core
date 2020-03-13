@@ -3,8 +3,9 @@ from sklearn import preprocessing
 from sklearn.decomposition import SparsePCA
 from src.msfe import db_connector
 import matplotlib.pyplot as plt
-from scipy.stats import ks_2samp
+from scipy.stats import ks_2samp, mannwhitneyu, kruskal
 from collections import Counter
+from statsmodels.stats.multitest import multipletests
 
 
 def perform_sparse_pca():
@@ -316,6 +317,40 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
         plt.show()
 
 
+def test_tunes_for_statistical_differences(tunes, tunes_names, good_quality, bad_quality, tunes_type="continuous", level=0.05):
+    """ This method conducts testing of hypothesis that
+        tunes corresponding to "good" and "bad" runs differ statistically. """
+
+    if tunes_type == "continuous":
+
+        # prepare dataframe for statistical tests results
+        df = pandas.DataFrame(numpy.empty([3, continuous_tunes.shape[1]]), index=["kolmogorov", "wilcoxon", "kruskall"])
+        df.columns = tunes_names
+
+        for i in range(tunes.shape[1]):
+            # test continuous tunes of "good" and "bad" runs
+            p1 = ks_2samp(tunes[good_quality, i], tunes[bad_quality, i])[1]
+            p2 = mannwhitneyu(tunes[good_quality, i], tunes[bad_quality, i])[1]
+            p3 = kruskal(tunes[good_quality, i], tunes[bad_quality, i])[1]
+
+            df.iloc[:, i] = numpy.array([p1, p2, p3])
+
+        for i in range(df.shape[0]):
+            # correct p values for multiple testing
+            df.iloc[i,:] = multipletests(df.iloc[i,:], method="fdr_bh")[1]
+
+        # just add a row with True / False
+        boolean_result = pandas.DataFrame(numpy.array([False for i in range(df.shape[1])])).T
+        boolean_result.index = ["different"]
+        boolean_result.columns = tunes_names
+
+        for i in range(df.shape[1]):
+            if sum(df.iloc[:,i] <= level) >= 2:
+                boolean_result.iloc[0,i] = True
+
+        return pandas.concat([df, boolean_result], axis=0)
+
+
 if __name__ == "__main__":
 
     qc_tunes_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"
@@ -393,6 +428,13 @@ if __name__ == "__main__":
                                                       tunes_type='continuous', method="spearman")
         assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names,
                                                   tunes_type='categorical')
+
+    if False:
+        # test tunes grouped by quality
+        testing_results = test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_quality, bad_quality, tunes_type="continuous")
+
+
+
 
     pass
 
