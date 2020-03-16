@@ -4,6 +4,7 @@ from sklearn.decomposition import SparsePCA
 from src.msfe import db_connector
 import matplotlib.pyplot as plt
 from scipy.stats import ks_2samp, mannwhitneyu, kruskal
+from scipy.stats import chi2_contingency
 from collections import Counter
 from statsmodels.stats.multitest import multipletests
 
@@ -324,7 +325,7 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, good_quality, bad
     if tunes_type == "continuous":
 
         # prepare dataframe for statistical tests results
-        df = pandas.DataFrame(numpy.empty([3, continuous_tunes.shape[1]]), index=["kolmogorov", "wilcoxon", "kruskall"])
+        df = pandas.DataFrame(numpy.empty([3, tunes.shape[1]]), index=["kolmogorov", "wilcoxon", "kruskall"])
         df.columns = tunes_names
 
         for i in range(tunes.shape[1]):
@@ -350,21 +351,46 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, good_quality, bad
 
         return pandas.concat([df, boolean_result], axis=0)
 
+    elif tunes_type == 'categorical':
+
+        df = pandas.DataFrame(numpy.empty([1, tunes.shape[1]]), index=["chi2"])
+        df.columns = tunes_names
+
+        # now go over categorical tunes and perform chi2
+        for i in range(tunes.shape[1]):
+            continjency_table = get_contingency_table(tunes, i, good_quality, bad_quality)
+            df.iloc[0, i] = chi2_contingency(continjency_table)[1]
+
+        # correct p values for multiple testing
+        df.iloc[0, :] = multipletests(df.iloc[0, :], method="fdr_bh")[1]
+
+        # just add a row with True / False
+        boolean_result = pandas.DataFrame(numpy.array([False for i in range(df.shape[1])])).T
+        boolean_result.index = ["different"]
+        boolean_result.columns = tunes_names
+
+        for i in range(df.shape[1]):
+            if round(df.iloc[0, i], 2) <= level:
+                boolean_result.iloc[0, i] = True
+
+        return pandas.concat([df, boolean_result], axis=0)
+
+    else:
+        raise ValueError("Tunes type not specified.")
+
 
 def get_contingency_table(tunes, index, good_quality, bad_quality):
     """ This method create a continjency table for chi2 testing. """
 
-    all_possible_values = set(tunes[:, index])
+    all_possible_values = sorted(list(set(tunes[:, index])))
 
     good_values = list(tunes[good_quality, index])
     bad_values = list(tunes[bad_quality, index])
 
+    good_values_occurencies = [good_values.count(value) for value in all_possible_values]
+    bad_values_occurencies = [bad_values.count(value) for value in all_possible_values]
 
-
-
-
-    pass
-
+    return numpy.array([good_values_occurencies, bad_values_occurencies])
 
 
 if __name__ == "__main__":
@@ -440,23 +466,10 @@ if __name__ == "__main__":
 
     if False:
         # explore general correlations between tunes and metrics
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names,
-                                                      tunes_type='continuous', method="spearman")
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names,
-                                                  tunes_type='categorical')
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman")
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='categorical')
 
     if False:
         # test tunes grouped by quality
-        testing_results = test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_quality, bad_quality, tunes_type="continuous")
-
-
-    for i in range(categorical_tunes.shape[1]):
-
-        categorical_tunes[good_quality, i]
-        categorical_tunes[bad_quality, i]
-
-
-
-    pass
-
-
+        testing_results_continuous = test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_quality, bad_quality, tunes_type="continuous")
+        testing_results_categorical = test_tunes_for_statistical_differences(categorical_tunes, categorical_names, good_quality, bad_quality, tunes_type="categorical")
