@@ -318,7 +318,7 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
         plt.show()
 
 
-def test_tunes_for_statistical_differences(tunes, tunes_names, good_quality, bad_quality, tunes_type="continuous", level=0.05):
+def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, group_2_indices, tunes_type="continuous", level=0.05):
     """ This method conducts testing of hypothesis that
         tunes corresponding to "good" and "bad" runs differ statistically. """
 
@@ -330,9 +330,9 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, good_quality, bad
 
         for i in range(tunes.shape[1]):
             # test continuous tunes of "good" and "bad" runs
-            p1 = ks_2samp(tunes[good_quality, i], tunes[bad_quality, i])[1]
-            p2 = mannwhitneyu(tunes[good_quality, i], tunes[bad_quality, i])[1]
-            p3 = kruskal(tunes[good_quality, i], tunes[bad_quality, i])[1]
+            p1 = ks_2samp(tunes[group_1_indices, i], tunes[group_2_indices, i])[1]
+            p2 = mannwhitneyu(tunes[group_1_indices, i], tunes[group_2_indices, i])[1]
+            p3 = kruskal(tunes[group_1_indices, i], tunes[group_2_indices, i])[1]
 
             df.iloc[:, i] = numpy.array([p1, p2, p3])
 
@@ -358,7 +358,7 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, good_quality, bad
 
         # now go over categorical tunes and perform chi2
         for i in range(tunes.shape[1]):
-            continjency_table = get_contingency_table(tunes, i, good_quality, bad_quality)
+            continjency_table = get_contingency_table(tunes, i, group_1_indices, group_2_indices)
             df.iloc[0, i] = chi2_contingency(continjency_table)[1]
 
         # correct p values for multiple testing
@@ -393,18 +393,18 @@ def get_contingency_table(tunes, index, good_quality, bad_quality):
     return numpy.array([good_values_occurencies, bad_values_occurencies])
 
 
-if __name__ == "__main__":
+def get_tunes_and_names(path):
+    """ This method reads a database with tunes, makes some preprocessing and returns
+        categorical and continuous tunes with names. """
 
-    qc_tunes_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"
-
-    conn = db_connector.create_connection(qc_tunes_database_path)
+    conn = db_connector.create_connection(path)
     database, colnames = db_connector.fetch_table(conn, "qc_tunes")
 
     tunes = numpy.array(database)
 
     # extract numeric values only
     indices = [10, 13, 16]
-    indices.extend([i for i in range(18,151)])
+    indices.extend([i for i in range(18, 151)])
 
     # compose arrays
     tunes = numpy.vstack([tunes[:, i].astype(numpy.float) for i in indices]).T
@@ -414,12 +414,9 @@ if __name__ == "__main__":
     tunes = numpy.delete(tunes, range(89, 116), 1)  # these columns contain only zeros and nans
     colnames = numpy.delete(colnames, range(89, 116), 0)
 
-    # set full display
-    pandas.set_option('display.max_rows', None)
-    pandas.set_option('display.max_columns', None)
-
     # get numbers of unique values for each tune
-    unique_values_numbers = numpy.array([pandas.DataFrame(tunes).iloc[:,i].unique().shape[0] for i in range(pandas.DataFrame(tunes).shape[1])])
+    unique_values_numbers = numpy.array(
+        [pandas.DataFrame(tunes).iloc[:, i].unique().shape[0] for i in range(pandas.DataFrame(tunes).shape[1])])
 
     # get only tunes with at least 2 different values
     informative_tunes = tunes[:, numpy.where(unique_values_numbers > 1)[0]]
@@ -441,21 +438,20 @@ if __name__ == "__main__":
     continuous_tunes = numpy.array(continuous_tunes).T
     categorical_tunes = numpy.array(categorical_tunes).T
 
-    if False:
-        # check cross-correlations in tunes
-        assess_cross_correlations(continuous_tunes, continuous_names, type='continuous', level=0.65)
-        assess_cross_correlations(categorical_tunes, categorical_names, type='categorical', level=0.65)
+    return continuous_tunes, continuous_names, categorical_tunes, categorical_names
+
+
+def get_metrics_data(path):
+    """ This method read metrics database,
+        returns a matrix with metrics, metrics names, arrays of quality and acquisitions dates. """
 
     # read qc metrics
-    qc_metrics_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_metrics_database.sqlite"
-
-    conn = db_connector.create_connection(qc_metrics_database_path)
+    conn = db_connector.create_connection(path)
     database, colnames = db_connector.fetch_table(conn, "qc_metrics")
 
     metrics = numpy.array(database)
-
-    good_quality = metrics[:, 3] == '1'
-    bad_quality = metrics[:, 3] == '0'
+    quality = metrics[:, 3]
+    acquisition = metrics[:, 2]
 
     # remove meta info columns
     metrics = numpy.delete(metrics, range(4), 1)
@@ -464,12 +460,77 @@ if __name__ == "__main__":
     # convert to float
     metrics = metrics.astype(numpy.float)
 
+    return metrics, metrics_names, acquisition, quality
+
+
+if __name__ == "__main__":
+
+    # set full display
+    pandas.set_option('display.max_rows', None)
+    pandas.set_option('display.max_columns', None)
+
+    qc_tunes_database_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_tunes_database_mar18.sqlite"
+    qc_metrics_database_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_metrics_database_mar18.sqlite"
+
+    continuous_tunes, continuous_names, categorical_tunes, categorical_names = get_tunes_and_names(qc_tunes_database_path)
+
+    if False:
+        # check cross-correlations in tunes
+        assess_cross_correlations(continuous_tunes, continuous_names, type='continuous', level=0.65)
+        assess_cross_correlations(categorical_tunes, categorical_names, type='categorical', level=0.65)
+
+    # read qc metrics
+    metrics, metrics_names, acquisition, quality = get_metrics_data(qc_metrics_database_path)
+
     if False:
         # explore general correlations between tunes and metrics
         assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman")
         assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='categorical')
 
     if False:
+        # define good or bad based on the score
+        high_score_indices = quality == '1'
+        low_score_indices = quality == '0'
+
         # test tunes grouped by quality
-        testing_results_continuous = test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_quality, bad_quality, tunes_type="continuous")
-        testing_results_categorical = test_tunes_for_statistical_differences(categorical_tunes, categorical_names, good_quality, bad_quality, tunes_type="categorical")
+        testing_results_continuous = test_tunes_for_statistical_differences(continuous_tunes, continuous_names, high_score_indices, low_score_indices, tunes_type="continuous")
+        testing_results_categorical = test_tunes_for_statistical_differences(categorical_tunes, categorical_names, high_score_indices, low_score_indices, tunes_type="categorical")
+
+    if False:
+        # explore general correlations between tunes and metrics
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman")
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='categorical')
+
+    if False:
+        # test tunes grouped by a recent trend in resolution
+        good_resolution_indices = metrics[:, 2] < "2020-03-04"
+        bad_resolution_indices = metrics[:, 2] >= "2020-03-04"
+
+        # test tunes grouped by quality
+        results_continuous = test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_resolution_indices, bad_resolution_indices, tunes_type="continuous")
+        results_categorical = test_tunes_for_statistical_differences(categorical_tunes, categorical_names, good_resolution_indices, bad_resolution_indices, tunes_type="categorical")
+
+
+
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
