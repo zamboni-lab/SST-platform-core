@@ -34,12 +34,18 @@ def select_all_tasks(conn, table_name):
 
 if __name__ == "__main__":
 
-    from scipy.stats import chi2_contingency
+    a = [0, 2, 2, 0, 1, 3]
+    b = [1, 2, 0, 0, 0, 3]
 
-    obs = numpy.array([[10, 10, 20], [20, 20, 20],[20, 30, 20], [20, 30, 40]])
+    i = 0
+    while i < len(a):
+        if a[i] == b[i] == 0:
+            a.pop(i)
+            b.pop(i)
+        i += 1
 
-    print(chi2_contingency(obs))
-
+    print(a)
+    print(b)
     pass
 
 

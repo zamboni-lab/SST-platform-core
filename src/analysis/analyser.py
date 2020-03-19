@@ -359,6 +359,8 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
         # now go over categorical tunes and perform chi2
         for i in range(tunes.shape[1]):
             continjency_table = get_contingency_table(tunes, i, group_1_indices, group_2_indices)
+            print(i, tunes_names[i])
+            print(continjency_table)
             df.iloc[0, i] = chi2_contingency(continjency_table)[1]
 
         # correct p values for multiple testing
@@ -379,16 +381,25 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
         raise ValueError("Tunes type not specified.")
 
 
-def get_contingency_table(tunes, index, good_quality, bad_quality):
+def get_contingency_table(tunes, index, group_1_indices, group_2_indices):
     """ This method create a continjency table for chi2 testing. """
 
     all_possible_values = sorted(list(set(tunes[:, index])))
 
-    good_values = list(tunes[good_quality, index])
-    bad_values = list(tunes[bad_quality, index])
+    good_values = list(tunes[group_1_indices, index])
+    bad_values = list(tunes[group_2_indices, index])
 
     good_values_occurencies = [good_values.count(value) for value in all_possible_values]
     bad_values_occurencies = [bad_values.count(value) for value in all_possible_values]
+
+    # remove 0/0 cases causing errors in chi2
+    i = 0
+    while i < len(good_values_occurencies):
+        if good_values_occurencies[i] == bad_values_occurencies[i] == 0:
+            good_values_occurencies.pop(i)
+            bad_values_occurencies.pop(i)
+        else:
+            i += 1
 
     return numpy.array([good_values_occurencies, bad_values_occurencies])
 
@@ -463,6 +474,87 @@ def get_metrics_data(path):
     return metrics, metrics_names, acquisition, quality
 
 
+def test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition, continuous_tunes, continuous_names, categorical_tunes, categorical_names):
+    """ This method groups tunes based on extreme values (outliers) of metrics,
+        then performs statistical tests and saves the results in the dict.  """
+
+    all_comparisons = {}  # store results in a dict
+
+    high_score_indices_before_march = (quality == '1') * (acquisition < "2020-03-04")
+
+    for metric in ["resolution_200", "resolution_700", "signal", "s2b", "s2n"]:
+        index = metrics_names.index(metric)
+
+        # filter out negative values to estimate lower bound
+        non_negative_indices = metrics[:, index] > 0  # missing values are -1s
+        values = metrics[non_negative_indices, index]
+
+        # very low values are bad here
+        lower_bound = numpy.percentile(values, 25)
+
+        # assign indices
+        normal_values_indices = non_negative_indices * (metrics[:, index] >= lower_bound)
+        low_extreme_indices = non_negative_indices * (metrics[:, index] < lower_bound)
+
+        group_a_indices = high_score_indices_before_march * normal_values_indices
+        group_b_indices = high_score_indices_before_march * low_extreme_indices
+
+        # test tunes grouped by
+        all_comparisons[metric] = {
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_b_indices, tunes_type="continuous"),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_b_indices, tunes_type="categorical")
+        }
+
+    for metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150",
+                   "baseline_25_650", "baseline_50_650"]:
+        index = metrics_names.index(metric)
+
+        # filter out negative values to estimate lower bound
+        non_negative_indices = metrics[:, index] > 0  # missing values are -1s
+        values = metrics[non_negative_indices, index]
+
+        # very high values are bad here
+        upper_bound = numpy.percentile(values, 75)
+
+        # assign indices
+        normal_values_indices = non_negative_indices * (metrics[:, index] <= upper_bound)
+        high_extreme_indices = non_negative_indices * (metrics[:, index] > upper_bound)
+
+        group_a_indices = high_score_indices_before_march * normal_values_indices
+        group_b_indices = high_score_indices_before_march * high_extreme_indices
+
+        # test tunes grouped by
+        all_comparisons[metric] = {
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_b_indices, group_b_indices, tunes_type="continuous"),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_b_indices, tunes_type="categorical")
+        }
+
+    for metric in ["isotopic_presence", "transmission", "fragmentation_305", "fragmentation_712"]:
+        index = metrics_names.index(metric)
+
+        # filter out negative values to estimate lower bound
+        non_negative_indices = metrics[:, index] > 0  # missing values are -1s
+        values = metrics[non_negative_indices, index]
+
+        # too high and too low values are bad here
+        lower_bound, upper_bound = numpy.percentile(values, [5, 95])
+
+        # assign indices
+        normal_values_indices = (metrics[:, index] <= upper_bound) + (metrics[:, index] >= lower_bound)
+        extreme_indices = (metrics[:, index] > upper_bound) + (metrics[:, index] < lower_bound)
+
+        group_a_indices = high_score_indices_before_march * normal_values_indices
+        group_b_indices = high_score_indices_before_march * extreme_indices
+
+        # test tunes grouped by
+        all_comparisons[metric] = {
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_b_indices, tunes_type="continuous"),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_b_indices, tunes_type="categorical")
+        }
+
+    return all_comparisons
+
+
 if __name__ == "__main__":
 
     # set full display
@@ -502,17 +594,24 @@ if __name__ == "__main__":
         assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='categorical')
 
     if False:
-        # test tunes grouped by a recent trend in resolution
-        good_resolution_indices = metrics[:, 2] < "2020-03-04"
-        bad_resolution_indices = metrics[:, 2] >= "2020-03-04"
+        # test tunes grouped by a recent trend in resolution & baselines
+        good_resolution_indices = acquisition < "2020-03-04"
+        bad_resolution_indices = acquisition >= "2020-03-04"
+
+        # TODO: no filtering on quality is done here. Does it matter?
 
         # test tunes grouped by quality
         results_continuous = test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_resolution_indices, bad_resolution_indices, tunes_type="continuous")
         results_categorical = test_tunes_for_statistical_differences(categorical_tunes, categorical_names, good_resolution_indices, bad_resolution_indices, tunes_type="categorical")
 
+    if False:
+        # test tunes grouped by extreme metrics values
+        comparisons = test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition,
+                                                                       continuous_tunes, continuous_names,
+                                                                       categorical_tunes, categorical_names)
 
 
-        pass
+    pass
 
 
 
