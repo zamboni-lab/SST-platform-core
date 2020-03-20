@@ -329,7 +329,7 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
         df.columns = tunes_names
 
         for i in range(tunes.shape[1]):
-            # test continuous tunes of "good" and "bad" runs
+            # test continuous tunes of group 1 and group 2 runs
             p1 = ks_2samp(tunes[group_1_indices, i], tunes[group_2_indices, i])[1]
             p2 = mannwhitneyu(tunes[group_1_indices, i], tunes[group_2_indices, i])[1]
             p3 = kruskal(tunes[group_1_indices, i], tunes[group_2_indices, i])[1]
@@ -585,14 +585,17 @@ if __name__ == "__main__":
         low_score_indices = quality == '0'
 
         # test tunes grouped by quality
-        testing_results_continuous = test_tunes_for_statistical_differences(continuous_tunes, continuous_names, high_score_indices, low_score_indices, tunes_type="continuous")
-        testing_results_categorical = test_tunes_for_statistical_differences(categorical_tunes, categorical_names, high_score_indices, low_score_indices, tunes_type="categorical")
+
+        comparisons_for_scores = {
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, high_score_indices, low_score_indices, tunes_type="continuous"),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, high_score_indices, low_score_indices, tunes_type="categorical")
+        }
 
     if False:
-        # explore general correlations between tunes and metrics
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman")
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='categorical')
-
+        # test tunes grouped by extreme metrics values
+        comparisons_for_metric_outliers = test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition,
+                                                                                       continuous_tunes, continuous_names,
+                                                                                       categorical_tunes, categorical_names)
     if False:
         # test tunes grouped by a recent trend in resolution & baselines
         good_resolution_indices = acquisition < "2020-03-04"
@@ -600,16 +603,38 @@ if __name__ == "__main__":
 
         # TODO: no filtering on quality is done here. Does it matter?
 
-        # test tunes grouped by quality
-        results_continuous = test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_resolution_indices, bad_resolution_indices, tunes_type="continuous")
-        results_categorical = test_tunes_for_statistical_differences(categorical_tunes, categorical_names, good_resolution_indices, bad_resolution_indices, tunes_type="categorical")
+        comparisons_for_resolution_trend = {
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_resolution_indices, bad_resolution_indices, tunes_type="continuous"),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, good_resolution_indices, bad_resolution_indices, tunes_type="categorical")
+        }
 
-    if False:
-        # test tunes grouped by extreme metrics values
-        comparisons = test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition,
-                                                                       continuous_tunes, continuous_names,
-                                                                       categorical_tunes, categorical_names)
+    if True:
+        # test tunes grouped by trends in chemical_dirt
+        elevated_dirt_indices = (acquisition > "2020-03-05")
+        low_dirt_indices = (acquisition > "2019-12-21") * (acquisition < "2020-03-08")
+        increasing_dirt_indices = (acquisition > "2019-11-12") * (acquisition < "2020-01-23")
 
+        group_a_indices = (quality == '1') * elevated_dirt_indices
+        group_b_indices = (quality == '1') * low_dirt_indices
+        group_c_indices = (quality == '1') * increasing_dirt_indices
+
+        comparisons_for_chem_dirt_trends = {
+
+            "elevated vs low": {
+                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_b_indices, tunes_type="continuous"),
+                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_b_indices, tunes_type="categorical")
+            },
+
+            "elevated vs inscreasing": {
+                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_c_indices, tunes_type="continuous"),
+                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_c_indices, tunes_type="categorical")
+            },
+
+            "low vs increasing": {
+                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_b_indices, group_c_indices, tunes_type="continuous"),
+                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_b_indices, group_c_indices, tunes_type="categorical")
+            }
+        }
 
     pass
 
