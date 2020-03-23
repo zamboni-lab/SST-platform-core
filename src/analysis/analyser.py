@@ -598,17 +598,15 @@ if __name__ == "__main__":
                                                                                        categorical_tunes, categorical_names)
     if False:
         # test tunes grouped by a recent trend in resolution & baselines
-        good_resolution_indices = acquisition < "2020-03-04"
-        bad_resolution_indices = acquisition >= "2020-03-04"
-
-        # TODO: no filtering on quality is done here. Does it matter?
+        good_resolution_indices = (quality == '1') * (acquisition < "2020-03-04")
+        bad_resolution_indices = (quality == '1') * (acquisition >= "2020-03-04")
 
         comparisons_for_resolution_trend = {
             "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_resolution_indices, bad_resolution_indices, tunes_type="continuous"),
             "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, good_resolution_indices, bad_resolution_indices, tunes_type="categorical")
         }
 
-    if True:
+    if False:
         # test tunes grouped by trends in chemical_dirt
         elevated_dirt_indices = (acquisition > "2020-03-05")
         low_dirt_indices = (acquisition > "2019-12-21") * (acquisition < "2020-03-08")
