@@ -634,14 +634,24 @@ if __name__ == "__main__":
             }
         }
 
-    if True:
+    if False:
         # test tunes grouped by levels of instrument noise
         higher_noise_indices = (quality == '1') * (acquisition < "2019-12-19")
-        lower_noise_indices = (quality == '1') * ((acquisition >= "2020-01-23") * (acquisition >= "2020-03-14"))
+        lower_noise_indices = (quality == '1') * ((acquisition >= "2020-01-23") * (acquisition < "2020-03-14"))
 
-        comparisons_for_instrument_noise_trend = {
+        comparisons_for_instrument_noise_levels = {
             "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, higher_noise_indices, lower_noise_indices, tunes_type="continuous"),
             "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, higher_noise_indices, lower_noise_indices, tunes_type="categorical")
+        }
+
+    if True:
+        # test tunes grouped by variations in signal
+        higher_variance_signal_indices = (quality == '1') * ((acquisition >= "2019-09-10") * (acquisition < "2020-01-23"))
+        lower_variance_signal_indices = (quality == '1') * (acquisition >= "2020-01-23")
+
+        comparisons_for_signal_variation = {
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, higher_variance_signal_indices, lower_variance_signal_indices, tunes_type="continuous"),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, higher_variance_signal_indices, lower_variance_signal_indices, tunes_type="categorical")
         }
 
     pass
