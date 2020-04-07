@@ -567,6 +567,27 @@ if __name__ == "__main__":
     continuous_tunes, continuous_names, categorical_tunes, categorical_names = get_tunes_and_names(qc_tunes_database_path)
 
     if False:
+        # assess how imbalanced the categorical data is
+        result_categorical = []
+        for i in range(len(categorical_names)):
+
+            unique_values, counts = numpy.unique(categorical_tunes[:,i], return_counts=True)
+            percents = [round(count / categorical_tunes.shape[0], 2) for count in counts]
+            # make a dict { unique value: percent of total }
+            result_categorical.append(dict(zip(unique_values, percents)))
+
+        # assess how imbalanced the continuous data is
+        description_continuous = numpy.array(pandas.DataFrame(continuous_tunes).describe())  # save quantiles
+
+        result_continuous = []
+        for i in range(len(continuous_names)):
+            unique_values, counts = numpy.unique(continuous_tunes[:, i], return_counts=True)
+            percents = [round(count / continuous_tunes.shape[0], 2) for count in counts]
+            # make a dict { unique value: percent of total }
+            result_continuous.append(dict(zip(unique_values, percents)))
+
+
+    if False:
         # check cross-correlations in tunes
         assess_cross_correlations(continuous_tunes, continuous_names, type='continuous', level=0.65)
         assess_cross_correlations(categorical_tunes, categorical_names, type='categorical', level=0.65)
@@ -644,7 +665,7 @@ if __name__ == "__main__":
             "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, higher_noise_indices, lower_noise_indices, tunes_type="categorical")
         }
 
-    if True:
+    if False:
         # test tunes grouped by variations in signal
         higher_variance_signal_indices = (quality == '1') * ((acquisition >= "2019-09-10") * (acquisition < "2020-01-23"))
         lower_variance_signal_indices = (quality == '1') * (acquisition >= "2020-01-23")

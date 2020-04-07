@@ -34,18 +34,22 @@ def select_all_tasks(conn, table_name):
 
 if __name__ == "__main__":
 
-    a = [0, 2, 2, 0, 1, 3]
-    b = [1, 2, 0, 0, 0, 3]
-
-    i = 0
-    while i < len(a):
-        if a[i] == b[i] == 0:
-            a.pop(i)
-            b.pop(i)
-        i += 1
-
-    print(a)
-    print(b)
+    # a = [0, 2, 2, 0, 1, 3]
+    # b = [1, 2, 0, 0, 0, 3]
+    #
+    # i = 0
+    # while i < len(a):
+    #     if a[i] == b[i] == 0:
+    #         a.pop(i)
+    #         b.pop(i)
+    #     i += 1
+    #
+    # print(a)
+    # print(b)
     pass
+
+
+
+
 
 
