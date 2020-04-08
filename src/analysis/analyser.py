@@ -375,7 +375,7 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
         plt.show()
 
 
-def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, group_2_indices, tunes_type="continuous", level=0.05):
+def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, group_2_indices, group_names, tunes_type="continuous", level=0.05, inspection_mode=False):
     """ This method conducts testing of hypothesis that
         tunes corresponding to "good" and "bad" runs differ statistically. """
 
@@ -406,6 +406,25 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
             if sum(df.iloc[:,i] <= level) >= 2:
                 boolean_result.iloc[0,i] = True
 
+                # look into variables closer if they are statistically different
+                if inspection_mode:
+                    fig, ax = plt.subplots(figsize=(10, 5))
+
+                    groups = numpy.empty(tunes.shape[0]).astype(str)
+                    groups[group_1_indices] = group_names[0]
+                    groups[group_2_indices] = group_names[1]
+
+                    ax.scatter(groups, tunes[:, i])
+
+                    # adds a title and axes labels
+                    ax.set_title(boolean_result.columns[i] + ": \n" + group_names[0] + " vs " + group_names[1])
+                    ax.set_ylabel(boolean_result.columns[i])
+
+                    # removing top and right borders
+                    ax.spines['top'].set_visible(False)
+                    ax.spines['right'].set_visible(False)
+                    plt.show()
+
         return pandas.concat([df, boolean_result], axis=0)
 
     elif tunes_type == 'categorical':
@@ -431,6 +450,25 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
         for i in range(df.shape[1]):
             if round(df.iloc[0, i], 2) <= level:
                 boolean_result.iloc[0, i] = True
+
+                # look into variables closer if they are statistically different
+                if inspection_mode:
+                    fig, ax = plt.subplots(figsize=(10, 5))
+
+                    groups = numpy.empty(tunes.shape[0]).astype(str)
+                    groups[group_1_indices] = group_names[0]
+                    groups[group_2_indices] = group_names[1]
+
+                    ax.scatter(groups, tunes[:, i])
+
+                    # adds a title and axes labels
+                    ax.set_title(boolean_result.columns[i] + ": \n" + group_names[0] + " vs " + group_names[1])
+                    ax.set_ylabel(boolean_result.columns[i])
+
+                    # removing top and right borders
+                    ax.spines['top'].set_visible(False)
+                    ax.spines['right'].set_visible(False)
+                    plt.show()
 
         return pandas.concat([df, boolean_result], axis=0)
 
@@ -662,16 +700,17 @@ if __name__ == "__main__":
         assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='continuous', method="spearman",
                                                       inspection_mode=True)
 
-    if False:
+    if True:
         # define good or bad based on the score
         high_score_indices = quality == '1'
         low_score_indices = quality == '0'
 
         # test tunes grouped by quality
-
         comparisons_for_scores = {
-            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, high_score_indices, low_score_indices, tunes_type="continuous"),
-            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, high_score_indices, low_score_indices, tunes_type="categorical")
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, high_score_indices, low_score_indices, ["good quality", "bad quality"],
+                                                                 tunes_type="continuous", inspection_mode=True),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, high_score_indices, low_score_indices, ["good quality", "bad quality"],
+                                                                  tunes_type="categorical", inspection_mode=True)
         }
 
     if False:
