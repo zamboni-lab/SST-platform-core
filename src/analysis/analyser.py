@@ -280,13 +280,13 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
                     df.iloc[i, j] = correlation
 
                     # look into variables closer if correlation is high
-                    if inspection_mode and correlation > 0.6:
+                    if inspection_mode and abs(correlation) > 0.6:
                         fig, ax = plt.subplots(figsize=(10, 5))
 
                         ax.scatter(tunes[:, j], metrics[:, i])
 
                         # adds a title and axes labels
-                        ax.set_title(df.index[i] + ' vs ' + df.columns[j])
+                        ax.set_title(df.index[i] + ' vs ' + df.columns[j] + ": r = " + str(correlation))
                         ax.set_xlabel(df.columns[j])
                         ax.set_ylabel(df.index[i])
 
@@ -304,13 +304,13 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
                     df.iloc[i, j] = correlation
 
                     # look into variables closer if correlation is high
-                    if inspection_mode and correlation > 0.6:
+                    if inspection_mode and abs(correlation) > 0.6:
                         fig, ax = plt.subplots(figsize=(10, 5))
 
                         ax.scatter(tunes[:, j], metrics[:, i])
 
                         # adds a title and axes labels
-                        ax.set_title(df.index[i] + ' vs ' + df.columns[j])
+                        ax.set_title(df.index[i] + ' vs ' + df.columns[j] + ": r = " + str(correlation))
                         ax.set_xlabel(df.columns[j])
                         ax.set_ylabel(df.index[i])
 
@@ -356,7 +356,7 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
                     ax.scatter(tunes[:, j], metrics[:, i])
 
                     # adds a title and axes labels
-                    ax.set_title(df.index[i] + ' vs ' + df.columns[j])
+                    ax.set_title(df.index[i] + ' vs ' + df.columns[j] + ": eta = " + str(correlation_ratio))
                     ax.set_xlabel(df.columns[j])
                     ax.set_ylabel(df.index[i])
 
@@ -651,15 +651,16 @@ if __name__ == "__main__":
     # read qc metrics
     metrics, metrics_names, acquisition, quality = get_metrics_data(qc_metrics_database_path)
 
-    if True:
+    if False:
         # explore general correlations between tunes and metrics
-        # assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman")
-
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman",
+                                                      inspection_mode=True)
         assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='categorical',
                                                       inspection_mode=True)
 
-        # # was curious to see, what happens if one feed "categorical" tunes to spearman correlation
-        # assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='continuous', method="spearman")
+        # feed "categorical" tunes to spearman correlation
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='continuous', method="spearman",
+                                                      inspection_mode=True)
 
     if False:
         # define good or bad based on the score
