@@ -708,25 +708,27 @@ if __name__ == "__main__":
 
         # test tunes grouped by quality
         comparisons_for_scores = {
-            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, high_score_indices, low_score_indices, ["good quality", "bad quality"],
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, high_score_indices, low_score_indices, ["good quality", "bad quality"], "quality",
                                                                  tunes_type="continuous", inspection_mode=True),
-            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, high_score_indices, low_score_indices, ["good quality", "bad quality"],
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, high_score_indices, low_score_indices, ["good quality", "bad quality"], "quality",
                                                                   tunes_type="categorical", inspection_mode=True)
         }
 
-    if True:
+    if False:
         # test tunes grouped by extreme metrics values
         comparisons_for_metric_outliers = test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition, continuous_tunes, continuous_names, categorical_tunes, categorical_names,
                                                                                        inspection_mode=True)
 
-    if False:
+    if True:
         # test tunes grouped by a recent trend in resolution & baselines
         good_resolution_indices = (quality == '1') * (acquisition < "2020-03-04")
         bad_resolution_indices = (quality == '1') * (acquisition >= "2020-03-04")
 
         comparisons_for_resolution_trend = {
-            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_resolution_indices, bad_resolution_indices, tunes_type="continuous"),
-            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, good_resolution_indices, bad_resolution_indices, tunes_type="categorical")
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_resolution_indices, bad_resolution_indices, ["normal", "decreasing"], "resolution\ trend",
+                                                                 tunes_type="continuous", inspection_mode=True),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, good_resolution_indices, bad_resolution_indices,  ["normal", "decreasing"], "resolution\ trend",
+                                                                  tunes_type="categorical", inspection_mode=True)
         }
 
     if False:
