@@ -257,7 +257,7 @@ def get_correlation_ratio(categories, measurements):
     return eta
 
 
-def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes, tunes_names, tunes_type="continuous", method=""):
+def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes, tunes_names, tunes_type="continuous", method="", inspection_mode=False):
     """ This method calculates correlations between tunes and metrics. """
 
     if tunes_type == "continuous":
@@ -275,12 +275,49 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
             # calculate correlations and fill the dataframe
             for i in range(df.shape[0]):
                 for j in range(df.shape[1]):
-                    df.iloc[i, j] = scipy.stats.pearsonr(metrics[:, i], tunes[:, j])[0]
+
+                    correlation = scipy.stats.pearsonr(metrics[:, i], tunes[:, j])[0]
+                    df.iloc[i, j] = correlation
+
+                    # look into variables closer if correlation is high
+                    if inspection_mode and correlation > 0.6:
+                        fig, ax = plt.subplots(figsize=(10, 5))
+
+                        ax.scatter(tunes[:, j], metrics[:, i])
+
+                        # adds a title and axes labels
+                        ax.set_title(df.index[i] + ' vs ' + df.columns[j])
+                        ax.set_xlabel(df.columns[j])
+                        ax.set_ylabel(df.index[i])
+
+                        # removing top and right borders
+                        ax.spines['top'].set_visible(False)
+                        ax.spines['right'].set_visible(False)
+                        plt.show()
+
         else:
             # use spearman correlation coefficient
             for i in range(df.shape[0]):
                 for j in range(df.shape[1]):
-                    df.iloc[i, j] = scipy.stats.spearmanr(metrics[:, i], tunes[:, j])[0]
+
+                    correlation = scipy.stats.spearmanr(metrics[:, i], tunes[:, j])[0]
+                    df.iloc[i, j] = correlation
+
+                    # look into variables closer if correlation is high
+                    if inspection_mode and correlation > 0.6:
+                        fig, ax = plt.subplots(figsize=(10, 5))
+
+                        ax.scatter(tunes[:, j], metrics[:, i])
+
+                        # adds a title and axes labels
+                        ax.set_title(df.index[i] + ' vs ' + df.columns[j])
+                        ax.set_xlabel(df.columns[j])
+                        ax.set_ylabel(df.index[i])
+
+                        # removing top and right borders
+                        ax.spines['top'].set_visible(False)
+                        ax.spines['right'].set_visible(False)
+                        plt.show()
 
         print(df)
 
@@ -308,7 +345,27 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
         # calculate correlations and fill the dataframe
         for i in range(df.shape[0]):
             for j in range(df.shape[1]):
-                df.iloc[i, j] = get_correlation_ratio(tunes[:, j], metrics[:, i])
+
+                correlation_ratio = get_correlation_ratio(tunes[:, j], metrics[:, i])
+
+                # look into variables closer if correlation is high
+                if inspection_mode and correlation_ratio > 0.6:
+
+                    fig, ax = plt.subplots(figsize=(10, 5))
+
+                    ax.scatter(tunes[:, j], metrics[:, i])
+
+                    # adds a title and axes labels
+                    ax.set_title(df.index[i] + ' vs ' + df.columns[j])
+                    ax.set_xlabel(df.columns[j])
+                    ax.set_ylabel(df.index[i])
+
+                    # removing top and right borders
+                    ax.spines['top'].set_visible(False)
+                    ax.spines['right'].set_visible(False)
+                    plt.show()
+
+                df.iloc[i, j] = correlation_ratio
 
         print(df)
 
@@ -568,24 +625,23 @@ if __name__ == "__main__":
 
     if False:
         # assess how imbalanced the categorical data is
-        result_categorical = []
+        result_categorical = {}
         for i in range(len(categorical_names)):
 
             unique_values, counts = numpy.unique(categorical_tunes[:,i], return_counts=True)
             percents = [round(count / categorical_tunes.shape[0], 2) for count in counts]
             # make a dict { unique value: percent of total }
-            result_categorical.append(dict(zip(unique_values, percents)))
+            result_categorical[categorical_names[i]] = dict(zip(unique_values, percents))
 
         # assess how imbalanced the continuous data is
         description_continuous = numpy.array(pandas.DataFrame(continuous_tunes).describe())  # save quantiles
 
-        result_continuous = []
+        result_continuous = {}
         for i in range(len(continuous_names)):
             unique_values, counts = numpy.unique(continuous_tunes[:, i], return_counts=True)
             percents = [round(count / continuous_tunes.shape[0], 2) for count in counts]
             # make a dict { unique value: percent of total }
-            result_continuous.append(dict(zip(unique_values, percents)))
-
+            result_continuous[continuous_names[i]] = dict(zip(unique_values, percents))
 
     if False:
         # check cross-correlations in tunes
@@ -595,10 +651,15 @@ if __name__ == "__main__":
     # read qc metrics
     metrics, metrics_names, acquisition, quality = get_metrics_data(qc_metrics_database_path)
 
-    if False:
+    if True:
         # explore general correlations between tunes and metrics
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman")
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='categorical')
+        # assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman")
+
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='categorical',
+                                                      inspection_mode=True)
+
+        # # was curious to see, what happens if one feed "categorical" tunes to spearman correlation
+        # assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='continuous', method="spearman")
 
     if False:
         # define good or bad based on the score
