@@ -408,15 +408,16 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
 
                 # look into variables closer if they are statistically different
                 if inspection_mode:
-                    fig, ax = plt.subplots(figsize=(10, 5))
+                    fig, ax = plt.subplots(figsize=(8, 5))
 
                     groups = numpy.empty(tunes.shape[0]).astype(str)
-                    groups[group_1_indices] = group_names[0]
-                    groups[group_2_indices] = group_names[1]
+                    groups[group_1_indices] = group_names[0] + "(N = " + str(numpy.sum(group_1_indices)) + ")"
+                    groups[group_2_indices] = group_names[1] + "(N = " + str(numpy.sum(group_2_indices)) + ")"
 
-                    ax.scatter(groups, tunes[:, i])
+                    ax.scatter(groups[group_1_indices + group_2_indices], tunes[group_1_indices + group_2_indices, i])
 
                     # adds a title and axes labels
+
                     ax.set_title(boolean_result.columns[i] + ": \n" + group_names[0] + " vs " + group_names[1])
                     ax.set_ylabel(boolean_result.columns[i])
 
@@ -453,13 +454,13 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
 
                 # look into variables closer if they are statistically different
                 if inspection_mode:
-                    fig, ax = plt.subplots(figsize=(10, 5))
+                    fig, ax = plt.subplots(figsize=(8, 5))
 
                     groups = numpy.empty(tunes.shape[0]).astype(str)
-                    groups[group_1_indices] = group_names[0]
-                    groups[group_2_indices] = group_names[1]
+                    groups[group_1_indices] = group_names[0] + "(N = " + str(numpy.sum(group_1_indices)) + ")"
+                    groups[group_2_indices] = group_names[1] + "(N = " + str(numpy.sum(group_2_indices)) + ")"
 
-                    ax.scatter(groups, tunes[:, i])
+                    ax.scatter(groups[group_1_indices + group_2_indices], tunes[group_1_indices + group_2_indices, i])
 
                     # adds a title and axes labels
                     ax.set_title(boolean_result.columns[i] + ": \n" + group_names[0] + " vs " + group_names[1])
@@ -569,7 +570,7 @@ def get_metrics_data(path):
     return metrics, metrics_names, acquisition, quality
 
 
-def test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition, continuous_tunes, continuous_names, categorical_tunes, categorical_names):
+def test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition, continuous_tunes, continuous_names, categorical_tunes, categorical_names, inspection_mode=False):
     """ This method groups tunes based on extreme values (outliers) of metrics,
         then performs statistical tests and saves the results in the dict.  """
 
@@ -596,8 +597,10 @@ def test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition, 
 
         # test tunes grouped by
         all_comparisons[metric] = {
-            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_b_indices, tunes_type="continuous"),
-            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_b_indices, tunes_type="categorical")
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_b_indices, ["normal values", "low extremes"],
+                                                                 tunes_type="continuous", inspection_mode=inspection_mode),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_b_indices, ["normal values", "low extremes"],
+                                                                  tunes_type="categorical", inspection_mode=inspection_mode)
         }
 
     for metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150",
@@ -620,8 +623,10 @@ def test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition, 
 
         # test tunes grouped by
         all_comparisons[metric] = {
-            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_b_indices, group_b_indices, tunes_type="continuous"),
-            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_b_indices, tunes_type="categorical")
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_b_indices, group_b_indices, ["normal values", "high extremes"],
+                                                                 tunes_type="continuous", inspection_mode=inspection_mode),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_b_indices, ["normal values", "high extremes"],
+                                                                  tunes_type="categorical", inspection_mode=inspection_mode)
         }
 
     for metric in ["isotopic_presence", "transmission", "fragmentation_305", "fragmentation_712"]:
@@ -643,8 +648,10 @@ def test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition, 
 
         # test tunes grouped by
         all_comparisons[metric] = {
-            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_b_indices, tunes_type="continuous"),
-            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_b_indices, tunes_type="categorical")
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_b_indices, ["normal values", "extreme values"],
+                                                                 tunes_type="continuous", inspection_mode=inspection_mode),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_b_indices, ["normal values", "extreme values"],
+                                                                  tunes_type="categorical", inspection_mode=inspection_mode)
         }
 
     return all_comparisons
@@ -700,7 +707,7 @@ if __name__ == "__main__":
         assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='continuous', method="spearman",
                                                       inspection_mode=True)
 
-    if True:
+    if False:
         # define good or bad based on the score
         high_score_indices = quality == '1'
         low_score_indices = quality == '0'
@@ -713,11 +720,11 @@ if __name__ == "__main__":
                                                                   tunes_type="categorical", inspection_mode=True)
         }
 
-    if False:
+    if True:
         # test tunes grouped by extreme metrics values
-        comparisons_for_metric_outliers = test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition,
-                                                                                       continuous_tunes, continuous_names,
-                                                                                       categorical_tunes, categorical_names)
+        comparisons_for_metric_outliers = test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition, continuous_tunes, continuous_names, categorical_tunes, categorical_names,
+                                                                                       inspection_mode=True)
+
     if False:
         # test tunes grouped by a recent trend in resolution & baselines
         good_resolution_indices = (quality == '1') * (acquisition < "2020-03-04")
