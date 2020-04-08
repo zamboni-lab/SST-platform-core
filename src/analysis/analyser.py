@@ -744,23 +744,23 @@ if __name__ == "__main__":
         comparisons_for_chem_dirt_trends = {
 
             "elevated vs low": {
-                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_b_indices, ["elevated", "low"], "chemical\ dirt",
+                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_b_indices, ["elevated level", "low level"], "chemical\ dirt",
                                                                      tunes_type="continuous", inspection_mode=True),
-                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_b_indices, ["elevated", "low"], "chemical\ dirt",
+                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_b_indices, ["elevated level", "low level"], "chemical\ dirt",
                                                                       tunes_type="categorical", inspection_mode=True)
             },
 
             "elevated vs inscreasing": {
-                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_c_indices, ["elevated", "increasing"], "chemical\ dirt",
+                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_c_indices, ["elevated level", "increasing level"], "chemical\ dirt",
                                                                      tunes_type="continuous", inspection_mode=True),
-                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_c_indices, ["elevated", "increasing"], "chemical\ dirt",
+                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_c_indices, ["elevated level", "increasing level"], "chemical\ dirt",
                                                                       tunes_type="categorical", inspection_mode=True)
             },
 
             "low vs increasing": {
-                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_b_indices, group_c_indices, ["low", "increasing"], "chemical\ dirt",
+                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_b_indices, group_c_indices, ["low level", "increasing level"], "chemical\ dirt",
                                                                      tunes_type="continuous", inspection_mode=True),
-                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_b_indices, group_c_indices,  ["low", "increasing"], "chemical\ dirt",
+                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_b_indices, group_c_indices,  ["low level", "increasing level"], "chemical\ dirt",
                                                                       tunes_type="categorical", inspection_mode=True)
             }
         }
@@ -771,8 +771,10 @@ if __name__ == "__main__":
         lower_noise_indices = (quality == '1') * ((acquisition >= "2020-01-23") * (acquisition < "2020-03-14"))
 
         comparisons_for_instrument_noise_levels = {
-            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, higher_noise_indices, lower_noise_indices, tunes_type="continuous"),
-            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, higher_noise_indices, lower_noise_indices, tunes_type="categorical")
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, higher_noise_indices, lower_noise_indices, ["higher level", "lower level"], "instrument\ noise",
+                                                                 tunes_type="continuous", inspection_mode=True),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, higher_noise_indices, lower_noise_indices, ["higher level", "lower level"], "instrument\ noise",
+                                                                  tunes_type="categorical", inspection_mode=True)
         }
 
     if False:
