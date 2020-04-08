@@ -719,7 +719,7 @@ if __name__ == "__main__":
         comparisons_for_metric_outliers = test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition, continuous_tunes, continuous_names, categorical_tunes, categorical_names,
                                                                                        inspection_mode=True)
 
-    if True:
+    if False:
         # test tunes grouped by a recent trend in resolution & baselines
         good_resolution_indices = (quality == '1') * (acquisition < "2020-03-04")
         bad_resolution_indices = (quality == '1') * (acquisition >= "2020-03-04")
@@ -744,18 +744,24 @@ if __name__ == "__main__":
         comparisons_for_chem_dirt_trends = {
 
             "elevated vs low": {
-                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_b_indices, tunes_type="continuous"),
-                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_b_indices, tunes_type="categorical")
+                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_b_indices, ["elevated", "low"], "chemical\ dirt",
+                                                                     tunes_type="continuous", inspection_mode=True),
+                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_b_indices, ["elevated", "low"], "chemical\ dirt",
+                                                                      tunes_type="categorical", inspection_mode=True)
             },
 
             "elevated vs inscreasing": {
-                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_c_indices, tunes_type="continuous"),
-                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_c_indices, tunes_type="categorical")
+                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_a_indices, group_c_indices, ["elevated", "increasing"], "chemical\ dirt",
+                                                                     tunes_type="continuous", inspection_mode=True),
+                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_a_indices, group_c_indices, ["elevated", "increasing"], "chemical\ dirt",
+                                                                      tunes_type="categorical", inspection_mode=True)
             },
 
             "low vs increasing": {
-                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_b_indices, group_c_indices, tunes_type="continuous"),
-                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_b_indices, group_c_indices, tunes_type="categorical")
+                "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, group_b_indices, group_c_indices, ["low", "increasing"], "chemical\ dirt",
+                                                                     tunes_type="continuous", inspection_mode=True),
+                "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, group_b_indices, group_c_indices,  ["low", "increasing"], "chemical\ dirt",
+                                                                      tunes_type="categorical", inspection_mode=True)
             }
         }
 
