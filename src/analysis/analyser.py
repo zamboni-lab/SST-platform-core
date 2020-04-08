@@ -375,6 +375,32 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
         plt.show()
 
 
+def plot_tunes_values_by_groups(tunes, index, group_1_indices, group_2_indices, group_names, testing_result):
+    """ This method visualises samples of tunes that were statistically different.
+        It makes scatter plots for two groups of values. """
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    groups = numpy.empty(tunes.shape[0]).astype(str)
+    groups[group_1_indices] = group_names[0] + " (N = " + str(numpy.sum(group_1_indices)) + ")"
+    groups[group_2_indices] = group_names[1] + " (N = " + str(numpy.sum(group_2_indices)) + ")"
+
+    # adds a title and axes labels
+    ax.set_title(testing_result.columns[index] + ": \n" + group_names[0] + " vs " + group_names[1])
+    ax.set_ylabel(testing_result.columns[index])
+
+    # removing top and right borders
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    data = pandas.DataFrame({"groups": groups[group_1_indices + group_2_indices],
+                             "values": tunes[group_1_indices + group_2_indices, index]})
+
+    seaborn.stripplot(x="groups", y="values", data=data)
+    plt.grid()
+    plt.show()
+
+
 def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, group_2_indices, group_names, tunes_type="continuous", level=0.05, inspection_mode=False):
     """ This method conducts testing of hypothesis that
         tunes corresponding to "good" and "bad" runs differ statistically. """
@@ -408,23 +434,7 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
 
                 # look into variables closer if they are statistically different
                 if inspection_mode:
-                    fig, ax = plt.subplots(figsize=(8, 5))
-
-                    groups = numpy.empty(tunes.shape[0]).astype(str)
-                    groups[group_1_indices] = group_names[0] + "(N = " + str(numpy.sum(group_1_indices)) + ")"
-                    groups[group_2_indices] = group_names[1] + "(N = " + str(numpy.sum(group_2_indices)) + ")"
-
-                    ax.scatter(groups[group_1_indices + group_2_indices], tunes[group_1_indices + group_2_indices, i])
-
-                    # adds a title and axes labels
-
-                    ax.set_title(boolean_result.columns[i] + ": \n" + group_names[0] + " vs " + group_names[1])
-                    ax.set_ylabel(boolean_result.columns[i])
-
-                    # removing top and right borders
-                    ax.spines['top'].set_visible(False)
-                    ax.spines['right'].set_visible(False)
-                    plt.show()
+                    plot_tunes_values_by_groups(tunes, i, group_1_indices, group_2_indices, group_names, boolean_result)
 
         return pandas.concat([df, boolean_result], axis=0)
 
@@ -454,22 +464,7 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
 
                 # look into variables closer if they are statistically different
                 if inspection_mode:
-                    fig, ax = plt.subplots(figsize=(8, 5))
-
-                    groups = numpy.empty(tunes.shape[0]).astype(str)
-                    groups[group_1_indices] = group_names[0] + "(N = " + str(numpy.sum(group_1_indices)) + ")"
-                    groups[group_2_indices] = group_names[1] + "(N = " + str(numpy.sum(group_2_indices)) + ")"
-
-                    ax.scatter(groups[group_1_indices + group_2_indices], tunes[group_1_indices + group_2_indices, i])
-
-                    # adds a title and axes labels
-                    ax.set_title(boolean_result.columns[i] + ": \n" + group_names[0] + " vs " + group_names[1])
-                    ax.set_ylabel(boolean_result.columns[i])
-
-                    # removing top and right borders
-                    ax.spines['top'].set_visible(False)
-                    ax.spines['right'].set_visible(False)
-                    plt.show()
+                    plot_tunes_values_by_groups(tunes, i, group_1_indices, group_2_indices, group_names, boolean_result)
 
         return pandas.concat([df, boolean_result], axis=0)
 
@@ -707,7 +702,7 @@ if __name__ == "__main__":
         assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='continuous', method="spearman",
                                                       inspection_mode=True)
 
-    if False:
+    if True:
         # define good or bad based on the score
         high_score_indices = quality == '1'
         low_score_indices = quality == '0'
@@ -720,7 +715,7 @@ if __name__ == "__main__":
                                                                   tunes_type="categorical", inspection_mode=True)
         }
 
-    if True:
+    if False:
         # test tunes grouped by extreme metrics values
         comparisons_for_metric_outliers = test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition, continuous_tunes, continuous_names, categorical_tunes, categorical_names,
                                                                                        inspection_mode=True)
