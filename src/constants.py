@@ -1,5 +1,5 @@
 
-msfe_version = '0.3.57'
+msfe_version = '0.3.59'
 chemical_mix_id = '20190522_4GHz'
 
 """ Mass-spec features extractor constants """
@@ -52,11 +52,11 @@ frame_intensity_percentiles = [25, 50, 75]
 
 """ QC metrics generator constants """
 
-qc_tunes_database_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/qc_tunes_database.sqlite"
+qc_tunes_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_tunes_database.sqlite"
 # qc_values_database_path = ""/mnt/nas2/fiaqc-out/qc_tunes_database.sqlite"
-qc_metrics_database_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/qc_metrics_database.sqlite"
+qc_metrics_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_metrics_database.sqlite"
 # qc_values_database_path = ""/mnt/nas2/fiaqc-out/qc_metrics_database.sqlite"
-qc_features_database_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/qc_features_database.sqlite"
+qc_features_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_features_database.sqlite"
 # qc_features_database_path = ""/mnt/nas2/fiaqc-out/qc_features_database.sqlite"
 
 

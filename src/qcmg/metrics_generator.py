@@ -1,5 +1,6 @@
 
-import json, os, numpy
+import json, os, numpy, seaborn, pandas
+from matplotlib import pyplot
 
 from src.constants import resolution_200_features_names, resolution_700_features_names
 from src.constants import accuracy_features_names, dirt_features_names, isotopic_presence_features_names
@@ -390,6 +391,57 @@ def calculate_metrics_and_update_qc_databases(ms_run):
         # if the databases already exist
         db_connector.insert_new_qc_run(new_qc_run, in_debug_mode=in_debug_mode)
         logger.print_qc_info('QC databases have been updated\n')
+
+
+def compute_quality_table(db_path):
+    """ This method calculates quality table for a QC metrics database, provided by the path.
+        Quality table is normally stored within database, so the method is called only
+        to calculate it for the first time. """
+
+    # create and fill metric quality table for existing qc_metrics_database
+    conn = db_connector.create_connection(db_path)
+    database, colnames = db_connector.fetch_table(conn, "qc_metrics")
+
+    data = pandas.DataFrame(database)
+    data.columns = colnames
+
+    quality_table = data
+
+    for metric in ["resolution_200", "resolution_700", "signal", "s2b", "s2n"]:
+        all_values = data.loc[:, metric]
+        q1, q2 = numpy.percentile(all_values, [5, 95])
+
+        filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
+        upper_boundary = numpy.percentile(filtered, 25)  # set lowest "good" value
+
+        # define quality for each metric individually
+        quality_table.loc[:, metric] = all_values > upper_boundary
+
+    for metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150",
+                   "baseline_25_650", "baseline_50_650"]:
+        all_values = data.loc[:, metric]
+        q1, q2 = numpy.percentile(all_values, [5, 95])
+
+        filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
+        upper_boundary = numpy.percentile(filtered, 75)  # set highest "good" value
+
+        # define quality for each metric individually
+        quality_table.loc[:, metric] = all_values < upper_boundary
+
+    for metric in ["isotopic_presence", "transmission", "fragmentation_305", "fragmentation_712"]:
+        all_values = data.loc[:, metric]
+        q1, q2 = numpy.percentile(all_values, [5, 95])
+
+        filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
+        lower_boundary, upper_boundary = numpy.percentile(filtered, [5, 95])  # set interval of "good" values
+
+        # define quality for each metric individually
+        quality_table.loc[:, metric] = (all_values > lower_boundary) & (all_values < upper_boundary)
+
+    # summarise individual qualities
+    quality_table.loc[:, "quality"] = quality_table.iloc[:, 4:].sum(axis=1) > 7
+
+    return quality_table
 
 
 if __name__ == '__main__':

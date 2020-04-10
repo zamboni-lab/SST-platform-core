@@ -1,5 +1,6 @@
 import sqlite3
 from src.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path
+from src.qcmg import metrics_generator
 
 
 def create_connection(db_file):
@@ -44,6 +45,31 @@ def insert_qc_metrics(db, qc_run, meta_id):
     )
 
     sql = ''' INSERT INTO qc_metrics(meta_id,acquisition_date,quality,resolution_200,resolution_700,
+                                    average_accuracy,chemical_dirt,instrument_noise,isotopic_presence,
+                                    transmission,fragmentation_305,fragmentation_712,baseline_25_150,
+                                    baseline_50_150,baseline_25_650,baseline_50_650,signal,
+                                    s2b,s2n)
+                          
+                          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) '''
+
+    cur = db.cursor()
+    cur.execute(sql, qc_metrics)
+    db.commit()
+
+    return cur.lastrowid
+
+
+def insert_qc_metrics_qualities(db, qc_run, meta_id):
+    """ Adds last run QC metrics qualities (0 or 1 per each metric) to the table. """
+
+    qc_metrics = (
+        meta_id,
+        qc_run['acquisition_date'],
+        qc_run['quality'],
+        *qc_run['metrics_qualities']
+    )
+
+    sql = ''' INSERT INTO qc_metrics_qualities(meta_id,acquisition_date,quality,resolution_200,resolution_700,
                                     average_accuracy,chemical_dirt,instrument_noise,isotopic_presence,
                                     transmission,fragmentation_305,fragmentation_712,baseline_25_150,
                                     baseline_50_150,baseline_25_650,baseline_50_650,signal,
@@ -204,6 +230,33 @@ def create_qc_metrics_database():
                                                 on update cascade  
                                         ); """
 
+    sql_create_qc_metrics_qualities_table = """ CREATE TABLE IF NOT EXISTS qc_metrics_qualities (
+                                            id integer PRIMARY KEY AUTOINCREMENT,
+                                            meta_id integer,
+                                            acquisition_date text,
+                                            quality integer,
+                                            resolution_200 integer,
+                                            resolution_700 integer,
+                                            average_accuracy integer,
+                                            chemical_dirt integer,
+                                            instrument_noise integer,
+                                            isotopic_presence integer,
+                                            transmission integer,
+                                            fragmentation_305 integer,
+                                            fragmentation_712 integer,
+                                            baseline_25_150 integer,
+                                            baseline_50_150 integer,
+                                            baseline_25_650 integer,
+                                            baseline_50_650 integer,
+                                            signal integer,
+                                            s2b integer,
+                                            s2n integer,
+                                            constraint fk_meta foreign key (meta_id) 
+                                                references qc_meta(id) 
+                                                on delete cascade 
+                                                on update cascade  
+                                        ); """
+
     # create a database connection
     qc_database = create_connection(qc_metrics_database_path)
 
@@ -215,6 +268,50 @@ def create_qc_metrics_database():
         # create projects table
         create_table(qc_database, sql_create_qc_meta_table)
         create_table(qc_database, sql_create_qc_metrics_table)
+        create_table(qc_database, sql_create_qc_metrics_qualities_table)
+    else:
+        print("Error! Cannot create database connection.")
+
+
+def create_qc_metrics_qualities_table(db_path):
+    """ This method adds just one table - QC metrics qualities - to the existing database. """
+
+    sql_create_qc_metrics_qualities_table = """ CREATE TABLE IF NOT EXISTS qc_metrics_qualities (
+                                                id integer PRIMARY KEY AUTOINCREMENT,
+                                                meta_id integer,
+                                                acquisition_date text,
+                                                quality integer,
+                                                resolution_200 integer,
+                                                resolution_700 integer,
+                                                average_accuracy integer,
+                                                chemical_dirt integer,
+                                                instrument_noise integer,
+                                                isotopic_presence integer,
+                                                transmission integer,
+                                                fragmentation_305 integer,
+                                                fragmentation_712 integer,
+                                                baseline_25_150 integer,
+                                                baseline_50_150 integer,
+                                                baseline_25_650 integer,
+                                                baseline_50_650 integer,
+                                                signal integer,
+                                                s2b integer,
+                                                s2n integer,
+                                                constraint fk_meta foreign key (meta_id) 
+                                                    references qc_meta(id) 
+                                                    on delete cascade 
+                                                    on update cascade  
+                                            ); """
+
+    # create a database connection
+    qc_database = create_connection(db_path)
+
+    # add journal mode that allows multiple users interaction
+    qc_database.execute('pragma journal_mode=wal')
+
+    if qc_database is not None:
+        # create table
+        create_table(qc_database, sql_create_qc_metrics_qualities_table)
     else:
         print("Error! Cannot create database connection.")
 
@@ -385,7 +482,39 @@ def insert_new_qc_run(qc_run, in_debug_mode=False):
         print("inserted 1 row at position: meta:", last_row_number_1, 'metrics:', last_row_number_2, "features:", last_row_number_3, 'tunes:', last_row_number_4)
 
 
+def add_qc_metrics_qualities_table(db_path):
+    """ This method creates and adds a new table to existing database,
+        row by row, calling inserting method iteratively. """
+
+    # get quality table for existing database
+    quality_table = metrics_generator.compute_quality_table(db_path)
+
+    create_qc_metrics_qualities_table(db_path)  # create table in existing database
+    qc_metrics_database = create_connection(db_path)
+
+    for i in range(quality_table.shape[0]):
+
+        # make artificial packing to use the same method
+        meta_id = int(quality_table.iloc[i, 1])
+        qc_run = {
+            "acquisition_date": str(quality_table.iloc[i, 2]),
+            "quality": int(quality_table.iloc[i, 3]),
+            "metrics_qualities": [int(x) for x in quality_table.iloc[i, 4:]]
+        }
+
+        last_row_number = insert_qc_metrics_qualities(qc_metrics_database, qc_run, meta_id)
+
+        print("inserted:", last_row_number)
+
+
 if __name__ == '__main__':
+
+    db_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_metrics_database_mar18.sqlite"
+    add_qc_metrics_qualities_table(db_path)
+
+
+
+
 
     pass
 

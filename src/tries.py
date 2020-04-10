@@ -48,6 +48,10 @@ if __name__ == "__main__":
     # print(b)
     pass
 
+    a = 'ddg'
+
+    for s in a:
+        print(s)
 
 
 
