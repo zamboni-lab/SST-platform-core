@@ -440,6 +440,7 @@ def create_and_fill_qc_databases(new_qc_run, in_debug_mode=False):
     # inserting values into the new database
     last_row_number_1 = insert_qc_meta(qc_metrics_database, new_qc_run)
     last_row_number_2 = insert_qc_metrics(qc_metrics_database, new_qc_run, last_row_number_1)
+    last_row_number_5 = insert_qc_metrics_qualities(qc_metrics_database, new_qc_run, last_row_number_1)
 
     create_qc_features_database(new_qc_run)  # values of qc features
     qc_features_database = create_connection(qc_features_database_path)
@@ -454,7 +455,7 @@ def create_and_fill_qc_databases(new_qc_run, in_debug_mode=False):
     last_row_number_4 = insert_qc_tunes(qc_tunes_database, new_qc_run, last_row_number_1)
 
     if in_debug_mode:
-        print("inserted: meta:", last_row_number_1, 'metrics:', last_row_number_2, 'features:', last_row_number_3, 'tunes:', last_row_number_4)
+        print("inserted: meta:", last_row_number_1, 'metrics:', last_row_number_2, 'qualities:', last_row_number_5, 'features:', last_row_number_3, 'tunes:', last_row_number_4)
 
 
 def insert_new_qc_run(qc_run, in_debug_mode=False):
@@ -465,6 +466,7 @@ def insert_new_qc_run(qc_run, in_debug_mode=False):
     # inserting qc metrics into a database
     last_row_number_1 = insert_qc_meta(qc_metrics_database, qc_run)
     last_row_number_2 = insert_qc_metrics(qc_metrics_database, qc_run, last_row_number_1)
+    last_row_number_5 = insert_qc_metrics_qualities(qc_metrics_database, qc_run, last_row_number_1)
 
     qc_features_database = create_connection(qc_features_database_path)
 
@@ -479,7 +481,7 @@ def insert_new_qc_run(qc_run, in_debug_mode=False):
     last_row_number_4 = insert_qc_tunes(qc_tunes_database, qc_run, last_row_number_1)
 
     if in_debug_mode:
-        print("inserted 1 row at position: meta:", last_row_number_1, 'metrics:', last_row_number_2, "features:", last_row_number_3, 'tunes:', last_row_number_4)
+        print("inserted 1 row at position: meta:", last_row_number_1, 'metrics:', last_row_number_2, 'qualities:', last_row_number_5, "features:", last_row_number_3, 'tunes:', last_row_number_4)
 
 
 def add_qc_metrics_qualities_table(db_path):
@@ -509,8 +511,10 @@ def add_qc_metrics_qualities_table(db_path):
 
 if __name__ == '__main__':
 
-    db_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_metrics_database_mar18.sqlite"
-    add_qc_metrics_qualities_table(db_path)
+    # db_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_metrics_database_mar18.sqlite"
+    # add_qc_metrics_qualities_table(db_path)
+
+    pass
 
 
 
