@@ -9,6 +9,7 @@ from src.constants import transmission_features_names, fragmentation_features_na
 from src.constants import baseline_150_250_features_names, baseline_650_750_features_names
 from src.constants import s2b_features_names, s2n_features_names
 from src.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path
+from src.constants import min_number_of_metrics_to_assess_quality as min_number_of_runs
 from src.msfe import logger, db_connector
 from src.qcmg import qcm_validator
 
@@ -335,13 +336,11 @@ def calculate_and_save_qc_matrix(path=None, output='sqlite'):
     print('Processing is done! Results saved to', qc_matrix_path)
 
 
-def calculate_metrics_and_update_qc_databases(ms_run):
+def calculate_metrics_and_update_qc_databases(ms_run, in_debug_mode=False):
     """ This method computes QC metrics for a new ms_run and calls method to insert them into a database. """
 
     metrics_values = []
     metrics_names = []
-
-    in_debug_mode = False
 
     add_resolution_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
     add_accuracy_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
@@ -455,47 +454,65 @@ def assign_metrics_qualities(last_run_metrics, metrics_names):
         Quality table is normally stored within database, so the method is called only
         to calculate it for the first time. """
 
-    # create and fill metric quality table for existing qc_metrics_database
-    conn = db_connector.create_connection(qc_metrics_database_path)
-    metrics_data, colnames = db_connector.fetch_table(conn, "qc_metrics")
-    qualities_data, _ = db_connector.fetch_table(conn, "qc_metrics_qualities")
+    if not (os.path.isfile(qc_metrics_database_path) or os.path.isfile(qc_features_database_path)
+            or os.path.isfile(qc_tunes_database_path)):
 
-    # create dataframe with values and names to avoid any issues of ordering
-    last_run_data = pandas.DataFrame([last_run_metrics, [0 for x in last_run_metrics]],
-                                     columns=metrics_names, index=["value", "quality"])
+        # if there's yet no databases, return all ones
+        qualities = [1 for x in last_run_metrics]
+        return qualities
 
-    for metric in ["resolution_200", "resolution_700", "signal", "s2b", "s2n"]:
+    else:
+        # create and fill metric quality table for existing qc_metrics_database
+        conn = db_connector.create_connection(qc_metrics_database_path)
+        metrics_data, colnames = db_connector.fetch_table(conn, "qc_metrics")
+        qualities_data, _ = db_connector.fetch_table(conn, "qc_metrics_qualities")
 
-        good_values_indexes = qualities_data.loc[:, metric] == '1'  # get indexes based on previous qualities
-        good_values = metrics_data.loc[good_values_indexes, metric]  # get values of "good" quality
+        # convert to dataframes for convenience
+        metrics_data = pandas.DataFrame(metrics_data, columns=colnames)
+        qualities_data = pandas.DataFrame(qualities_data, columns=colnames)
 
-        lower_boundary = numpy.percentile(good_values, 25)  # set lowest "good" value
+        if metrics_data.shape[0] < min_number_of_runs:
+            # it's not enough data to assign quality, return all ones
+            qualities = [1 for x in last_run_metrics]
+            return qualities
 
-        # define quality for each metric individually
-        last_run_data.loc["quality", metric] = int(last_run_data.loc["value", metric] > lower_boundary)
+        else:
+            # create dataframe with values and names to avoid any issues of ordering
+            last_run_data = pandas.DataFrame([last_run_metrics, [0 for x in last_run_metrics]],
+                                             columns=metrics_names, index=["value", "quality"])
 
-    for metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150", "baseline_25_650", "baseline_50_650"]:
+            for metric in ["resolution_200", "resolution_700", "signal", "s2b", "s2n"]:
 
-        good_values_indexes = qualities_data.loc[:, metric] == '1'  # get indexes based on previous qualities
-        good_values = metrics_data.loc[good_values_indexes, metric]  # get values of "good" quality
+                good_values_indexes = qualities_data.loc[:, metric] == 1  # get indexes based on previous qualities
+                good_values = metrics_data.loc[good_values_indexes, metric]  # get values of "good" quality
 
-        upper_boundary = numpy.percentile(good_values, 75)  # set highest "good" value
+                lower_boundary = numpy.percentile(good_values, 25)  # set lowest "good" value
 
-        # define quality for each metric individually
-        last_run_data.loc["quality", metric] = int(last_run_data.loc["value", metric] < upper_boundary)
+                # define quality for each metric individually
+                last_run_data.loc["quality", metric] = int(last_run_data.loc["value", metric] > lower_boundary)
 
-    for metric in ["isotopic_presence", "transmission", "fragmentation_305", "fragmentation_712"]:
+            for metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150", "baseline_25_650", "baseline_50_650"]:
 
-        good_values_indexes = qualities_data.loc[:, metric] == '1'  # get indexes based on previous qualities
-        good_values = metrics_data.loc[good_values_indexes, metric]  # get values of "good" quality
+                good_values_indexes = qualities_data.loc[:, metric] == 1  # get indexes based on previous qualities
+                good_values = metrics_data.loc[good_values_indexes, metric]  # get values of "good" quality
 
-        lower_boundary, upper_boundary = numpy.percentile(good_values, [5, 95])  # set interval of "good" values
+                upper_boundary = numpy.percentile(good_values, 75)  # set highest "good" value
 
-        # define quality for each metric individually
-        metric_value = last_run_data.loc["value", metric]
-        last_run_data.loc["quality", metric] = int(lower_boundary < metric_value < upper_boundary)
+                # define quality for each metric individually
+                last_run_data.loc["quality", metric] = int(last_run_data.loc["value", metric] < upper_boundary)
 
-    return list(last_run_data.loc["quality", :])
+            for metric in ["isotopic_presence", "transmission", "fragmentation_305", "fragmentation_712"]:
+
+                good_values_indexes = qualities_data.loc[:, metric] == 1  # get indexes based on previous qualities
+                good_values = metrics_data.loc[good_values_indexes, metric]  # get values of "good" quality
+
+                lower_boundary, upper_boundary = numpy.percentile(good_values, [5, 95])  # set interval of "good" values
+
+                # define quality for each metric individually
+                metric_value = last_run_data.loc["value", metric]
+                last_run_data.loc["quality", metric] = int(lower_boundary < metric_value < upper_boundary)
+
+            return list(last_run_data.loc["quality", :])
 
 
 if __name__ == '__main__':

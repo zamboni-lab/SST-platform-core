@@ -25,7 +25,9 @@ def process_all_tunes_and_files_at_once():
             user = ""
         users.append(user)
 
-    path_to_files = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/'
+    path_to_files = '/Users/andreidm/ETH/projects/monitoring_system/data/nas2/'
+
+    i = 0
 
     for root, dirs, files in os.walk(path_to_files):
 
@@ -59,6 +61,10 @@ def process_all_tunes_and_files_at_once():
 
                 # print(files.index(filename)+1, '/', len(files), 'is processed within', time.time() - start_time, 's\n')
                 print(dirs.index(dir) + 1, '/', len(dirs), 'is processed within', time.time() - start_time, 's\n')
+
+                i += 1
+                if i == 10:
+                    break
 
     print('All done. Well done!')
 
@@ -164,8 +170,8 @@ def run_msfe_in_test_mode():
 if __name__ == '__main__':
 
     # run_msfe_in_test_mode()
-    # process_all_tunes_and_files_at_once()
-    check_6546_test_runs()
+    process_all_tunes_and_files_at_once()
+    # check_6546_test_runs()
 
 
 

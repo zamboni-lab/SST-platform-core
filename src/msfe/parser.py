@@ -331,7 +331,7 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids, tunes,
     }
 
     # entry point for qcm to process new_ms_run and insert into QC database
-    metrics_generator.calculate_metrics_and_update_qc_databases(new_ms_run)
+    metrics_generator.calculate_metrics_and_update_qc_databases(new_ms_run, in_debug_mode=in_test_mode)
 
 
 def process_all_qc_runs_to_extract_tunes():

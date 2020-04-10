@@ -1,17 +1,17 @@
 
-msfe_version = '0.3.60'
+msfe_version = '0.3.61'
 chemical_mix_id = '20190522_4GHz'
 
 """ Mass-spec features extractor constants """
 
 # qc_log_location = "/mnt/nas2/fiaqc-out/qc_logs.txt"
-qc_log_location = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/qc_logs.txt"
+qc_log_location = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_logs.txt"
 
 # tunings_matrix_file_path = "/mnt/nas2/fiaqc-out/t_matrix.json"
-tunings_matrix_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/res/tunings_matrix.json"
+tunings_matrix_file_path = "/Users/andreidm/ETH/projects/monitoring_system/res/tunings_matrix.json"
 
 # expected_peaks_file_path = "/home/nzadmin/msqc/msfe/data/expected_peaks_v1_" + chemical_mix_id + ".json"
-expected_peaks_file_path = "/Users/andreidm/ETH/projects/ms_feature_extractor/data/expected_peaks_v1_" + chemical_mix_id + ".json"
+expected_peaks_file_path = "/Users/andreidm/ETH/projects/monitoring_system/data/expected_peaks_v1_" + chemical_mix_id + ".json"
 
 parser_comment_symbol = '#'
 parser_description_symbols = '()'
@@ -59,6 +59,7 @@ qc_metrics_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/q
 qc_features_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_features_database.sqlite"
 # qc_features_database_path = ""/mnt/nas2/fiaqc-out/qc_features_database.sqlite"
 
+min_number_of_metrics_to_assess_quality = 20
 
 # features names
 resolution_200_features_names = ['absolute_mass_accuracy_Caffeine_i1_mean', 'widths_Caffeine_i1_1_mean']  # 193.0725512871
