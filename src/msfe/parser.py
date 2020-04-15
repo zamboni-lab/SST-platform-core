@@ -3,6 +3,7 @@ from src.constants import parser_comment_symbol as sharp
 from src.constants import parser_description_symbols as brackets
 from src.constants import tunings_matrix_file_path
 from src.constants import chemical_mix_id, msfe_version
+from src.constants import get_buffer_id
 from src.qcmg import metrics_generator
 from pyopenms import EmpiricalFormula, CoarseIsotopePatternGenerator
 import json, os, datetime
@@ -313,6 +314,9 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids, tunes,
 
     tunes_names, tunes_values = extract_tunes_from_dict(tunes, in_test_mode=in_test_mode)
 
+    # define buffer id by date
+    buffer_id = get_buffer_id(ms_run_ids['acquisition_date'])
+
     new_ms_run = {
         'md5': ms_run_ids['md5'],
         'original_filename': ms_run_ids['original_filename'],
@@ -322,6 +326,7 @@ def update_feature_matrix(extracted_features, features_names, ms_run_ids, tunes,
         'acquisition_date': ms_run_ids['acquisition_date'],
 
         'chemical_mix_id': chemical_mix_id,
+        'buffer_id': buffer_id,
         'msfe_version': msfe_version,
         'scans_processed': scans_processed,
         'features_values': extracted_features,

@@ -10,6 +10,7 @@ from src.constants import baseline_150_250_features_names, baseline_650_750_feat
 from src.constants import s2b_features_names, s2n_features_names
 from src.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path
 from src.constants import min_number_of_metrics_to_assess_quality as min_number_of_runs
+from src.constants import get_buffer_id
 from src.msfe import logger, db_connector
 from src.qcmg import qcm_validator
 
@@ -369,6 +370,7 @@ def calculate_metrics_and_update_qc_databases(ms_run, in_debug_mode=False):
         'processing_date': ms_run['processing_date'],
         'acquisition_date': ms_run['acquisition_date'],
         'chemical_mix_id': ms_run['chemical_mix_id'],
+        'buffer_id': ms_run['buffer_id'],
         'msfe_version': ms_run['msfe_version'],
         'scans_processed': ms_run['scans_processed'],
 

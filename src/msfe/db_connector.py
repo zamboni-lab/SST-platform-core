@@ -34,6 +34,23 @@ def fetch_table(conn, table_name):
     return cur.fetchall(), colnames
 
 
+def update_quality_column_in_database(conn, qualities, meta_ids):
+    """ This method updates the whole quality column in qc_meta table of the given database.
+        Called to update QC features and QC tunes databases,
+        when qualities are newly generated for QC metrics database. """
+
+    sql = ''' UPDATE qc_meta
+              SET quality = ?
+              WHERE id = ? '''
+
+    cur = conn.cursor()
+
+    for i in range(len(meta_ids)):
+        # update entries iteratively
+        cur.execute(sql, (qualities[i], meta_ids[i]))
+        conn.commit()
+
+
 def insert_qc_metrics(db, qc_run, meta_id):
     """ Adds last runs QC  metrics values to the table. """
 
@@ -162,6 +179,7 @@ def insert_qc_meta(db, qc_run):
         qc_run['user'],
         qc_run['user_comment'],
         qc_run['chemical_mix_id'],
+        qc_run['buffer_id'],
         qc_run['msfe_version'],
         qc_run['scans_processed']['normal'][0],
         qc_run['scans_processed']['normal'][1],
@@ -171,10 +189,10 @@ def insert_qc_meta(db, qc_run):
     )
 
     sql = ''' INSERT INTO qc_meta(md5,processing_date,acquisition_date,instr,quality,user,user_comment,
-                                  chemical_mix_id,msfe_version,norm_scan_1,norm_scan_2,
+                                  chemical_mix_id,buffer_id,msfe_version,norm_scan_1,norm_scan_2,
                                   norm_scan_3,chem_scan_1,inst_scan_1)
                           
-                          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?) '''
+                          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) '''
 
     cur = db.cursor()
     cur.execute(sql, qc_meta)
@@ -194,7 +212,8 @@ def create_qc_metrics_database():
                                             quality integer,
                                             user text,
                                             user_comment text,
-                                            chemical_mix_id integer,
+                                            chemical_mix_id text,
+                                            buffer_id text,
                                             msfe_version text,
                                             norm_scan_1 integer,
                                             norm_scan_2 integer,
@@ -327,7 +346,8 @@ def create_qc_tunes_database(new_qc_run):
                                             quality integer,
                                             user text,
                                             user_comment text,
-                                            chemical_mix_id integer,
+                                            chemical_mix_id text,
+                                            buffer_id text,
                                             msfe_version text,
                                             norm_scan_1 integer,
                                             norm_scan_2 integer,
@@ -380,7 +400,8 @@ def create_qc_features_database(new_qc_run):
                                             quality integer,
                                             user text,
                                             user_comment text,
-                                            chemical_mix_id integer,
+                                            chemical_mix_id text,
+                                            buffer_id text,
                                             msfe_version text,
                                             norm_scan_1 integer,
                                             norm_scan_2 integer,
@@ -484,15 +505,32 @@ def insert_new_qc_run(qc_run, in_debug_mode=False):
         print("inserted 1 row at position: meta:", last_row_number_1, 'metrics:', last_row_number_2, 'qualities:', last_row_number_5, "features:", last_row_number_3, 'tunes:', last_row_number_4)
 
 
-def create_and_add_qc_metrics_qualities_table(db_path):
+def create_and_add_qc_metrics_qualities_table(paths):
     """ This method creates and adds a new table to the existing database,
         row by row, calling inserting method iteratively. """
 
-    # get quality table for existing database
-    quality_table = metrics_generator.compute_quality_table(db_path)
+    features_db_path = paths[0]
+    metrics_db_path = paths[1]
+    tunes_db_path = paths[2]
 
-    create_qc_metrics_qualities_table(db_path)  # create table in existing database
-    qc_metrics_database = create_connection(db_path)
+    # get quality table for existing database
+    quality_table = metrics_generator.compute_quality_table(metrics_db_path)
+
+    # update 'quality' column in two other databases
+    qc_features_database = create_connection(features_db_path)
+    qc_tunes_database = create_connection(tunes_db_path)
+
+    meta_ids = [int(quality_table.iloc[i, 1]) for i in range(quality_table.shape[0])]  # make a list of meta_ids
+    qualities = [int(quality_table.iloc[i, 3]) for i in range(quality_table.shape[0])]  # make a list of qualities
+
+    update_quality_column_in_database(qc_features_database, qualities, meta_ids)
+    print("qc_features_database updated")
+    update_quality_column_in_database(qc_tunes_database, qualities, meta_ids)
+    print("qc_tunes_database updated")
+
+    # create new table in existing metrics database
+    create_qc_metrics_qualities_table(metrics_db_path)
+    qc_metrics_database = create_connection(metrics_db_path)
 
     for i in range(quality_table.shape[0]):
 
@@ -506,24 +544,31 @@ def create_and_add_qc_metrics_qualities_table(db_path):
 
         last_row_number = insert_qc_metrics_qualities(qc_metrics_database, qc_run, meta_id)
 
-        print("inserted:", last_row_number)
+    print("qc_metrics_database updated")
 
 
 if __name__ == '__main__':
 
-    db_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_metrics_database_apr15.sqlite"
+    # db_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_metrics_database_apr15.sqlite"
+    #
+    # # create and fill metric quality table for existing qc_metrics_database
+    # conn = create_connection(db_path)
+    #
+    # qc_metrics, colnames = fetch_table(conn, "qc_metrics")
+    # metrics_data = pandas.DataFrame(qc_metrics)
+    # metrics_data.columns = colnames
+    #
+    # qc_meta, colnames = fetch_table(conn, "qc_meta")
+    # meta_data = pandas.DataFrame(qc_meta)
+    # meta_data.columns = colnames
 
-    # create and fill metric quality table for existing qc_metrics_database
-    conn = create_connection(db_path)
+    paths = [
+        "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite",
+        "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_metrics_database.sqlite",
+        "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"
+    ]
 
-    qc_metrics, colnames = fetch_table(conn, "qc_metrics")
-    metrics_data = pandas.DataFrame(qc_metrics)
-    metrics_data.columns = colnames
-
-    qc_meta, colnames = fetch_table(conn, "qc_meta")
-    meta_data = pandas.DataFrame(qc_meta)
-    meta_data.columns = colnames
-
+    create_and_add_qc_metrics_qualities_table(paths)
 
 
 
