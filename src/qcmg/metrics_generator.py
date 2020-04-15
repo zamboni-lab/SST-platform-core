@@ -400,17 +400,10 @@ def calculate_metrics_and_update_qc_databases(ms_run, in_debug_mode=False):
         logger.print_qc_info('QC databases have been updated\n')
 
 
-def compute_quality_table(db_path):
-    """ This method calculates quality table for a QC metrics database, provided by the path.
+def compute_quality_table(data):
+    """ This method calculates quality table for a QC metrics database provided as DataFrame.
         Quality table is normally stored within database, so the method is called only
         to calculate it for the first time. """
-
-    # create and fill metric quality table for existing qc_metrics_database
-    conn = db_connector.create_connection(db_path)
-    database, colnames = db_connector.fetch_table(conn, "qc_metrics")
-
-    data = pandas.DataFrame(database)
-    data.columns = colnames
 
     quality_table = data
 
