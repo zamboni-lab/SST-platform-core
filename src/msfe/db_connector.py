@@ -1,4 +1,4 @@
-import sqlite3
+import sqlite3, pandas
 from src.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path
 from src.qcmg import metrics_generator
 
@@ -484,8 +484,8 @@ def insert_new_qc_run(qc_run, in_debug_mode=False):
         print("inserted 1 row at position: meta:", last_row_number_1, 'metrics:', last_row_number_2, 'qualities:', last_row_number_5, "features:", last_row_number_3, 'tunes:', last_row_number_4)
 
 
-def add_qc_metrics_qualities_table(db_path):
-    """ This method creates and adds a new table to existing database,
+def create_and_add_qc_metrics_qualities_table(db_path):
+    """ This method creates and adds a new table to the existing database,
         row by row, calling inserting method iteratively. """
 
     # get quality table for existing database
@@ -511,10 +511,23 @@ def add_qc_metrics_qualities_table(db_path):
 
 if __name__ == '__main__':
 
-    # db_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_metrics_database_mar18.sqlite"
-    # add_qc_metrics_qualities_table(db_path)
+    db_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_metrics_database_apr15.sqlite"
 
-    pass
+    # create and fill metric quality table for existing qc_metrics_database
+    conn = create_connection(db_path)
+
+    qc_metrics, colnames = fetch_table(conn, "qc_metrics")
+    metrics_data = pandas.DataFrame(qc_metrics)
+    metrics_data.columns = colnames
+
+    qc_meta, colnames = fetch_table(conn, "qc_meta")
+    meta_data = pandas.DataFrame(qc_meta)
+    meta_data.columns = colnames
+
+
+
+
+    print()
 
 
 

@@ -1,6 +1,18 @@
 
-msfe_version = '0.3.62'
+msfe_version = '0.3.63'
 chemical_mix_id = '20190522_4GHz'
+
+
+def get_buffer_id(date):
+    """ Tiny method to define buffer id according to the date it's been used. """
+
+    if date < '2020-03-30':
+        buffer_id = 'IPA_H2O'
+    else:
+        buffer_id = "IPA_H2O_DMSO"
+
+    return buffer_id
+
 
 """ Mass-spec features extractor constants """
 

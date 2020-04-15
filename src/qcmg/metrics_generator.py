@@ -413,35 +413,53 @@ def compute_quality_table(db_path):
     quality_table = data
 
     for metric in ["resolution_200", "resolution_700", "signal", "s2b", "s2n"]:
-        all_values = data.loc[:, metric]
-        q1, q2 = numpy.percentile(all_values, [5, 95])
 
-        filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
-        upper_boundary = numpy.percentile(filtered, 25)  # set lowest "good" value
+        if data.shape[0] < min_number_of_runs:
+            # not enough data to assign quality, set all "good"
+            quality_table.loc[:, metric] = True
 
-        # define quality for each metric individually
-        quality_table.loc[:, metric] = all_values > upper_boundary
+        else:
+            all_values = data.loc[:, metric]
+            q1, q2 = numpy.percentile(all_values, [5, 95])
+
+            filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
+            upper_boundary = numpy.percentile(filtered, 25)  # set lowest "good" value
+
+            # define quality for each metric individually
+            quality_table.loc[:, metric] = all_values > upper_boundary
 
     for metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150",
                    "baseline_25_650", "baseline_50_650"]:
-        all_values = data.loc[:, metric]
-        q1, q2 = numpy.percentile(all_values, [5, 95])
 
-        filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
-        upper_boundary = numpy.percentile(filtered, 75)  # set highest "good" value
+        if data.shape[0] < min_number_of_runs:
+            # not enough data to assign quality, set all "good"
+            quality_table.loc[:, metric] = True
 
-        # define quality for each metric individually
-        quality_table.loc[:, metric] = all_values < upper_boundary
+        else:
+            all_values = data.loc[:, metric]
+            q1, q2 = numpy.percentile(all_values, [5, 95])
+
+            filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
+            upper_boundary = numpy.percentile(filtered, 75)  # set highest "good" value
+
+            # define quality for each metric individually
+            quality_table.loc[:, metric] = all_values < upper_boundary
 
     for metric in ["isotopic_presence", "transmission", "fragmentation_305", "fragmentation_712"]:
-        all_values = data.loc[:, metric]
-        q1, q2 = numpy.percentile(all_values, [5, 95])
 
-        filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
-        lower_boundary, upper_boundary = numpy.percentile(filtered, [5, 95])  # set interval of "good" values
+        if data.shape[0] < min_number_of_runs:
+            # not enough data to assign quality, set all "good"
+            quality_table.loc[:, metric] = True
 
-        # define quality for each metric individually
-        quality_table.loc[:, metric] = (all_values > lower_boundary) & (all_values < upper_boundary)
+        else:
+            all_values = data.loc[:, metric]
+            q1, q2 = numpy.percentile(all_values, [5, 95])
+
+            filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
+            lower_boundary, upper_boundary = numpy.percentile(filtered, [5, 95])  # set interval of "good" values
+
+            # define quality for each metric individually
+            quality_table.loc[:, metric] = (all_values > lower_boundary) & (all_values < upper_boundary)
 
     # summarise individual qualities
     quality_table.loc[:, "quality"] = quality_table.iloc[:, 4:].sum(axis=1) > 7
