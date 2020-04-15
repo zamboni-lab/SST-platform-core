@@ -484,33 +484,48 @@ def assign_metrics_qualities(last_run_metrics, metrics_names):
             for metric in ["resolution_200", "resolution_700", "signal", "s2b", "s2n"]:
 
                 good_values_indexes = qualities_data.loc[:, metric] == 1  # get indexes based on previous qualities
-                good_values = metrics_data.loc[good_values_indexes, metric]  # get values of "good" quality
 
-                lower_boundary = numpy.percentile(good_values, 25)  # set lowest "good" value
+                if good_values_indexes.shape[0] < min_number_of_runs:
+                    # there's yet not enough examples of "good" values, so set this guy as "good"
+                    last_run_data.loc["quality", metric] = 1
+                else:
+                    # choose values of "good" quality to compute a boundary
+                    good_values = metrics_data.loc[good_values_indexes, metric]
+                    lower_boundary = numpy.percentile(good_values, 25)  # set lowest "good" value
 
-                # define quality for each metric individually
-                last_run_data.loc["quality", metric] = int(last_run_data.loc["value", metric] > lower_boundary)
+                    # define quality for each metric individually
+                    last_run_data.loc["quality", metric] = int(last_run_data.loc["value", metric] > lower_boundary)
 
             for metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150", "baseline_25_650", "baseline_50_650"]:
 
                 good_values_indexes = qualities_data.loc[:, metric] == 1  # get indexes based on previous qualities
-                good_values = metrics_data.loc[good_values_indexes, metric]  # get values of "good" quality
 
-                upper_boundary = numpy.percentile(good_values, 75)  # set highest "good" value
+                if good_values_indexes.shape[0] < min_number_of_runs:
+                    # there's yet not enough examples of "good" values, so set this guy as "good"
+                    last_run_data.loc["quality", metric] = 1
+                else:
+                    # choose values of "good" quality to compute a boundary
+                    good_values = metrics_data.loc[good_values_indexes, metric]
+                    upper_boundary = numpy.percentile(good_values, 75)  # set highest "good" value
 
-                # define quality for each metric individually
-                last_run_data.loc["quality", metric] = int(last_run_data.loc["value", metric] < upper_boundary)
+                    # define quality for each metric individually
+                    last_run_data.loc["quality", metric] = int(last_run_data.loc["value", metric] < upper_boundary)
 
             for metric in ["isotopic_presence", "transmission", "fragmentation_305", "fragmentation_712"]:
 
                 good_values_indexes = qualities_data.loc[:, metric] == 1  # get indexes based on previous qualities
-                good_values = metrics_data.loc[good_values_indexes, metric]  # get values of "good" quality
 
-                lower_boundary, upper_boundary = numpy.percentile(good_values, [5, 95])  # set interval of "good" values
+                if good_values_indexes.shape[0] < min_number_of_runs:
+                    # there's yet not enough examples of "good" values, so set this guy as "good"
+                    last_run_data.loc["quality", metric] = 1
+                else:
+                    # choose values of "good" quality to compute a boundaries
+                    good_values = metrics_data.loc[good_values_indexes, metric]
+                    lower_boundary, upper_boundary = numpy.percentile(good_values, [5, 95])  # set interval of "good" values
 
-                # define quality for each metric individually
-                metric_value = last_run_data.loc["value", metric]
-                last_run_data.loc["quality", metric] = int(lower_boundary < metric_value < upper_boundary)
+                    # define quality for each metric individually
+                    metric_value = last_run_data.loc["value", metric]
+                    last_run_data.loc["quality", metric] = int(lower_boundary < metric_value < upper_boundary)
 
             return list(last_run_data.loc["quality", :])
 
