@@ -3,6 +3,7 @@ import pandas, numpy
 from matplotlib import pyplot
 from src.msfe import db_connector
 from src.qcmg import metrics_generator
+from sklearn.ensemble import IsolationForest
 
 
 if __name__ == "__main__":
@@ -24,6 +25,15 @@ if __name__ == "__main__":
     # pandas.set_option('display.max_columns', None)
     # print(quality_table)
 
+    forest = IsolationForest(random_state=0)
+    single_metric = numpy.array(metrics_data.loc[:, "resolution_200"]).reshape(-1,1)
+    forest.fit(single_metric)
+    forest_prediction = forest.predict(single_metric)
+    # TODO: adjust predictions so that high "resolution" and low "accuracy" values are not marked as outliers
+
+
+
+
     dates = metrics_data.loc[:, "acquisition_date"]
     dates_labels = numpy.array([str(date)[0:10] for date in metrics_data.loc[:, "acquisition_date"]])
     values = metrics_data.loc[:, "resolution_200"]
@@ -36,7 +46,7 @@ if __name__ == "__main__":
     axs[0].grid()
 
     axs[1].plot(dates, values, 'k-o')
-    axs[1].plot(dates[quality_table["resolution_200"] == 0], values[quality_table["resolution_200"] == 0], 'r.')
+    axs[1].plot(dates[forest_prediction == -1], values[forest_prediction == -1], 'r.')
     axs[1].grid()
 
     axs[2].plot(dates, values, 'k-o')
