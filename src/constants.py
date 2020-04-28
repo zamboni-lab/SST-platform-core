@@ -1,5 +1,5 @@
 
-msfe_version = '0.3.66'
+msfe_version = '0.3.67'
 chemical_mix_id = '20190522_4GHz'
 
 

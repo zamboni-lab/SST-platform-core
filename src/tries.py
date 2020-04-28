@@ -3,6 +3,7 @@
 
 import sqlite3, numpy, scipy
 
+
 def create_connection(db_file):
     """ create a database connection to the SQLite database
         specified by the db_file
@@ -33,5 +34,39 @@ def select_all_tasks(conn, table_name):
 
 
 if __name__ == "__main__":
+
+    line = 'a3b4c2e10b1'
+
+    letters = []
+    numbers = []
+
+    for i in range(len(line)-1):
+
+        if line[i].isalpha():
+            letters.append(line[i])
+            j = i+1  # next symbol is 100% a digit
+            number = ""
+            while line[j].isdigit():
+                # while digit, collect symbols
+                number += line[j]
+                # watch out for the length
+                if j+1 == len(line):
+                    break
+                else:
+                    j += 1
+            numbers.append(int(number))
+
+    result = ''
+    for i in range(len(letters)):
+        result += letters[i] * numbers[i]
+
+    print(result)
+
+
+
+
+
+
+
 
     pass
