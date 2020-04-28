@@ -400,12 +400,12 @@ def calculate_metrics_and_update_qc_databases(ms_run, in_debug_mode=False):
         logger.print_qc_info('QC databases have been updated\n')
 
 
-def compute_quality_table(data):
+def compute_quality_table_first_time(data):
     """ This method calculates quality table for a QC metrics database provided as DataFrame.
         Quality table is normally stored within database, so the method is called only
         to calculate it for the first time. """
 
-    quality_table = data
+    quality_table = data[:]
 
     for metric in ["resolution_200", "resolution_700", "signal", "s2b", "s2n"]:
 
@@ -557,6 +557,8 @@ def assign_metrics_qualities(last_run_metrics, metrics_names):
 
 
 if __name__ == '__main__':
+
+    # TODO: refactoring: split (metrics generation), (working with databases) and (old methods)
 
     pass
 

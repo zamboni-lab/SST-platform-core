@@ -554,7 +554,7 @@ def update_databases_with_qualities_and_buffer(paths):
         buffer_data = data[data['buffer_id'] == buffer].drop(labels='buffer_id', axis=1)
 
         # get quality table for existing database
-        quality_table = metrics_generator.compute_quality_table(buffer_data)
+        quality_table = metrics_generator.compute_quality_table_first_time(buffer_data)
 
         # update 'quality' column in two other databases
         meta_ids = [int(quality_table.iloc[i, 1]) for i in range(quality_table.shape[0])]  # make a list of meta_ids
