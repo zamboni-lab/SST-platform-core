@@ -9,7 +9,7 @@ from sklearn.neighbors import LocalOutlierFactor
 from PyAstronomy import pyasl
 
 
-def correct_outlier_prediction_for_metric(metric, prediction, metric_values):
+def correct_outlier_prediction_for_metric(metric, prediction, test_values, train_values):
     """ This method corrects outlier prediction of methods, that don't take into account the nature of the metric.
         E.g., predicted outliers with very high resolution are marked as normal values,
               predicted outliers with very low chemical_dirt are marked as normal values, as well. """
@@ -18,17 +18,19 @@ def correct_outlier_prediction_for_metric(metric, prediction, metric_values):
 
     if metric in ["resolution_200", "resolution_700", "signal", "s2b", "s2n"]:
 
-        metric_values = metric_values.reshape(1, -1)[0]
+        train_values = train_values.reshape(1,-1)[0]
+        test_values = test_values.reshape(1,-1)[0]
         # only low values can be marked as outliers, while high values are ok
-        values_higher_than_median = metric_values > numpy.median(metric_values)
-        corrected_prediction = prediction + values_higher_than_median  # vectorized 'or' operator
+        values_higher_than_median = test_values > numpy.median(train_values)
+        corrected_prediction = prediction | values_higher_than_median  # vectorized bitwise 'or' operator
 
     elif metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150", "baseline_25_650", "baseline_50_650"]:
 
-        metric_values = metric_values.reshape(1, -1)[0]
+        train_values = train_values.reshape(1,-1)[0]
+        test_values = test_values.reshape(1,-1)[0]
         # only high values can be marked as outliers, while low values are ok
-        values_lower_than_median = metric_values < numpy.median(metric_values)
-        corrected_prediction = prediction + values_lower_than_median  # vectorized 'or' operator
+        values_lower_than_median = test_values < numpy.median(train_values)
+        corrected_prediction = prediction | values_lower_than_median  # vectorized bitwise 'or' operator
     else:
         # no correction is done for metrics:
         # "isotopic_presence", "transmission", "fragmentation_305", "fragmentation_712"
@@ -71,20 +73,18 @@ def compare_outlier_prediction_methods():
         forest = IsolationForest(random_state=0)  # effectively, allows ~15% of outliers
         forest.fit(single_metric)
         forest_prediction = forest.predict(single_metric)
-        forest_corrected_prediction = correct_outlier_prediction_for_metric(metric_name, forest_prediction, single_metric)
+        forest_corrected_prediction = correct_outlier_prediction_for_metric(metric_name, forest_prediction, single_metric, single_metric)
 
         # detect outliers with local outlier factor
         lof = LocalOutlierFactor()
         lof_prediction = lof.fit_predict(single_metric)
-        lof_corrected_prediction = correct_outlier_prediction_for_metric(metric_name, lof_prediction, single_metric)
-
-        # TODO: check correction carefully, there's something wrong with it
+        lof_corrected_prediction = correct_outlier_prediction_for_metric(metric_name, lof_prediction, single_metric, single_metric)
 
         # detect outliers with GESD
         gesd_prediction_indices = pyasl.generalizedESD(single_metric, int(single_metric.shape[0] * 0.2), 0.05)[1]
         gesd_prediction = numpy.ones(shape=(single_metric.shape[0]))  # make an empty ("all good") array
         gesd_prediction[gesd_prediction_indices] = 0  # add predicted outliers by indices
-        gesd_corrected_prediction = correct_outlier_prediction_for_metric(metric_name, gesd_prediction, single_metric)
+        gesd_corrected_prediction = correct_outlier_prediction_for_metric(metric_name, gesd_prediction, single_metric, single_metric)
 
         # prepare data for plotting
         dates = metrics_data.loc[:, "acquisition_date"]
@@ -140,8 +140,8 @@ if __name__ == "__main__":
 
     # convert to dataframes for convenience
     metrics_data = pandas.DataFrame(metrics_data, columns=colnames)
-    test_data = metrics_data.loc[metrics_data["acquisition_date"] >= "2020-04-19", :]
-    metrics_data = metrics_data.loc[metrics_data["acquisition_date"] < "2020-04-19", :]
+    test_data = metrics_data.loc[(metrics_data["acquisition_date"] <= "2020-02-19") & (metrics_data["acquisition_date"] >= "2019-12-21"), :]
+    metrics_data = metrics_data.loc[metrics_data["acquisition_date"] <= "2019-12-19", :]
 
     quality_table = metrics_generator.compute_quality_table_first_time(metrics_data)
 
@@ -155,10 +155,10 @@ if __name__ == "__main__":
         forest.fit(single_metric)
 
         train_prediction = forest.predict(single_metric)
-        train_corrected_prediction = correct_outlier_prediction_for_metric(metric_name, train_prediction, single_metric)
+        train_corrected_prediction = correct_outlier_prediction_for_metric(metric_name, train_prediction, single_metric, single_metric)
 
         test_prediction = forest.predict(test_metric)
-        test_corrected_prediction = correct_outlier_prediction_for_metric(metric_name, test_prediction, single_metric)
+        test_corrected_prediction = correct_outlier_prediction_for_metric(metric_name, test_prediction, test_metric, single_metric)
 
         # prepare data for plotting
         dates = metrics_data.loc[:, "acquisition_date"]
