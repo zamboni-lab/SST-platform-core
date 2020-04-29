@@ -6,6 +6,35 @@ from src.qcmg import metrics_generator
 from src.constants import all_metrics
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
+from PyAstronomy import pyasl
+
+
+def correct_outlier_prediction_for_metric(metric, forest_prediction, metric_values):
+    """ This method corrects outlier prediction of methods, that don't take into account the nature of the metric.
+        E.g., predicted outliers with very high resolution are marked as normal values,
+              predicted outliers with very low chemical_dirt are marked as normal values, as well. """
+
+    forest_prediction[forest_prediction == -1] = 0  # reformat predictions to {0,1}
+
+    if metric in ["resolution_200", "resolution_700", "signal", "s2b", "s2n"]:
+
+        metric_values = metric_values.reshape(1, -1)[0]
+        # only low values can be marked as outliers, while high values are ok
+        values_higher_than_median = metric_values > numpy.median(metric_values)
+        corrected_prediction = forest_prediction + values_higher_than_median  # vectorized 'or' operator
+
+    elif metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150", "baseline_25_650", "baseline_50_650"]:
+
+        metric_values = metric_values.reshape(1, -1)[0]
+        # only high values can be marked as outliers, while low values are ok
+        values_lower_than_median = metric_values < numpy.median(metric_values)
+        corrected_prediction = forest_prediction + values_lower_than_median  # vectorized 'or' operator
+    else:
+        # no correction is done for metrics:
+        # "isotopic_presence", "transmission", "fragmentation_305", "fragmentation_712"
+        return forest_prediction
+
+    return corrected_prediction
 
 
 if __name__ == "__main__":
@@ -36,14 +65,18 @@ if __name__ == "__main__":
         forest = IsolationForest(random_state=0)
         forest.fit(single_metric)
         forest_prediction = forest.predict(single_metric)
-        # TODO: - adjust predictions so that high "resolution" and low "accuracy" values are not marked as outliers
-        #       - explore other parameters (is there a way to optimize?)
+        forest_corrected_prediction = correct_outlier_prediction_for_metric(metric_name, forest_prediction, single_metric)
+        # TODO: - explore other parameters (is there a way to optimize?)
 
         # detect outliers with local outlier factor
         lof = LocalOutlierFactor()
         lof_prediction = lof.fit_predict(single_metric)
-        # TODO: - adjust predictions so that high "resolution" and low "accuracy" values are not marked as outliers
-        #       - explore other parameters (is there a way to optimize?)
+        lof_corrected_prediction = correct_outlier_prediction_for_metric(metric_name, lof_prediction, single_metric)
+        # TODO: - explore other parameters (is there a way to optimize?)
+
+        # r = pyasl.generalizedESD(single_metric, int(single_metric.shape[0] * 0.05), 0.05)
+        # print(r)
+        # break
 
         # prepare data for plotting
         dates = metrics_data.loc[:, "acquisition_date"]
@@ -60,13 +93,13 @@ if __name__ == "__main__":
         axs[0].grid()
 
         axs[1].plot(dates, values, 'k-o')
-        axs[1].plot(dates[forest_prediction == -1], values[forest_prediction == -1], 'r.')
+        axs[1].plot(dates[forest_corrected_prediction == 0], values[forest_corrected_prediction == 0], 'r.')
         axs[1].title.set_text("isolation forest")
         axs[1].set_ylabel(metric_name)
         axs[1].grid()
 
         axs[2].plot(dates, values, 'k-o')
-        axs[2].plot(dates[lof_prediction == -1], values[lof_prediction == -1], 'r.')
+        axs[2].plot(dates[lof_corrected_prediction == 0], values[lof_corrected_prediction == 0], 'r.')
         axs[2].title.set_text("local outlier factor")
         axs[2].set_ylabel(metric_name)
         axs[2].grid()
