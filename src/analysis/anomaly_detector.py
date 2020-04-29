@@ -9,30 +9,30 @@ from sklearn.neighbors import LocalOutlierFactor
 from PyAstronomy import pyasl
 
 
-def correct_outlier_prediction_for_metric(metric, forest_prediction, metric_values):
+def correct_outlier_prediction_for_metric(metric, prediction, metric_values):
     """ This method corrects outlier prediction of methods, that don't take into account the nature of the metric.
         E.g., predicted outliers with very high resolution are marked as normal values,
               predicted outliers with very low chemical_dirt are marked as normal values, as well. """
 
-    forest_prediction[forest_prediction == -1] = 0  # reformat predictions to {0,1}
+    prediction[prediction == -1] = 0  # reformat predictions to {0,1}
 
     if metric in ["resolution_200", "resolution_700", "signal", "s2b", "s2n"]:
 
         metric_values = metric_values.reshape(1, -1)[0]
         # only low values can be marked as outliers, while high values are ok
         values_higher_than_median = metric_values > numpy.median(metric_values)
-        corrected_prediction = forest_prediction + values_higher_than_median  # vectorized 'or' operator
+        corrected_prediction = prediction + values_higher_than_median  # vectorized 'or' operator
 
     elif metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150", "baseline_25_650", "baseline_50_650"]:
 
         metric_values = metric_values.reshape(1, -1)[0]
         # only high values can be marked as outliers, while low values are ok
         values_lower_than_median = metric_values < numpy.median(metric_values)
-        corrected_prediction = forest_prediction + values_lower_than_median  # vectorized 'or' operator
+        corrected_prediction = prediction + values_lower_than_median  # vectorized 'or' operator
     else:
         # no correction is done for metrics:
         # "isotopic_presence", "transmission", "fragmentation_305", "fragmentation_712"
-        return forest_prediction
+        return prediction
 
     return corrected_prediction
 
@@ -49,6 +49,7 @@ if __name__ == "__main__":
 
     # convert to dataframes for convenience
     metrics_data = pandas.DataFrame(metrics_data, columns=colnames)
+    metrics_data = metrics_data.loc[metrics_data["acquisition_date"] < "2020-03-29", :]  # remove Mauro's dataset
 
     quality_table = metrics_generator.compute_quality_table_first_time(metrics_data)
 
@@ -74,9 +75,11 @@ if __name__ == "__main__":
         lof_corrected_prediction = correct_outlier_prediction_for_metric(metric_name, lof_prediction, single_metric)
         # TODO: - explore other parameters (is there a way to optimize?)
 
-        # r = pyasl.generalizedESD(single_metric, int(single_metric.shape[0] * 0.05), 0.05)
-        # print(r)
-        # break
+        # detect outliers with GESD
+        gesd_prediction_indices = pyasl.generalizedESD(single_metric, int(single_metric.shape[0] * 0.2), 0.05)[1]
+        gesd_prediction = numpy.ones(shape=(single_metric.shape[0]))  # make an empty ("all good") array
+        gesd_prediction[gesd_prediction_indices] = 0  # add predicted outliers by indices
+        gesd_corrected_prediction = correct_outlier_prediction_for_metric(metric_name, gesd_prediction, single_metric)
 
         # prepare data for plotting
         dates = metrics_data.loc[:, "acquisition_date"]
@@ -84,7 +87,7 @@ if __name__ == "__main__":
         values = metrics_data.loc[:, metric_name]
 
         # plot
-        fig, axs = pyplot.subplots(3, 1, sharex='col', figsize=(10,8))
+        fig, axs = pyplot.subplots(4, 1, sharex='col', figsize=(12,8))
 
         axs[0].plot(dates, values, 'k-o')
         axs[0].plot(dates[quality_table[metric_name] == 0], values[quality_table[metric_name] == 0], 'r.')
@@ -103,6 +106,12 @@ if __name__ == "__main__":
         axs[2].title.set_text("local outlier factor")
         axs[2].set_ylabel(metric_name)
         axs[2].grid()
+
+        axs[3].plot(dates, values, 'k-o')
+        axs[3].plot(dates[gesd_corrected_prediction == 0], values[gesd_corrected_prediction == 0], 'r.')
+        axs[3].title.set_text("generalized ESD")
+        axs[3].set_ylabel(metric_name)
+        axs[3].grid()
 
         pyplot.xticks(dates[::2], dates_labels[::2], rotation='vertical')
         pyplot.tight_layout()
