@@ -4,8 +4,8 @@ from matplotlib import pyplot
 from src.msfe import db_connector
 from src.qcmg import metrics_generator
 from src.constants import all_metrics
-from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
+from sklearn.ensemble import IsolationForest
 from PyAstronomy import pyasl
 
 
@@ -127,11 +127,12 @@ def compare_outlier_prediction_methods():
         pyplot.show()
 
 
-if __name__ == "__main__":
+def test_outliers_prediction():
+    """ This method evaluates performance of Isolation Forest in prediction of outliers.
+        Model is trained on previous records and tested on "newly generated" measurement(s) / run(s).
+        Results of train and test are plotted together.
 
-    # TODO: test prediction of the next point, based on previous entries
-    # qualities_data, _ = db_connector.fetch_table(conn, "qc_metrics_qualities")
-    # qualities_data = pandas.DataFrame(qualities_data, columns=colnames)
+        (This logic was tested for different subsets of all available data. Method seemed to work decently). """
 
     metrics_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_metrics_database.sqlite"
 
@@ -140,10 +141,8 @@ if __name__ == "__main__":
 
     # convert to dataframes for convenience
     metrics_data = pandas.DataFrame(metrics_data, columns=colnames)
-    test_data = metrics_data.loc[(metrics_data["acquisition_date"] <= "2020-02-19") & (metrics_data["acquisition_date"] >= "2019-12-21"), :]
+    test_data = metrics_data.loc[(metrics_data["acquisition_date"] <= "2020-02-19") & (metrics_data["acquisition_date"] >= "2019-12-21"),:]
     metrics_data = metrics_data.loc[metrics_data["acquisition_date"] <= "2019-12-19", :]
-
-    quality_table = metrics_generator.compute_quality_table_first_time(metrics_data)
 
     for metric_name in all_metrics:
         # reshape data to feed to models
@@ -170,7 +169,7 @@ if __name__ == "__main__":
         test_values = test_data.loc[:, metric_name]
 
         # plot
-        fig, axs = pyplot.subplots(1, 2, sharey=True, figsize=(12,6))
+        fig, axs = pyplot.subplots(1, 2, sharey=True, figsize=(12, 6))
 
         pyplot.setp(axs, xticks=[], xticklabels=[])
 
@@ -194,3 +193,10 @@ if __name__ == "__main__":
         pyplot.tight_layout()
         pyplot.show()
 
+
+if __name__ == "__main__":
+
+    # qualities_data, _ = db_connector.fetch_table(conn, "qc_metrics_qualities")
+    # qualities_data = pandas.DataFrame(qualities_data, columns=colnames)
+
+    pass

@@ -1,15 +1,15 @@
 
-msfe_version = '0.3.75'
+msfe_version = '0.3.76'
 chemical_mix_id = '20190522_4GHz'
 
 
 def get_buffer_id(date):
     """ Tiny method to define buffer id according to the date it's been used. """
 
-    if date < '2020-03-30':
-        buffer_id = 'IPA_H2O'
+    if '2020-03-15' < date < '2020-04-21':
+        buffer_id = 'IPA_H2O_DMSO'  # Mauro's dataset
     else:
-        buffer_id = "IPA_H2O_DMSO"
+        buffer_id = 'IPA_H2O'
 
     return buffer_id
 

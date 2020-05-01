@@ -1,7 +1,7 @@
 
 import json, os, numpy, seaborn, pandas
 from matplotlib import pyplot
-
+from sklearn.ensemble import IsolationForest
 from src.constants import resolution_200_features_names, resolution_700_features_names
 from src.constants import accuracy_features_names, dirt_features_names, isotopic_presence_features_names
 from src.constants import instrument_noise_tic_features_names as noise_features_names
@@ -10,7 +10,8 @@ from src.constants import baseline_150_250_features_names, baseline_650_750_feat
 from src.constants import s2b_features_names, s2n_features_names
 from src.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path
 from src.constants import min_number_of_metrics_to_assess_quality as min_number_of_runs
-from src.constants import get_buffer_id
+from src.constants import get_buffer_id, all_metrics
+from src.analysis import anomaly_detector
 from src.msfe import logger, db_connector
 from src.qcmg import qcm_validator
 
@@ -400,10 +401,10 @@ def calculate_metrics_and_update_qc_databases(ms_run, in_debug_mode=False):
         logger.print_qc_info('QC databases have been updated\n')
 
 
-def compute_quality_table_first_time(data):
-    """ This method calculates quality table for a QC metrics database provided as DataFrame.
-        Quality table is normally stored within database, so the method is called only
-        to calculate it for the first time. """
+def create_and_fill_quality_table_using_percentiles(data):
+    """ This method applies initial method to assign qualities to metrics.
+        All metrics are grouped in three, based on hand-designed ranges of "good" values.
+        Ranges are defined using percentiles. """
 
     quality_table = data[:]
 
@@ -411,7 +412,7 @@ def compute_quality_table_first_time(data):
 
         if data.shape[0] < min_number_of_runs:
             # not enough data to assign quality, set all "good"
-            quality_table.loc[:, metric] = True
+            quality_table.loc[:, metric] = 1
 
         else:
             all_values = data.loc[:, metric]
@@ -428,7 +429,7 @@ def compute_quality_table_first_time(data):
 
         if data.shape[0] < min_number_of_runs:
             # not enough data to assign quality, set all "good"
-            quality_table.loc[:, metric] = True
+            quality_table.loc[:, metric] = 1
 
         else:
             all_values = data.loc[:, metric]
@@ -444,7 +445,7 @@ def compute_quality_table_first_time(data):
 
         if data.shape[0] < min_number_of_runs:
             # not enough data to assign quality, set all "good"
-            quality_table.loc[:, metric] = True
+            quality_table.loc[:, metric] = 1
 
         else:
             all_values = data.loc[:, metric]
@@ -458,6 +459,49 @@ def compute_quality_table_first_time(data):
 
     # summarise individual qualities
     quality_table.loc[:, "quality"] = quality_table.iloc[:, 4:].sum(axis=1) > 7
+
+    return quality_table
+
+
+def create_and_fill_quality_table_using_iforest(data):
+    """ Introduced in v.0.3.76: a method to assign qualities to metrics using Isolation Forest. """
+
+    quality_table = data[:]
+
+    for metric in all_metrics:
+
+        if data.shape[0] < min_number_of_runs:
+            # not enough data to assign quality, set all "good"
+            quality_table.loc[:, metric] = 1
+
+        else:
+            all_metric_values = numpy.array(data.loc[:, metric]).reshape(-1, 1)
+
+            # effectively, allows ~15% of outliers
+            iforest = IsolationForest()
+            # train and predict on the same values, since it's the first time
+            predicted_outliers = iforest.fit_predict(all_metric_values)
+            # correct depending on the metrics, get array of {0,1}
+            corrected_outliers = anomaly_detector.correct_outlier_prediction_for_metric(metric, predicted_outliers, all_metric_values, all_metric_values)
+
+            # define quality for each metric individually
+            quality_table.loc[:, metric] = corrected_outliers
+
+    # summarise individual qualities
+    quality_table.loc[:, "quality"] = quality_table.iloc[:, 4:].sum(axis=1) > 7
+
+    return quality_table
+
+
+def compute_quality_table_first_time(data, method="iforest"):
+    """ This method calculates quality table for a QC metrics database provided as DataFrame.
+        Quality table is normally stored within database, so the method is called only
+        to calculate it for the first time. """
+
+    if method == "iforest":
+        quality_table = create_and_fill_quality_table_using_iforest(data)
+    else:
+        quality_table = create_and_fill_quality_table_using_percentiles(data)
 
     return quality_table
 
@@ -548,8 +592,7 @@ def assign_metrics_qualities(last_run_metrics, metrics_names):
 
         else:
             # create dataframe with values and names to avoid any issues of ordering
-            last_run_data = pandas.DataFrame([last_run_metrics, [0 for x in last_run_metrics]],
-                                             columns=metrics_names, index=["value", "quality"])
+            last_run_data = pandas.DataFrame([last_run_metrics, [0 for x in last_run_metrics]], columns=metrics_names, index=["value", "quality"])
 
             add_quality_for_each_metric(last_run_data, metrics_data, qualities_data)
 
