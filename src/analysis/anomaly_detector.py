@@ -59,7 +59,7 @@ def compare_outlier_prediction_methods():
     metrics_data = pandas.DataFrame(metrics_data, columns=colnames)
     metrics_data = metrics_data.loc[metrics_data["acquisition_date"] < "2020-03-29", :]  # remove Mauro's dataset
 
-    quality_table = metrics_generator.compute_quality_table_first_time(metrics_data)
+    quality_table = metrics_generator.recompute_quality_table_for_all_runs(metrics_data)
 
     # pandas.set_option('display.max_rows', None)
     # pandas.set_option('display.max_columns', None)
@@ -198,5 +198,7 @@ if __name__ == "__main__":
 
     # qualities_data, _ = db_connector.fetch_table(conn, "qc_metrics_qualities")
     # qualities_data = pandas.DataFrame(qualities_data, columns=colnames)
+
+    test_outliers_prediction()
 
     pass

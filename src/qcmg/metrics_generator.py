@@ -9,6 +9,7 @@ from src.constants import transmission_features_names, fragmentation_features_na
 from src.constants import baseline_150_250_features_names, baseline_650_750_features_names
 from src.constants import s2b_features_names, s2n_features_names
 from src.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path
+from src.constants import anomaly_detection_method
 from src.constants import min_number_of_metrics_to_assess_quality as min_number_of_runs
 from src.constants import get_buffer_id, all_metrics
 from src.analysis import anomaly_detector
@@ -357,7 +358,7 @@ def calculate_metrics_and_update_qc_databases(ms_run, in_debug_mode=False):
     add_signal_to_noise_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
 
     # assign quality for each metric based on previous records
-    metrics_qualities = assign_metrics_qualities(metrics_values, metrics_names)
+    metrics_qualities = assign_metrics_qualities(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
 
     quality = int(sum(metrics_qualities) >= (len(metrics_qualities)+1) // 2)  # '1' if at least half of metrics are '1'
 
@@ -404,199 +405,262 @@ def calculate_metrics_and_update_qc_databases(ms_run, in_debug_mode=False):
 def create_and_fill_quality_table_using_percentiles(data):
     """ This method applies initial method to assign qualities to metrics.
         All metrics are grouped in three, based on hand-designed ranges of "good" values.
-        Ranges are defined using percentiles. """
+        Ranges are defined using percentiles. (No predictions are made). """
 
     quality_table = data[:]
 
     for metric in ["resolution_200", "resolution_700", "signal", "s2b", "s2n"]:
 
-        if data.shape[0] < min_number_of_runs:
-            # not enough data to assign quality, set all "good"
-            quality_table.loc[:, metric] = 1
+        all_values = data.loc[:, metric]
+        q1, q2 = numpy.percentile(all_values, [5, 95])
 
-        else:
-            all_values = data.loc[:, metric]
-            q1, q2 = numpy.percentile(all_values, [5, 95])
+        filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
+        upper_boundary = numpy.percentile(filtered, 25)  # set lowest "good" value
 
-            filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
-            upper_boundary = numpy.percentile(filtered, 25)  # set lowest "good" value
+        # define quality for each metric individually
+        quality_table.loc[:, metric] = all_values > upper_boundary
 
-            # define quality for each metric individually
-            quality_table.loc[:, metric] = all_values > upper_boundary
+    for metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150", "baseline_25_650", "baseline_50_650"]:
 
-    for metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150",
-                   "baseline_25_650", "baseline_50_650"]:
+        all_values = data.loc[:, metric]
+        q1, q2 = numpy.percentile(all_values, [5, 95])
 
-        if data.shape[0] < min_number_of_runs:
-            # not enough data to assign quality, set all "good"
-            quality_table.loc[:, metric] = 1
+        filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
+        upper_boundary = numpy.percentile(filtered, 75)  # set highest "good" value
 
-        else:
-            all_values = data.loc[:, metric]
-            q1, q2 = numpy.percentile(all_values, [5, 95])
-
-            filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
-            upper_boundary = numpy.percentile(filtered, 75)  # set highest "good" value
-
-            # define quality for each metric individually
-            quality_table.loc[:, metric] = all_values < upper_boundary
+        # define quality for each metric individually
+        quality_table.loc[:, metric] = all_values < upper_boundary
 
     for metric in ["isotopic_presence", "transmission", "fragmentation_305", "fragmentation_712"]:
 
-        if data.shape[0] < min_number_of_runs:
-            # not enough data to assign quality, set all "good"
-            quality_table.loc[:, metric] = 1
+        all_values = data.loc[:, metric]
+        q1, q2 = numpy.percentile(all_values, [5, 95])
 
-        else:
-            all_values = data.loc[:, metric]
-            q1, q2 = numpy.percentile(all_values, [5, 95])
+        filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
+        lower_boundary, upper_boundary = numpy.percentile(filtered, [5, 95])  # set interval of "good" values
 
-            filtered = all_values[(all_values > q1) & (all_values < q2)]  # remove outliers
-            lower_boundary, upper_boundary = numpy.percentile(filtered, [5, 95])  # set interval of "good" values
-
-            # define quality for each metric individually
-            quality_table.loc[:, metric] = (all_values > lower_boundary) & (all_values < upper_boundary)
+        # define quality for each metric individually
+        quality_table.loc[:, metric] = (all_values > lower_boundary) & (all_values < upper_boundary)
 
     # summarise individual qualities
-    quality_table.loc[:, "quality"] = quality_table.iloc[:, 4:].sum(axis=1) > 7
+    quality_table.insert(0, "quality", quality_table.sum(axis=1) > 7)
 
     return quality_table
 
 
 def create_and_fill_quality_table_using_iforest(data):
-    """ Introduced in v.0.3.76: a method to assign qualities to metrics using Isolation Forest. """
+    """ Introduced in v.0.3.79: a method to assign qualities to metrics using Isolation Forest. """
 
     quality_table = data[:]
 
     for metric in all_metrics:
 
-        if data.shape[0] < min_number_of_runs:
-            # not enough data to assign quality, set all "good"
-            quality_table.loc[:, metric] = 1
+        all_metric_values = numpy.array(data.loc[:, metric]).reshape(-1, 1)
 
-        else:
-            all_metric_values = numpy.array(data.loc[:, metric]).reshape(-1, 1)
+        # effectively, allows ~15% of outliers
+        iforest = IsolationForest()
+        # train and predict on the same values, since it's the first time
+        predicted_outliers = iforest.fit_predict(all_metric_values)
+        # correct depending on the metrics, get array of {0,1}
+        corrected_outliers = anomaly_detector.correct_outlier_prediction_for_metric(metric, predicted_outliers, all_metric_values, all_metric_values)
 
-            # effectively, allows ~15% of outliers
-            iforest = IsolationForest()
-            # train and predict on the same values, since it's the first time
-            predicted_outliers = iforest.fit_predict(all_metric_values)
-            # correct depending on the metrics, get array of {0,1}
-            corrected_outliers = anomaly_detector.correct_outlier_prediction_for_metric(metric, predicted_outliers, all_metric_values, all_metric_values)
-
-            # define quality for each metric individually
-            quality_table.loc[:, metric] = corrected_outliers
+        # define quality for each metric individually
+        quality_table.loc[:, metric] = corrected_outliers
 
     # summarise individual qualities
-    quality_table.loc[:, "quality"] = quality_table.iloc[:, 4:].sum(axis=1) > 7
+    quality_table.insert(0, "quality", quality_table.sum(axis=1) > 7)
 
     return quality_table
 
 
-def compute_quality_table_first_time(data, method="iforest"):
-    """ This method calculates quality table for a QC metrics database provided as DataFrame.
-        Quality table is normally stored within database, so the method is called only
-        to calculate it for the first time. """
+def recompute_quality_table_for_all_runs(last_run_metrics, metrics_data):
+    """ This method calculates quality table for a QC metrics database:
+        1) it stacks together last (new) run metrics and previous runs metrics,
+        2) calculates quality table, according to method,
+        3) updates existing databases and returns quality table. """
 
-    if method == "iforest":
+    # take out meta info (id, meta_id, acquisition_date)
+    metrics_meta_info = metrics_data.iloc[:, :3]
+
+    # add last run metrics to previously acquired
+    last_run_metrics = pandas.DataFrame([last_run_metrics], columns=metrics_data.columns[4:])
+    data = pandas.concat(metrics_data.iloc[:, 4:], last_run_metrics)
+
+    if anomaly_detection_method == "iforest":
         quality_table = create_and_fill_quality_table_using_iforest(data)
     else:
         quality_table = create_and_fill_quality_table_using_percentiles(data)
 
+    # add meta info (id, meta_id, acquisition_date)
+    quality_table = pandas.concat([metrics_meta_info, quality_table], axis=1)
+
+    # update 'quality' column in two other databases
+    meta_ids = [int(quality_table.loc[i, 'meta_id']) for i in range(quality_table.shape[0])]
+    main_qualities = [int(quality_table.loc[i, 'quality']) for i in range(quality_table.shape[0])]
+
+    # update all tables with qualities
+    metrics_db = db_connector.create_connection(qc_metrics_database_path)
+    features_db = db_connector.create_connection(qc_features_database_path)
+    tunes_db = db_connector.create_connection(qc_tunes_database_path)
+
+    db_connector.update_all_databases_with_qualities(metrics_db, features_db, tunes_db, main_qualities, meta_ids)
+
+    # update qc_metrics_qualities table in qc_metrics database
+    for metric_name in all_metrics:
+        # make a list of qualities for this metric
+        metric_qualities = [int(quality_table.loc[i, metric_name]) for i in range(quality_table.shape[0])]
+        db_connector.update_column_in_database(metrics_db, "qc_metrics_qualities", metric_name, metric_qualities, "meta_id", meta_ids)
+
     return quality_table
 
 
-def add_quality_for_each_metric(new_run_data, previous_metrics_data, previous_qualities_data):
-    """ This method takes new (last uploaded) run metrics and assigns qualities to it,
-        using QC metrics database, as two dataframes with previously calculated / assigned values.
-        It doesn't return anything, but adds "quality" column to new_run_data. """
+def recompute_quality_table_and_predict_new_qualities(last_run_metrics, metrics_names, previous_metrics_data, previous_qualities_data, method="iforest"):
+    """ This method computes qualities of the new run, based on previous metrics data.
+        Decision boundaries in both approaches are learnt from previously recorded metrics,
+        and evaluated on new run data to assign qualities for each metric. """
+
+    if method == "iforest":
+        quality_table, metrics_qualities = estimate_qualities_using_iforest(last_run_metrics, previous_metrics_data)
+
+        # TODO: update databases with quality table
+
+
+    else:
+        # this method doesn't update quality table, only uses it to compute new metrics qualities
+        metrics_qualities = estimate_qualities_using_percentiles(last_run_metrics, metrics_names, previous_metrics_data, previous_qualities_data)
+
+    return metrics_qualities
+
+
+def estimate_qualities_using_iforest(last_run_metrics, previous_metrics_data):
+    """ Introduced in v.0.3.79: a method to recompute qualities for the metrics database (for all previously acquired
+        measurement), and then to predict qualities for last (new) run metrics based on previous ones. """
+
+    last_run_metrics = pandas.DataFrame([last_run_metrics], columns=previous_metrics_data.columns[4:])
+    quality_table = previous_metrics_data[:]
+
+    for metric in all_metrics:
+
+        old_metric_values = numpy.array(previous_metrics_data.loc[:, metric]).reshape(-1, 1)
+        new_metric = numpy.array(last_run_metrics.loc[:, metric]).reshape(-1, 1)
+
+        # effectively, allows ~15% of outliers
+        iforest = IsolationForest()
+        # train and predict on the same values, since it's the first time
+        iforest.fit(old_metric_values)
+
+        # recompute quality table first
+        predicted_outliers = iforest.predict(old_metric_values)
+        # correct depending on the metrics, get array of {0,1}
+        corrected_outliers = anomaly_detector.correct_outlier_prediction_for_metric(metric, predicted_outliers, old_metric_values, old_metric_values)
+        # define quality for each metric individually
+        quality_table.loc[:, metric] = corrected_outliers
+
+        # now predict qualities of the last (new) run
+        new_prediction = iforest.predict(new_metric)
+        # correct depending on the metrics, get array of {0,1}
+        corrected_prediction = anomaly_detector.correct_outlier_prediction_for_metric(metric, new_prediction, new_metric, old_metric_values)
+
+        last_run_metrics.loc[:, metric] = corrected_prediction
+
+    # summarise individual qualities
+    quality_table.insert(0, "quality", quality_table.sum(axis=1) > 7)
+
+    return quality_table, last_run_metrics.iloc[0,:].tolist()
+
+
+def estimate_qualities_using_percentiles(last_run_metrics, metrics_names, previous_metrics_data, previous_qualities_data):
+    """ This method takes new (last uploaded) run metrics and assigns qualities to it using percentiles
+        of the previously acquired runs from QC metrics database (metrics, qualities dataframes). """
+
+    # create dataframe with values and names to avoid any issues of ordering
+    new_run_data = pandas.DataFrame([last_run_metrics, [0 for x in last_run_metrics]], columns=metrics_names, index=["value", "quality"])
 
     for metric in ["resolution_200", "resolution_700", "signal", "s2b", "s2n"]:
 
         good_values_indexes = previous_qualities_data.loc[:, metric] == 1  # get indexes based on previous qualities
 
-        if good_values_indexes.shape[0] < min_number_of_runs:
-            # there's yet not enough examples of "good" values, so set this guy as "good"
-            new_run_data.loc["quality", metric] = 1
-        else:
-            # choose values of "good" quality to compute a boundary
-            good_values = previous_metrics_data.loc[good_values_indexes, metric]
-            lower_boundary = numpy.percentile(good_values, 25)  # set lowest "good" value
+        # choose values of "good" quality to compute a boundary
+        good_values = previous_metrics_data.loc[good_values_indexes, metric]
+        lower_boundary = numpy.percentile(good_values, 25)  # set lowest "good" value
 
-            # define quality for each metric individually
-            new_run_data.loc["quality", metric] = int(new_run_data.loc["value", metric] > lower_boundary)
+        # define quality for each metric individually
+        new_run_data.loc["quality", metric] = int(new_run_data.loc["value", metric] > lower_boundary)
 
-    for metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150",
-                   "baseline_25_650", "baseline_50_650"]:
+    for metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150", "baseline_25_650", "baseline_50_650"]:
 
         good_values_indexes = previous_qualities_data.loc[:, metric] == 1  # get indexes based on previous qualities
 
-        if good_values_indexes.shape[0] < min_number_of_runs:
-            # there's yet not enough examples of "good" values, so set this guy as "good"
-            new_run_data.loc["quality", metric] = 1
-        else:
-            # choose values of "good" quality to compute a boundary
-            good_values = previous_metrics_data.loc[good_values_indexes, metric]
-            upper_boundary = numpy.percentile(good_values, 75)  # set highest "good" value
+        # choose values of "good" quality to compute a boundary
+        good_values = previous_metrics_data.loc[good_values_indexes, metric]
+        upper_boundary = numpy.percentile(good_values, 75)  # set highest "good" value
 
-            # define quality for each metric individually
-            new_run_data.loc["quality", metric] = int(new_run_data.loc["value", metric] < upper_boundary)
+        # define quality for each metric individually
+        new_run_data.loc["quality", metric] = int(new_run_data.loc["value", metric] < upper_boundary)
 
     for metric in ["isotopic_presence", "transmission", "fragmentation_305", "fragmentation_712"]:
 
         good_values_indexes = previous_qualities_data.loc[:, metric] == 1  # get indexes based on previous qualities
 
-        if good_values_indexes.shape[0] < min_number_of_runs:
-            # there's yet not enough examples of "good" values, so set this guy as "good"
-            new_run_data.loc["quality", metric] = 1
-        else:
-            # choose values of "good" quality to compute a boundaries
-            good_values = previous_metrics_data.loc[good_values_indexes, metric]
-            lower_boundary, upper_boundary = numpy.percentile(good_values, [5, 95])  # set interval of "good" values
+        # choose values of "good" quality to compute a boundaries
+        good_values = previous_metrics_data.loc[good_values_indexes, metric]
+        lower_boundary, upper_boundary = numpy.percentile(good_values, [5, 95])  # set interval of "good" values
 
-            # define quality for each metric individually
-            metric_value = new_run_data.loc["value", metric]
-            new_run_data.loc["quality", metric] = int(lower_boundary < metric_value < upper_boundary)
+        # define quality for each metric individually
+        metric_value = new_run_data.loc["value", metric]
+        new_run_data.loc["quality", metric] = int(lower_boundary < metric_value < upper_boundary)
+
+    metrics_qualities = list(new_run_data.loc['quality', :])
+
+    return metrics_qualities
 
 
-def assign_metrics_qualities(last_run_metrics, metrics_names):
+def assign_metrics_qualities(last_run_metrics, metrics_names, last_ms_run, in_debug_mode=False):
     """ This method calculates quality values for metrics of the last run,
         based on the previous entries of QC metrics database. """
 
-    if not (os.path.isfile(qc_metrics_database_path) or os.path.isfile(qc_features_database_path)
-            or os.path.isfile(qc_tunes_database_path)):
-
+    if not (os.path.isfile(qc_metrics_database_path) or os.path.isfile(qc_features_database_path) or os.path.isfile(qc_tunes_database_path)):
         # if there's yet no databases, return all "good"
         qualities = [1 for x in last_run_metrics]
-        return qualities
 
     else:
-        # create and fill metric quality table for existing qc_metrics_database
-        conn = db_connector.create_connection(qc_metrics_database_path)
-        metrics_data, colnames = db_connector.fetch_table(conn, "qc_metrics")
-        qualities_data, _ = db_connector.fetch_table(conn, "qc_metrics_qualities")
+        metrics_db = db_connector.create_connection(qc_metrics_database_path)
 
-        # convert to dataframes for convenience
+        meta_data, colnames = db_connector.fetch_table(metrics_db, "qc_meta")
+        meta_data = pandas.DataFrame(meta_data, columns=colnames)
+        # get meta_ids of all runs corresponding to the same buffer
+        meta_ids = meta_data.loc[meta_data['buffer_id'] == last_ms_run['buffer_id'], 'id']
+
+        # get metrics data with meta_ids corresponding to the same buffer
+        metrics_data, colnames = db_connector.fetch_table(metrics_db, "qc_metrics")
         metrics_data = pandas.DataFrame(metrics_data, columns=colnames)
-        qualities_data = pandas.DataFrame(qualities_data, columns=colnames)
+        metrics_data = metrics_data[metrics_data['meta_id'].isin(meta_ids)]
 
-        if metrics_data.shape[0] < min_number_of_runs:
+        # get metrics data with meta_ids corresponding to the same buffer
+        qualities_data, _ = db_connector.fetch_table(metrics_db, "qc_metrics_qualities")
+        qualities_data = pandas.DataFrame(qualities_data, columns=colnames)
+        qualities_data = qualities_data[qualities_data['meta_id'].isin(meta_ids)]
+
+        if metrics_data.shape[0] < min_number_of_runs[anomaly_detection_method]:
             # it's not enough data to assign quality, return all "good"
             qualities = [1 for x in last_run_metrics]
 
-            # TODO: if (metrics_data.shape[0] + 1) == min_number_of_runs:  # reaching enough data points
-            #           calculate_quality_table_for_the_first_time()
-            #           refill_existing_quality_table()
+        elif metrics_data.shape[0] == min_number_of_runs[anomaly_detection_method]:
+            # compute qualities for all the runs in the db, including this one
 
-            return qualities
+            # compute quality table for the first time
+            quality_table = recompute_quality_table_for_all_runs(last_run_metrics, metrics_data)
+
+            # last run metrics qualities are in the last row of quality table now
+            qualities = list(quality_table.iloc[-1, 4:])
 
         else:
-            # create dataframe with values and names to avoid any issues of ordering
-            last_run_data = pandas.DataFrame([last_run_metrics, [0 for x in last_run_metrics]], columns=metrics_names, index=["value", "quality"])
+            # recompute qualities for all the previous runs in the db,
+            # and predict qualities of this run, based on previous runs
 
-            add_quality_for_each_metric(last_run_data, metrics_data, qualities_data)
+            qualities = recompute_quality_table_and_predict_new_qualities(last_run_metrics, metrics_names, metrics_data, qualities_data)
 
-            return list(last_run_data.loc["quality", :])
+    return qualities
 
 
 if __name__ == '__main__':

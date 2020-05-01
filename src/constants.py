@@ -1,5 +1,5 @@
 
-msfe_version = '0.3.76'
+msfe_version = '0.3.79'
 chemical_mix_id = '20190522_4GHz'
 
 
@@ -71,11 +71,13 @@ qc_metrics_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/q
 qc_features_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_features_database.sqlite"
 # qc_features_database_path = ""/mnt/nas2/fiaqc-out/qc_features_database.sqlite"
 
-min_number_of_metrics_to_assess_quality = 20
+anomaly_detection_method = "iforest"
+min_number_of_metrics_to_assess_quality = {"iforest": 20, "percentiles": 100}  # percentiles is strict => requires more data
 
-all_metrics = ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150",
-               "baseline_25_650", "baseline_50_650", "isotopic_presence", "transmission", "fragmentation_305",
-               "fragmentation_712", "resolution_200", "resolution_700", "signal", "s2b", "s2n"]
+all_metrics = ['resolution_200', 'resolution_700', 'average_accuracy', 'chemical_dirt',
+               'instrument_noise', 'isotopic_presence', 'transmission', 'fragmentation_305',
+               'fragmentation_712', 'baseline_25_150', 'baseline_50_150', 'baseline_25_650',
+               'baseline_50_650','signal', 's2b', 's2n']
 
 # features names
 resolution_200_features_names = ['absolute_mass_accuracy_Caffeine_i1_mean', 'widths_Caffeine_i1_1_mean']  # 193.0725512871
