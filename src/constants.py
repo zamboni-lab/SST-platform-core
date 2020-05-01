@@ -1,5 +1,5 @@
 
-msfe_version = '0.3.79'
+msfe_version = '0.3.80'
 chemical_mix_id = '20190522_4GHz'
 
 
@@ -72,7 +72,7 @@ qc_features_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/
 # qc_features_database_path = ""/mnt/nas2/fiaqc-out/qc_features_database.sqlite"
 
 anomaly_detection_method = "iforest"
-min_number_of_metrics_to_assess_quality = {"iforest": 20, "percentiles": 100}  # percentiles is strict => requires more data
+min_number_of_metrics_to_assess_quality = {"iforest": 20, "percentiles": 60}  # 'percentiles' is strict => requires more data
 
 all_metrics = ['resolution_200', 'resolution_700', 'average_accuracy', 'chemical_dirt',
                'instrument_noise', 'isotopic_presence', 'transmission', 'fragmentation_305',

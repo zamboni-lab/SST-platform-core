@@ -566,8 +566,12 @@ def update_old_databases_with_qualities_and_buffer_info(paths):
         # select entries corresponding to this buffer, remove buffer_id column itself
         buffer_data = data[data['buffer_id'] == buffer].drop(labels='buffer_id', axis=1)
 
+        # some stupid manipulations to reuse the same method
+        last_run_metrics = list(buffer_data.iloc[-1, 4:])
+        metrics_data = buffer_data.iloc[0:-1, :]
+
         # get quality table for existing database
-        quality_table = metrics_generator.recompute_quality_table_for_all_runs(buffer_data)
+        quality_table = metrics_generator.recompute_quality_table_for_all_runs(last_run_metrics, metrics_data)
 
         # update 'quality' column in two other databases
         meta_ids = [int(quality_table.iloc[i, 1]) for i in range(quality_table.shape[0])]  # make a list of meta_ids
@@ -580,7 +584,7 @@ def update_old_databases_with_qualities_and_buffer_info(paths):
 
         for i in range(quality_table.shape[0]):
 
-            # make artificial packing to use the same method
+            # some other manipulations to reuse another method
             meta_id = meta_ids[i]
             qc_run = {
                 "acquisition_date": str(quality_table.iloc[i, 2]),
@@ -613,8 +617,6 @@ if __name__ == '__main__':
     ]
 
     update_old_databases_with_qualities_and_buffer_info(paths)
-
-
 
 
     pass

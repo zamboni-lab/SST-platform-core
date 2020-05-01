@@ -482,7 +482,7 @@ def recompute_quality_table_for_all_runs(last_run_metrics, metrics_data):
     # take out meta info (id, meta_id, acquisition_date)
     metrics_meta_info = metrics_data.iloc[:, :3]
 
-    # add last run metrics to previously acquired
+    # add last run metrics to previously acquired to compute quality_table altogether
     last_run_metrics = pandas.DataFrame([last_run_metrics], columns=metrics_data.columns[4:])
     data = pandas.concat(metrics_data.iloc[:, 4:], last_run_metrics)
 
@@ -514,22 +514,36 @@ def recompute_quality_table_for_all_runs(last_run_metrics, metrics_data):
     return quality_table
 
 
-def recompute_quality_table_and_predict_new_qualities(last_run_metrics, metrics_names, previous_metrics_data, previous_qualities_data, method="iforest"):
+def recompute_quality_table_and_predict_new_qualities(last_run_metrics, metrics_names, previous_metrics_data, previous_qualities_data):
     """ This method computes qualities of the new run, based on previous metrics data.
         Decision boundaries in both approaches are learnt from previously recorded metrics,
         and evaluated on new run data to assign qualities for each metric. """
 
-    if method == "iforest":
-        quality_table, metrics_qualities = estimate_qualities_using_iforest(last_run_metrics, previous_metrics_data)
+    if anomaly_detection_method == "iforest":
+        # recompute quality table for old runs and predict new qualities based on that
+        quality_table, new_metrics_qualities = estimate_qualities_using_iforest(last_run_metrics, previous_metrics_data)
 
-        # TODO: update databases with quality table
+        meta_ids = [int(quality_table.loc[i, 'meta_id']) for i in range(quality_table.shape[0])]
+        main_qualities = [int(quality_table.loc[i, 'quality']) for i in range(quality_table.shape[0])]
 
+        # update all tables with 'quality' column
+        metrics_db = db_connector.create_connection(qc_metrics_database_path)
+        features_db = db_connector.create_connection(qc_features_database_path)
+        tunes_db = db_connector.create_connection(qc_tunes_database_path)
+
+        db_connector.update_all_databases_with_qualities(metrics_db, features_db, tunes_db, main_qualities, meta_ids)
+
+        # update qc_metrics_qualities table in qc_metrics database
+        for metric_name in all_metrics:
+            # make a list of qualities for this metric
+            old_metric_qualities = [int(quality_table.loc[i, metric_name]) for i in range(quality_table.shape[0])]
+            db_connector.update_column_in_database(metrics_db, "qc_metrics_qualities", metric_name, old_metric_qualities, "meta_id", meta_ids)
 
     else:
-        # this method doesn't update quality table, only uses it to compute new metrics qualities
-        metrics_qualities = estimate_qualities_using_percentiles(last_run_metrics, metrics_names, previous_metrics_data, previous_qualities_data)
+        # this method doesn't recompute quality table, it relies on first N records to to compute new metrics qualities
+        new_metrics_qualities = estimate_qualities_using_percentiles(last_run_metrics, metrics_names, previous_metrics_data, previous_qualities_data)
 
-    return metrics_qualities
+    return new_metrics_qualities
 
 
 def estimate_qualities_using_iforest(last_run_metrics, previous_metrics_data):
@@ -564,9 +578,9 @@ def estimate_qualities_using_iforest(last_run_metrics, previous_metrics_data):
         last_run_metrics.loc[:, metric] = corrected_prediction
 
     # summarise individual qualities
-    quality_table.insert(0, "quality", quality_table.sum(axis=1) > 7)
+    quality_table.insert(0, "quality", quality_table.iloc[:, 4:].sum(axis=1) > 7)
 
-    return quality_table, last_run_metrics.iloc[0,:].tolist()
+    return quality_table, list(last_run_metrics.iloc[0,:])
 
 
 def estimate_qualities_using_percentiles(last_run_metrics, metrics_names, previous_metrics_data, previous_qualities_data):
@@ -650,14 +664,12 @@ def assign_metrics_qualities(last_run_metrics, metrics_names, last_ms_run, in_de
 
             # compute quality table for the first time
             quality_table = recompute_quality_table_for_all_runs(last_run_metrics, metrics_data)
-
             # last run metrics qualities are in the last row of quality table now
             qualities = list(quality_table.iloc[-1, 4:])
 
         else:
             # recompute qualities for all the previous runs in the db,
             # and predict qualities of this run, based on previous runs
-
             qualities = recompute_quality_table_and_predict_new_qualities(last_run_metrics, metrics_names, metrics_data, qualities_data)
 
     return qualities
