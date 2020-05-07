@@ -533,7 +533,7 @@ def update_all_databases_with_qualities(quality_table, metrics_data):
     """ This methods updates the quality column (summed over all metrics) and qualities for each QC metric
         to all the databases. """
 
-    meta_ids = [[int(metrics_data['meta_id'].tolist()[i]) for i in range(metrics_data.shape[0])]]
+    meta_ids = [int(metrics_data['meta_id'].tolist()[i]) for i in range(metrics_data.shape[0])]
     main_qualities = [int(quality_table['quality'].tolist()[i]) for i in range(quality_table.shape[0])]
 
     # connect to all dbs
