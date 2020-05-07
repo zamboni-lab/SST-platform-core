@@ -140,7 +140,7 @@ def run_msfe_in_test_mode():
     # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/duncan_3_points_fit_bug.mzXML'
 
     # # file from test2 causing bug
-    chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/20190523_RefMat_131.mzXML'
+    # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/20190523_RefMat_131.mzXML'
 
     # file from test2 causing warning
     # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/chem_mix_v1_debug/20190523_RefMat_134.mzXML'
@@ -159,18 +159,28 @@ def run_msfe_in_test_mode():
     # file from nas2 causing index out of range bug (less number of scans than supposed to be)
     # chemical_standard = '/Users/andreidm/ETH/projects/ms_feature_extractor/data/nas2/2019-11-08T131837/raw.mzXML'
 
+    # file from nas2 causing bug
+    chemical_standard = '/Users/andreidm/ETH/projects/monitoring_system/data/nas2_bug/2020-04-19T105645/raw.mzXML'
+
     spectra = list(mzxml.read(chemical_standard))
     print(time.time() - start_time, " seconds elapsed for reading", sep="")
 
-    ms_run_ids = {'acquisition_date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"), 'original_filename': '2019-11-08T131837'}
+    ms_run_ids = {
+        'md5': "",
+        'acquisition_date': "",
+        'original_filename': "2020-04-19T105645",
+        'processing_date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"),
+        'instrument': '6550-1',
+        'user': "Mauro"
+    }
 
-    msfe.extract_features_from_ms_run(spectra, ms_run_ids, in_test_mode=True)
+    msfe.extract_features_from_ms_run(spectra, ms_run_ids, {}, in_test_mode=True)
 
 
 if __name__ == '__main__':
 
-    # run_msfe_in_test_mode()
-    process_all_tunes_and_files_at_once()
+    run_msfe_in_test_mode()
+    # process_all_tunes_and_files_at_once()
     # check_6546_test_runs()
 
 

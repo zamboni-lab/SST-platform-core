@@ -301,7 +301,12 @@ def get_peak_fitting_region_2(spectrum, index):
         else:
             break
 
+    # TODO: think of a special case: long flat peak with small number of descending points from both sides,
+    #       the algorithm seems to give suboptimal solution in this case,
+    #       though such cases rarely (never?) happen
+
     # a way to guarantee equal number of point to the left and to the right from the peak
+    # seems legit, since points have equal influence on the fit
     left_border = index - min(step_left, step_right)
     right_border = index + min(step_left, step_right)
 
@@ -326,6 +331,7 @@ def get_peak_fitting_values(spectrum, peak_region):
     for i in range(1, len(intensities) - 1):
 
         if intensities[i] == intensities[i-1] and intensities[i] == max_intensity:
+            # second, third, fourth... encountered max
             is_peak_flat = True
 
         else:
@@ -336,6 +342,10 @@ def get_peak_fitting_values(spectrum, peak_region):
     # add last values
     corrected_intensities.append(intensities[-1])
     corrected_mzs.append(mzs[-1])
+
+    if len(intensities) == 3 and intensities[1] == intensities[2]:
+        # special case of 3 points: hot fix in v.0.3.81
+        is_peak_flat = True
 
     return numpy.array(corrected_mzs), numpy.array(corrected_intensities), is_peak_flat
 

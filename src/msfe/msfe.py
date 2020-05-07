@@ -156,7 +156,7 @@ def get_peak_fit(spectrum, actual_peak_info):
     yc = g_out.eval(x=xc)
 
     # find absolute mass accuracy and ppm for signal related to fit
-    signal_fit_mass_diff = float(x[numpy.where(y == max(y))] - predicted_peak_mz)
+    signal_fit_mass_diff = float(x[numpy.where(y == max(y))][0] - predicted_peak_mz)  # [0] is a hot fix in v.0.3.81
     signal_fit_ppm = signal_fit_mass_diff / predicted_peak_mz * 10 ** 6
 
     # find absolute mass accuracy and ppm for fit related to expected (theoretical) value
