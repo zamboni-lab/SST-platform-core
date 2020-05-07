@@ -533,8 +533,8 @@ def update_all_databases_with_qualities(quality_table, metrics_data):
     """ This methods updates the quality column (summed over all metrics) and qualities for each QC metric
         to all the databases. """
 
-    meta_ids = [int(metrics_data['meta_id'].tolist()[i]) for i in range(metrics_data.shape[0])]
-    main_qualities = [int(quality_table['quality'].tolist()[i]) for i in range(quality_table.shape[0])]
+    meta_ids = [int(x) for x in metrics_data['meta_id'].tolist()]
+    main_qualities = [int(x) for x in quality_table['quality'].tolist()]
 
     # connect to all dbs
     metrics_db = create_connection(qc_metrics_database_path)
@@ -544,7 +544,7 @@ def update_all_databases_with_qualities(quality_table, metrics_data):
     # update qc_metrics_qualities table in qc_metrics database
     for metric_name in all_metrics:
         # make a list of qualities for this metric (excluding the last run for now)
-        metric_qualities = [int(quality_table[metric_name].tolist()[i]) for i in range(quality_table.shape[0])]
+        metric_qualities = [int(x) for x in quality_table[metric_name].tolist()]
         update_column_in_database(metrics_db, "qc_metrics_qualities", metric_name, metric_qualities, "meta_id", meta_ids)
 
     # update all tables with qualities
@@ -611,9 +611,9 @@ def update_old_databases_with_qualities_and_buffer_info(paths):
 
         assert buffer_data.shape[0] == quality_table.shape[0]
 
-        meta_ids = [int(buffer_data['meta_id'].tolist()[i]) for i in range(buffer_data.shape[0])]
-        acquisition_dates = [buffer_data['acquisition_date'].tolist()[i] for i in range(buffer_data.shape[0])]
-        main_qualities = [int(quality_table['quality'].tolist()[i]) for i in range(quality_table.shape[0])]
+        meta_ids = [int(x) for x in buffer_data['meta_id'].tolist()]
+        acquisition_dates = buffer_data['acquisition_date'].tolist()
+        main_qualities = [int(x) for x in quality_table['quality'].tolist()]
 
         # update databases
         add_quality_column_to_databases(main_qualities, meta_ids)
