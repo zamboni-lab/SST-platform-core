@@ -144,10 +144,51 @@ def parse_instrument_settings_from_multiple_ms_runs(list_of_paths):
         pass
 
     for path in list_of_paths:
-        parse_ms_run_instrument_settings(path)
+        parse_instrument_settings_and_save_to_file(path)
 
 
-def parse_ms_run_instrument_settings(file_path, tune_file_id, empty=False):
+def parse_original_filename(info_path):
+    """ Parse original name of the file, stored in 'info.json' by design. """
+
+    with open(info_path) as file:
+        new_data = json.load(file)
+
+    return new_data["originalName"]
+
+
+def parse_instrument_settings(file_path):
+    """ This method reads isntrument settings from file and returns its contect, packed into a dict. """
+
+    # compose data structure to collect data
+    meta = {'keys': [], 'values': []}
+    actuals = {'keys': [], 'values': []}
+    cals = {'keys': [], 'values': []}
+
+    # read newly generated ms settings file
+    with open(file_path) as file:
+        new_data = json.load(file)
+
+    for key in new_data:
+
+        if key == "Actuals":
+            for actual in new_data[key]:
+                actuals['keys'].append(actual.replace(" ", "_"))
+                actuals['values'].append(new_data[key][actual])
+
+        elif key == "Cal":
+            for mode in ['defaultPos', 'defaultNeg']:
+                for type in ['traditional', 'polynomial']:
+                    for i in range(len(new_data[key][mode][type])):
+                        cals['keys'].append(mode + "_" + type + "_" + str(i))
+                        cals['values'].append(new_data[key][mode][type][i])
+        else:
+            meta["keys"].append(key)
+            meta["values"].append(new_data[key])
+
+    return {'meta': meta, 'actuals': actuals, 'cals': cals}
+
+
+def parse_instrument_settings_and_save_to_file(file_path, tune_file_id, empty=False):
     """ This method is used to locally read instrument settings from tune files
         and add information to the general tunings_matrix, which is stored as another json. """
 
@@ -157,7 +198,6 @@ def parse_ms_run_instrument_settings(file_path, tune_file_id, empty=False):
     cals = {'keys': [], 'values': []}
 
     if not empty:
-
         # read newly generated ms settings file
         with open(file_path) as file:
             new_data = json.load(file)
@@ -359,9 +399,9 @@ def process_all_qc_runs_to_extract_tunes():
             full_path = path + dir + filename
             if not os.path.isfile(full_path):
                 # create empty data structure
-                parse_ms_run_instrument_settings(full_path, dir, empty=True)
+                parse_instrument_settings_and_save_to_file(full_path, dir, empty=True)
             else:
-                parse_ms_run_instrument_settings(full_path, dir)
+                parse_instrument_settings_and_save_to_file(full_path, dir)
 
     print("All settings are pulled out.")
 

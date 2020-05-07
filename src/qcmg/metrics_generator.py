@@ -345,17 +345,17 @@ def calculate_metrics_and_update_qc_databases(ms_run, in_debug_mode=False):
     metrics_values = []
     metrics_names = []
 
-    add_resolution_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
-    add_accuracy_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
-    add_dirt_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
-    add_noise_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
-    add_isotopic_abundance_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
-    add_transmission_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
-    add_fragmentation_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
-    add_baseline_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
-    add_signal_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
-    add_signal_to_background_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
-    add_signal_to_noise_metrics(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
+    add_resolution_metrics(metrics_values, metrics_names, ms_run)
+    add_accuracy_metrics(metrics_values, metrics_names, ms_run)
+    add_dirt_metrics(metrics_values, metrics_names, ms_run)
+    add_noise_metrics(metrics_values, metrics_names, ms_run)
+    add_isotopic_abundance_metrics(metrics_values, metrics_names, ms_run)
+    add_transmission_metrics(metrics_values, metrics_names, ms_run)
+    add_fragmentation_metrics(metrics_values, metrics_names, ms_run)
+    add_baseline_metrics(metrics_values, metrics_names, ms_run)
+    add_signal_metrics(metrics_values, metrics_names, ms_run)
+    add_signal_to_background_metrics(metrics_values, metrics_names, ms_run)
+    add_signal_to_noise_metrics(metrics_values, metrics_names, ms_run)
 
     # assign quality for each metric based on previous records
     metrics_qualities = assign_metrics_qualities(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
@@ -479,37 +479,14 @@ def recompute_quality_table_for_all_runs(last_run_metrics, metrics_data):
         2) calculates quality table, according to method,
         3) updates existing databases and returns quality table. """
 
-    # take out meta info (id, meta_id, acquisition_date)
-    metrics_meta_info = metrics_data.iloc[:, :3]
-
     # add last run metrics to previously acquired to compute quality_table altogether
     last_run_metrics = pandas.DataFrame([last_run_metrics], columns=metrics_data.columns[4:])
-    data = pandas.concat(metrics_data.iloc[:, 4:], last_run_metrics)
+    data = pandas.concat([metrics_data.iloc[:, 4:], last_run_metrics])
 
     if anomaly_detection_method == "iforest":
         quality_table = create_and_fill_quality_table_using_iforest(data)
     else:
         quality_table = create_and_fill_quality_table_using_percentiles(data)
-
-    # add meta info (id, meta_id, acquisition_date)
-    quality_table = pandas.concat([metrics_meta_info, quality_table], axis=1)
-
-    # update 'quality' column in two other databases
-    meta_ids = [int(quality_table.loc[i, 'meta_id']) for i in range(quality_table.shape[0])]
-    main_qualities = [int(quality_table.loc[i, 'quality']) for i in range(quality_table.shape[0])]
-
-    # update all tables with qualities
-    metrics_db = db_connector.create_connection(qc_metrics_database_path)
-    features_db = db_connector.create_connection(qc_features_database_path)
-    tunes_db = db_connector.create_connection(qc_tunes_database_path)
-
-    db_connector.update_all_databases_with_qualities(metrics_db, features_db, tunes_db, main_qualities, meta_ids)
-
-    # update qc_metrics_qualities table in qc_metrics database
-    for metric_name in all_metrics:
-        # make a list of qualities for this metric
-        metric_qualities = [int(quality_table.loc[i, metric_name]) for i in range(quality_table.shape[0])]
-        db_connector.update_column_in_database(metrics_db, "qc_metrics_qualities", metric_name, metric_qualities, "meta_id", meta_ids)
 
     return quality_table
 
@@ -523,21 +500,7 @@ def recompute_quality_table_and_predict_new_qualities(last_run_metrics, metrics_
         # recompute quality table for old runs and predict new qualities based on that
         quality_table, new_metrics_qualities = estimate_qualities_using_iforest(last_run_metrics, previous_metrics_data)
 
-        meta_ids = [int(quality_table.loc[i, 'meta_id']) for i in range(quality_table.shape[0])]
-        main_qualities = [int(quality_table.loc[i, 'quality']) for i in range(quality_table.shape[0])]
-
-        # update all tables with 'quality' column
-        metrics_db = db_connector.create_connection(qc_metrics_database_path)
-        features_db = db_connector.create_connection(qc_features_database_path)
-        tunes_db = db_connector.create_connection(qc_tunes_database_path)
-
-        db_connector.update_all_databases_with_qualities(metrics_db, features_db, tunes_db, main_qualities, meta_ids)
-
-        # update qc_metrics_qualities table in qc_metrics database
-        for metric_name in all_metrics:
-            # make a list of qualities for this metric
-            old_metric_qualities = [int(quality_table.loc[i, metric_name]) for i in range(quality_table.shape[0])]
-            db_connector.update_column_in_database(metrics_db, "qc_metrics_qualities", metric_name, old_metric_qualities, "meta_id", meta_ids)
+        db_connector.update_all_databases_with_qualities(quality_table, previous_metrics_data)
 
     else:
         # this method doesn't recompute quality table, it relies on first N records to to compute new metrics qualities
@@ -664,6 +627,10 @@ def assign_metrics_qualities(last_run_metrics, metrics_names, last_ms_run, in_de
 
             # compute quality table for the first time
             quality_table = recompute_quality_table_for_all_runs(last_run_metrics, metrics_data)
+
+            # TODO: test this method (add "new" run locally)
+            db_connector.update_all_databases_with_qualities(quality_table, metrics_data)
+
             # last run metrics qualities are in the last row of quality table now
             qualities = list(quality_table.iloc[-1, 4:])
 

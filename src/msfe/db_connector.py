@@ -1,5 +1,5 @@
 import sqlite3, pandas
-from src.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path
+from src.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path, all_metrics
 from src.qcmg import metrics_generator
 from src.constants import get_buffer_id
 
@@ -511,8 +511,13 @@ def insert_new_qc_run(qc_run, in_debug_mode=False):
         print("inserted 1 row at position: meta:", last_row_number_1, 'metrics:', last_row_number_2, 'qualities:', last_row_number_5, "features:", last_row_number_3, 'tunes:', last_row_number_4)
 
 
-def update_all_databases_with_qualities(metrics_db, features_db, tunes_db, qualities, meta_ids):
+def add_quality_column_to_databases(qualities, meta_ids):
     """ This methods updates the quality column (summed over all metrics) to all the databases. """
+
+    # connect to all dbs
+    metrics_db = create_connection(qc_metrics_database_path)
+    features_db = create_connection(qc_features_database_path)
+    tunes_db = create_connection(qc_tunes_database_path)
 
     # update all tables with qualities
     update_column_in_database(metrics_db, "qc_meta", "quality", qualities, "id", meta_ids)
@@ -522,6 +527,34 @@ def update_all_databases_with_qualities(metrics_db, features_db, tunes_db, quali
     update_column_in_database(features_db, "qc_features_2", "quality", qualities, "meta_id", meta_ids)
     update_column_in_database(tunes_db, "qc_meta", "quality", qualities, "id", meta_ids)
     update_column_in_database(tunes_db, "qc_tunes", "quality", qualities, "meta_id", meta_ids)
+
+
+def update_all_databases_with_qualities(quality_table, metrics_data):
+    """ This methods updates the quality column (summed over all metrics) and qualities for each QC metric
+        to all the databases. """
+
+    meta_ids = [[int(metrics_data['meta_id'].tolist()[i]) for i in range(metrics_data.shape[0])]]
+    main_qualities = [int(quality_table['quality'].tolist()[i]) for i in range(quality_table.shape[0])]
+
+    # connect to all dbs
+    metrics_db = create_connection(qc_metrics_database_path)
+    features_db = create_connection(qc_features_database_path)
+    tunes_db = create_connection(qc_tunes_database_path)
+
+    # update qc_metrics_qualities table in qc_metrics database
+    for metric_name in all_metrics:
+        # make a list of qualities for this metric (excluding the last run for now)
+        metric_qualities = [int(quality_table[metric_name].tolist()[i]) for i in range(quality_table.shape[0])]
+        update_column_in_database(metrics_db, "qc_metrics_qualities", metric_name, metric_qualities, "meta_id", meta_ids)
+
+    # update all tables with qualities
+    update_column_in_database(metrics_db, "qc_meta", "quality", main_qualities, "id", meta_ids)
+    update_column_in_database(metrics_db, "qc_metrics", "quality", main_qualities, "meta_id", meta_ids)
+    update_column_in_database(features_db, "qc_meta", "quality", main_qualities, "id", meta_ids)
+    update_column_in_database(features_db, "qc_features_1", "quality", main_qualities, "meta_id", meta_ids)
+    update_column_in_database(features_db, "qc_features_2", "quality", main_qualities, "meta_id", meta_ids)
+    update_column_in_database(tunes_db, "qc_meta", "quality", main_qualities, "id", meta_ids)
+    update_column_in_database(tunes_db, "qc_tunes", "quality", main_qualities, "meta_id", meta_ids)
 
 
 def update_old_databases_with_qualities_and_buffer_info(paths):
@@ -560,6 +593,9 @@ def update_old_databases_with_qualities_and_buffer_info(paths):
     update_column_in_database(features_db, "qc_meta", "buffer_id", buffer_ids, "acquisition_date", acquisition_dates)
     update_column_in_database(tunes_db, "qc_meta", "buffer_id", buffer_ids, "acquisition_date", acquisition_dates)
 
+    # create new table in existing metrics database
+    create_qc_metrics_qualities_table(metrics_db)
+
     # compute and add qualities for runs, split by different buffers
     for buffer in list(set(buffer_ids)):
 
@@ -570,27 +606,28 @@ def update_old_databases_with_qualities_and_buffer_info(paths):
         last_run_metrics = list(buffer_data.iloc[-1, 4:])
         metrics_data = buffer_data.iloc[0:-1, :]
 
-        # get quality table for existing database
+        # get quality table for existing database (calculate for the first time here)
         quality_table = metrics_generator.recompute_quality_table_for_all_runs(last_run_metrics, metrics_data)
 
-        # update 'quality' column in two other databases
-        meta_ids = [int(quality_table.iloc[i, 1]) for i in range(quality_table.shape[0])]  # make a list of meta_ids
-        qualities = [int(quality_table.iloc[i, 3]) for i in range(quality_table.shape[0])]  # make a list of qualities
+        assert buffer_data.shape[0] == quality_table.shape[0]
 
-        update_all_databases_with_qualities(metrics_db, features_db, tunes_db, qualities, meta_ids)
+        meta_ids = [int(buffer_data['meta_id'].tolist()[i]) for i in range(buffer_data.shape[0])]
+        acquisition_dates = [buffer_data['acquisition_date'].tolist()[i] for i in range(buffer_data.shape[0])]
+        main_qualities = [int(quality_table['quality'].tolist()[i]) for i in range(quality_table.shape[0])]
 
-        # create new table in existing metrics database
-        create_qc_metrics_qualities_table(metrics_db)
+        # update databases
+        add_quality_column_to_databases(main_qualities, meta_ids)
 
         for i in range(quality_table.shape[0]):
 
             # some other manipulations to reuse another method
-            meta_id = meta_ids[i]
             qc_run = {
-                "acquisition_date": str(quality_table.iloc[i, 2]),
-                "quality": qualities[i],
-                "metrics_qualities": [int(x) for x in quality_table.iloc[i, 4:]]
+                "acquisition_date": acquisition_dates[i],
+                "quality": main_qualities[i],
+                "metrics_qualities": [int(x) for x in quality_table.iloc[i, 1:]]
             }
+
+            meta_id = meta_ids[i]
 
             last_row_number = insert_qc_metrics_qualities(metrics_db, qc_run, meta_id)
 
@@ -611,9 +648,9 @@ if __name__ == '__main__':
     # meta_data.columns = colnames
 
     paths = [
-        "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite",
-        "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_metrics_database.sqlite",
-        "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"
+        "/Users/andreidm/ETH/projects/monitoring_system/res/qc_features_database.sqlite",
+        "/Users/andreidm/ETH/projects/monitoring_system/res/qc_metrics_database.sqlite",
+        "/Users/andreidm/ETH/projects/monitoring_system/res/qc_tunes_database.sqlite"
     ]
 
     update_old_databases_with_qualities_and_buffer_info(paths)

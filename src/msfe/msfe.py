@@ -21,6 +21,7 @@ from src.msfe import db_connector
 from src.constants import qc_metrics_database_path
 
 
+
 def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, centroids_indexes, peak_id):
     """ This method extracts features related to expected ions of interest and expected mixture chemicals. """
 
@@ -894,6 +895,44 @@ def extract_features_from_ms_run(spectra, ms_run_ids, tunes, in_test_mode=False)
     print(time.time() - start_time, " seconds elapsed for processing in total\n", sep='')
 
 
+def add_single_qc_run_manually():
+    """ This method processes a QC run and updates """
+
+    from pyteomics import mzxml
+
+    start_time = time.time()
+
+    # file to be precossed and added
+    path = "/Users/andreidm/ETH/projects/monitoring_system/data/nas2_mauro_bug/2020-04-19T105645/"
+    data_file = 'raw.mzXML'
+    tunes_file = 'all.json'
+    info_file = 'info.json'
+
+    tunes = parser.parse_instrument_settings(path + tunes_file)
+
+    # collect meta info
+    original_filename = parser.parse_original_filename(path + info_file)
+    user = original_filename.split('_')[2]
+    md5 = tunes['meta']['values'][tunes['meta']['keys'].index('ContentMD5')]
+    acquisition_date = tunes['meta']['values'][tunes['meta']['keys'].index('AcqTime')].split('.')[0].replace("T", " ")
+
+    # meta info, exactly as in msqc
+    ms_run_ids = {
+        'md5': md5,
+        'acquisition_date': acquisition_date,
+        'original_filename': original_filename,
+        'processing_date': datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S"),
+        'instrument': '6550-1',
+        'user': user
+    }
+
+    spectra = list(mzxml.read(path + data_file))
+    print(time.time() - start_time, " seconds elapsed for reading files", sep="")
+
+    extract_features_from_ms_run(spectra, ms_run_ids, tunes, in_test_mode=True)
+
+
 if __name__ == '__main__':
-    pass
+
+    add_single_qc_run_manually()
 
