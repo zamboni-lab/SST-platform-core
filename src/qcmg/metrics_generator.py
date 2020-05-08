@@ -500,7 +500,6 @@ def recompute_quality_table_and_predict_new_qualities(last_run_metrics, metrics_
     if anomaly_detection_method == "iforest":
         # recompute quality table for old runs and predict new qualities based on that
         quality_table, new_metrics_qualities = estimate_qualities_using_iforest(last_run_metrics, previous_metrics_data)
-
         db_connector.update_all_databases_with_qualities(quality_table, previous_metrics_data)
 
     else:
@@ -516,7 +515,7 @@ def estimate_qualities_using_iforest(last_run_metrics, previous_metrics_data):
         measurement), and then to predict qualities for last (new) run metrics based on previous ones. """
 
     last_run_metrics = pandas.DataFrame([last_run_metrics], columns=previous_metrics_data.columns[4:])
-    quality_table = previous_metrics_data[:]
+    quality_table = previous_metrics_data.iloc[:, 4:]
 
     for metric in all_metrics:
 
@@ -638,8 +637,6 @@ def assign_metrics_qualities(last_run_metrics, metrics_names, last_ms_run, in_de
         else:
             # recompute qualities for all the previous runs in the db,
             # and predict qualities of this run, based on previous runs
-
-            # TODO: test this method (add "new" run locally)
             qualities = recompute_quality_table_and_predict_new_qualities(last_run_metrics, metrics_names, metrics_data, qualities_data)
 
     return qualities
@@ -648,7 +645,6 @@ def assign_metrics_qualities(last_run_metrics, metrics_names, last_ms_run, in_de
 if __name__ == '__main__':
 
     # TODO: refactoring: split (metrics generation), (working with databases) and (old methods)
-
     pass
 
 

@@ -914,6 +914,7 @@ def add_single_qc_run_manually():
     original_filename = parser.parse_original_filename(path + info_file)
     user = original_filename.split('_')[2]
     md5 = tunes['meta']['values'][tunes['meta']['keys'].index('ContentMD5')]
+    # md5 = "test"  # it was a trick to test assign_metrics_qualities()
     acquisition_date = tunes['meta']['values'][tunes['meta']['keys'].index('AcqTime')].split('.')[0].replace("T", " ")
 
     # meta info, exactly as in msqc
