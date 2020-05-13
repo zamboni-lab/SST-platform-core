@@ -9,7 +9,6 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 if __name__ == "__main__":
 
-
     last_ms_run = {'buffer_id': 'IPA_H2O_DMSO'}  # for testing here
 
     metrics_db = db_connector.create_connection(qc_metrics_database_path)

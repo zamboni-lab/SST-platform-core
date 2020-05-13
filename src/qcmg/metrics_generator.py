@@ -11,6 +11,7 @@ from src.constants import s2b_features_names, s2n_features_names
 from src.constants import qc_metrics_database_path, qc_features_database_path, qc_tunes_database_path
 from src.constants import anomaly_detection_method
 from src.constants import min_number_of_metrics_to_assess_quality as min_number_of_runs
+from src.constants import percent_of_good_metrics_for_good_quality as percent_of_good
 from src.constants import get_buffer_id, all_metrics
 from src.analysis import anomaly_detector
 from src.msfe import logger, db_connector
@@ -360,7 +361,7 @@ def calculate_metrics_and_update_qc_databases(ms_run, in_debug_mode=False):
     # assign quality for each metric based on previous records
     metrics_qualities = assign_metrics_qualities(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
     metrics_qualities = [int(x) for x in metrics_qualities]
-    quality = int(sum(metrics_qualities) >= (len(metrics_qualities)+1) // 2)  # '1' if at least half of metrics are '1'
+    quality = int(sum(metrics_qualities) >= int(len(all_metrics) * percent_of_good[anomaly_detection_method]))
 
     new_qc_run = {
 
@@ -443,7 +444,7 @@ def create_and_fill_quality_table_using_percentiles(data):
         quality_table.loc[:, metric] = (all_values > lower_boundary) & (all_values < upper_boundary)
 
     # summarise individual qualities
-    quality_table.insert(0, "quality", quality_table.sum(axis=1) > 7)
+    quality_table.insert(0, "quality", quality_table.sum(axis=1) >= int(len(all_metrics) * percent_of_good[anomaly_detection_method]))
 
     return quality_table
 
@@ -468,7 +469,7 @@ def create_and_fill_quality_table_using_iforest(data):
         quality_table.loc[:, metric] = corrected_outliers
 
     # summarise individual qualities
-    quality_table.insert(0, "quality", quality_table.sum(axis=1) > 7)
+    quality_table.insert(0, "quality", quality_table.sum(axis=1) >= int(len(all_metrics) * percent_of_good[anomaly_detection_method]))
 
     return quality_table
 
@@ -542,7 +543,7 @@ def estimate_qualities_using_iforest(last_run_metrics, previous_metrics_data):
         last_run_metrics.loc[:, metric] = corrected_prediction
 
     # summarise individual qualities
-    quality_table.insert(0, "quality", quality_table.iloc[:, 1:].sum(axis=1) > 7)
+    quality_table.insert(0, "quality", quality_table.iloc[:, 1:].sum(axis=1) >= int(len(all_metrics) * percent_of_good[anomaly_detection_method]))
 
     return quality_table, list(last_run_metrics.iloc[0,:])
 

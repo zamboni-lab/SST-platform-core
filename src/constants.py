@@ -1,5 +1,5 @@
 
-msfe_version = '0.3.86'
+msfe_version = '0.3.87'
 chemical_mix_id = '20190522_4GHz'
 
 
@@ -73,6 +73,8 @@ qc_features_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/
 
 anomaly_detection_method = "iforest"
 min_number_of_metrics_to_assess_quality = {"iforest": 20, "percentiles": 60}  # 'percentiles' is strict => requires more data
+percent_of_good_metrics_for_good_quality = {"iforest": .75, "percentiles": .5}  # % of metrics should be good for a run to have quality == 1
+
 # trend detection
 time_periods = [("one_month", 31), ("two_weeks", 14)]  # number of days
 
