@@ -1,6 +1,5 @@
 
-import json, os, numpy, seaborn, pandas
-from matplotlib import pyplot
+import json, os, numpy, pandas
 from sklearn.ensemble import IsolationForest
 from src.constants import resolution_200_features_names, resolution_700_features_names
 from src.constants import accuracy_features_names, dirt_features_names, isotopic_presence_features_names
@@ -12,10 +11,10 @@ from src.constants import qc_metrics_database_path, qc_features_database_path, q
 from src.constants import anomaly_detection_method
 from src.constants import min_number_of_metrics_to_assess_quality as min_number_of_runs
 from src.constants import percent_of_good_metrics_for_good_quality as percent_of_good
-from src.constants import get_buffer_id, all_metrics
+from src.constants import all_metrics
 from src.analysis import anomaly_detector
-from src.msfe import logger, db_connector
-from src.qcmg import qcm_validator
+from src import logger, notifier
+from src.qcmg import qcm_validator, db_connector
 
 
 def add_resolution_metrics(qc_values, qc_names, ms_run, in_debug_mode=False):
@@ -401,6 +400,7 @@ def calculate_metrics_and_update_qc_databases(ms_run, in_debug_mode=False):
         # if the databases already exist
         db_connector.insert_new_qc_run(new_qc_run, in_debug_mode=in_debug_mode)
         logger.print_qc_info('QC databases have been updated\n')
+        notifier.send_new_qc_notification(metrics_qualities)
 
 
 def create_and_fill_quality_table_using_percentiles(data):

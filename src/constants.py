@@ -1,5 +1,5 @@
 
-msfe_version = '0.3.88'
+msfe_version = '0.3.90'
 chemical_mix_id = '20190522_4GHz'
 
 
@@ -14,7 +14,17 @@ def get_buffer_id(date):
     return buffer_id
 
 
-""" Mass-spec features extractor constants """
+""" ANALYSIS CONSTANTS """
+
+anomaly_detection_method = "iforest"
+min_number_of_metrics_to_assess_quality = {"iforest": 20, "percentiles": 60}  # 'percentiles' is strict => requires more data
+percent_of_good_metrics_for_good_quality = {"iforest": .75, "percentiles": .5}  # % of metrics should be good for a run to have quality == 1
+
+# trend detection
+time_periods = [("one_month", 31), ("two_weeks", 14)]  # number of days
+
+
+""" MASS-SPEC FEATURE EXTRACTOR (MSFE) CONSTANTS """
 
 # qc_log_location = "/mnt/nas2/fiaqc-out/qc_logs.txt"
 qc_log_location = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_logs.txt"
@@ -62,7 +72,15 @@ no_signal_intensity_value = 0.
 frame_intensity_percentiles = [25, 50, 75]
 
 
-""" QC metrics generator constants """
+""" NOTIFIER CONSTANTS"""
+gmail_sender = 'mass.spec.monitor@gmail.com'
+gmail_password = 'metabeta1'
+
+error_recipients = ['andreidm@ethz.ch']
+new_qcs_recipients = ['andreidm@ethz.ch', 'reid@imsb.biol.ethz.ch', 'zamboni@imsb.biol.ethz.ch']
+
+
+""" QC METRICS GENERATOR (QCMG) CONSTANTS """
 
 qc_tunes_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_tunes_database.sqlite"
 # qc_values_database_path = ""/mnt/nas2/fiaqc-out/qc_tunes_database.sqlite"
@@ -70,13 +88,6 @@ qc_metrics_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/q
 # qc_values_database_path = ""/mnt/nas2/fiaqc-out/qc_metrics_database.sqlite"
 qc_features_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_features_database.sqlite"
 # qc_features_database_path = ""/mnt/nas2/fiaqc-out/qc_features_database.sqlite"
-
-anomaly_detection_method = "iforest"
-min_number_of_metrics_to_assess_quality = {"iforest": 20, "percentiles": 60}  # 'percentiles' is strict => requires more data
-percent_of_good_metrics_for_good_quality = {"iforest": .75, "percentiles": .5}  # % of metrics should be good for a run to have quality == 1
-
-# trend detection
-time_periods = [("one_month", 31), ("two_weeks", 14)]  # number of days
 
 all_metrics = ['resolution_200', 'resolution_700', 'average_accuracy', 'chemical_dirt',
                'instrument_noise', 'isotopic_presence', 'transmission', 'fragmentation_305',

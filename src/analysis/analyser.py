@@ -1,7 +1,6 @@
-import numpy, pandas, matplotlib, scipy, seaborn, math
-from sklearn import preprocessing
+import numpy, pandas, scipy, seaborn, math
 from sklearn.decomposition import SparsePCA
-from src.msfe import db_connector
+from src.qcmg import db_connector
 import matplotlib.pyplot as plt
 from scipy.stats import ks_2samp, mannwhitneyu, kruskal
 from scipy.stats import chi2_contingency

@@ -1,8 +1,7 @@
 
 import pandas, numpy
 from matplotlib import pyplot
-from src.msfe import db_connector
-from src.qcmg import metrics_generator
+from src.qcmg import metrics_generator, db_connector
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.ensemble import IsolationForest
 from PyAstronomy import pyasl

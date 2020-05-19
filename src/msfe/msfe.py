@@ -2,7 +2,8 @@
 
 import time, numpy, datetime, os, traceback
 from scipy import signal
-from src.msfe import ms_operator, parser, logger
+from src.msfe import ms_operator, parser
+from src import logger, notifier
 from src.constants import peak_region_factor as prf
 from src.constants import peak_widths_levels_of_interest as widths_levels
 from src.constants import minimal_normal_peak_intensity, saturation_intensity
@@ -17,7 +18,7 @@ from src.constants import chemical_noise_features_scans_indexes, instrument_nois
 from src.constants import expected_peaks_file_path
 from src.constants import minimal_background_peak_intensity as min_bg_peak_intensity
 from lmfit.models import GaussianModel
-from src.msfe import db_connector
+from src.qcmg import db_connector
 from src.constants import qc_metrics_database_path
 
 
@@ -888,9 +889,10 @@ def extract_features_from_ms_run(spectra, ms_run_ids, tunes, in_test_mode=False)
 
             parser.update_feature_matrix(feature_matrix_row, feature_matrix_row_names, ms_run_ids, tunes, scans_processed, in_test_mode=in_test_mode)
 
-        except Exception as e:
+        except Exception:
             logger.print_qc_info("Unexpected error occured!")
             logger.print_qc_info(traceback.format_exc() + "File " + ms_run_ids['original_filename'] + " omitted\n")
+            notifier.send_error_notification(ms_run_ids['original_filename'], traceback.format_exc())
 
     print(time.time() - start_time, " seconds elapsed for processing in total\n", sep='')
 
