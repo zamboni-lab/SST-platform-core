@@ -1,5 +1,5 @@
 
-msfe_version = '0.3.90'
+msfe_version = '0.4.1'
 chemical_mix_id = '20190522_4GHz'
 
 
@@ -29,7 +29,7 @@ time_periods = [("one_month", 31), ("two_weeks", 14)]  # number of days
 # qc_log_location = "/mnt/nas2/fiaqc-out/qc_logs.txt"
 qc_log_location = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_logs.txt"
 
-# tunings_matrix_file_path = "/mnt/nas2/fiaqc-out/t_matrix.json"
+# tunings_matrix_file_path = "/mnt/nas2/fiaqc-out/t_matrix.json"  # TODO: remove completely
 tunings_matrix_file_path = "/Users/andreidm/ETH/projects/monitoring_system/res/tunings_matrix.json"
 
 # expected_peaks_file_path = "/home/nzadmin/msqc/msfe/data/expected_peaks_v1_" + chemical_mix_id + ".json"
@@ -83,9 +83,9 @@ new_qcs_recipients = ['andreidm@ethz.ch', 'reid@imsb.biol.ethz.ch', 'zamboni@ims
 """ QC METRICS GENERATOR (QCMG) CONSTANTS """
 
 qc_tunes_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_tunes_database.sqlite"
-# qc_values_database_path = ""/mnt/nas2/fiaqc-out/qc_tunes_database.sqlite"
+# qc_tunes_database_path = ""/mnt/nas2/fiaqc-out/qc_tunes_database.sqlite"
 qc_metrics_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_metrics_database.sqlite"
-# qc_values_database_path = ""/mnt/nas2/fiaqc-out/qc_metrics_database.sqlite"
+# qc_metrics_database_path = ""/mnt/nas2/fiaqc-out/qc_metrics_database.sqlite"
 qc_features_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_features_database.sqlite"
 # qc_features_database_path = ""/mnt/nas2/fiaqc-out/qc_features_database.sqlite"
 
