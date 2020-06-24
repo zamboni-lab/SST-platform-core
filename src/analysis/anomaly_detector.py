@@ -66,21 +66,26 @@ def explore_linear_trends_in_data():
             coef = round(reg.coef_[0][0], 4)
 
             if score < 0.01:
-                pass
+                trend_value = "unchanged"
             else:
                 if abs(coef) < 0.05:
-                    pass
+                    trend_value = "unchanged"
                 else:
                     if coef < 0:
-                        linear_trends[period].append({metric: "decreasing"})
+                        trend_value = "decreasing"
                     else:
-                        linear_trends[period].append({metric: "increasing"})
+                        trend_value = "increasing"
 
-            # subscript = period + ": score = " + str(score) + ", coef = " + str(coef)
-            # pyplot.plot(X, y, 'ko')
-            # pyplot.plot(X, reg.predict(X), 'b-')
-            # pyplot.title(subscript)
-            # pyplot.grid()
+            linear_trends[period].append({metric: trend_value})
+
+            subscript = metric + ": " + trend_value + "\n" + period + ": score = " + str(score) + ", coef = " + str(coef)
+            pyplot.figure()
+            pyplot.plot(X, y, 'ko')
+            pyplot.plot(X, reg.predict(X), 'b-')
+            pyplot.title(subscript)
+            pyplot.xlabel("days")
+            pyplot.grid()
+            pyplot.savefig("/Users/andreidm/ETH/papers_posters/monitoring_system/img/" + period + "_" + metric + ".pdf")
             # pyplot.show()
 
     for period in linear_trends:
@@ -271,7 +276,8 @@ def test_outliers_prediction():
         pyplot.xticks(test_dates, test_dates_labels, rotation='vertical')
 
         pyplot.tight_layout()
-        pyplot.show()
+        pyplot.savefig("/Users/andreidm/ETH/papers_posters/monitoring_system/img/" + metric_name + ".pdf")
+        # pyplot.show()
 
 
 if __name__ == "__main__":
@@ -279,6 +285,5 @@ if __name__ == "__main__":
     # qualities_data, _ = db_connector.fetch_table(conn, "qc_metrics_qualities")
     # qualities_data = pandas.DataFrame(qualities_data, columns=colnames)
 
-    test_outliers_prediction()
-
-    pass
+    # test_outliers_prediction()
+    explore_linear_trends_in_data()
