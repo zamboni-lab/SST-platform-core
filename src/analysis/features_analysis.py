@@ -14,6 +14,8 @@ from statsmodels.stats.multitest import multipletests
 from scipy.cluster.hierarchy import ward, fcluster, linkage
 from scipy.spatial.distance import pdist
 from scipy.cluster import hierarchy
+from src.analysis import metrics_tunes_analysis
+from sklearn.metrics import mutual_info_score
 
 
 def perform_sparse_pca():
@@ -49,14 +51,15 @@ def get_features_data(path="/Users/andreidm/ETH/projects/monitoring_system/res/n
         returns a matrix with metrics, metrics names, arrays of quality and acquisitions dates. """
 
     conn = db_connector.create_connection(path)
-    database_1, colnames = db_connector.fetch_table(conn, "qc_features_1")
-    database_2, _ = db_connector.fetch_table(conn, "qc_features_2")
+    database_1, colnames_1 = db_connector.fetch_table(conn, "qc_features_1")
+    database_2, colnames_2 = db_connector.fetch_table(conn, "qc_features_2")
 
     features_1 = numpy.array(database_1)
     features_2 = numpy.array(database_2)
 
     meta = features_1[:, :4]
     features = numpy.hstack([features_1[:, 4:].astype(numpy.float), features_2[:, 4:].astype(numpy.float)])
+    colnames = [*colnames_1, *colnames_2[4:]]
 
     return meta, features, colnames
 
@@ -290,6 +293,117 @@ def find_and_perform_best_clustering(features, title=""):
     pyplot.show()
 
 
+def split_features_to_cont_and_cat(features, names):
+
+    # get numbers of unique values for each feature
+    unique_values_numbers = numpy.array([numpy.unique(features[:,i]).shape[0] for i in range(features.shape[1])])
+
+    # get only tunes with at least 2 different values
+    informative_features = features[:, numpy.where(unique_values_numbers > 1)[0]]
+    informative_colnames = names[numpy.where(unique_values_numbers > 1)[0]]
+
+    # split tunes into two groups
+    continuous_features, categorical_features = [], []
+    continuous_names, categorical_names = [], []
+
+    for i in range(informative_features.shape[1]):
+        # let 12 be a max number of values for a tune to be categorical
+        if len(set(informative_features[:, i])) > 12:
+            continuous_features.append(informative_features[:, i])
+            continuous_names.append(informative_colnames[i])
+        else:
+            categorical_features.append(informative_features[:, i])
+            categorical_names.append(informative_colnames[i])
+
+    continuous_features = numpy.array(continuous_features).T
+    categorical_features = numpy.array(categorical_features).T
+
+    return continuous_features, continuous_names, categorical_features, categorical_names
+
+
+def compare_cat_features_with_cat_tunes(features_cat, tunes_cat, tunes_names_cat, features_names_cat):
+    """ Comment: looks like catergotical features don't bring any useful information on the tunes. """
+
+    # create empty correlation matrix for categorical tunes
+    df = pandas.DataFrame(numpy.empty([features_cat.shape[1], tunes_cat.shape[1]]))
+    df.columns = tunes_names_cat
+
+    for i in range(features_cat.shape[1]):
+        for j in range(tunes_cat.shape[1]):
+
+            correlation = metrics_tunes_analysis.get_theils_u_correlation(features_cat[:, i], tunes_cat[:, j])
+            df.iloc[i, j] = correlation
+
+            # look into variables closer if correlation is high
+            if abs(correlation) > 0.7:
+                fig, ax = pyplot.subplots(figsize=(10, 5))
+
+                ax.scatter(tunes_cat[:, j], features_cat[:, i])
+
+                # adds a title and axes labels
+                ax.set_title(tunes_names_cat[j] + ' vs ' + features_names_cat[i] + ": theils u = " + str(correlation))
+                ax.set_xlabel(tunes_names_cat[j])
+                ax.set_ylabel(features_names_cat[i])
+
+                # removing top and right borders
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+                pyplot.show()
+
+    seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False)
+    pyplot.tight_layout()
+    pyplot.show()
+
+
+def calculate_MI(x, y):
+    c_xy = numpy.histogram2d(x, y)[0]
+    mi = mutual_info_score(None, None, contingency=c_xy)
+    return mi
+
+
+def compute_mutual_info_between_tunes_and_features(features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=False):
+    """ This method calculates mutual information between tunes and features. """
+
+    # create dataframe to store correlations
+    df = pandas.DataFrame(numpy.empty([len(features_names_cont), len(tunes_names_cont)]), index=features_names_cont)
+
+    # change names for better display
+    for i in range(len(tunes_names_cont)):
+        tunes_names_cont[i] = tunes_names_cont[i].replace("default", "").replace("traditional", "trad").replace("polynomial", "poly")
+
+    df.columns = tunes_names_cont
+
+    # calculate correlations and fill the dataframe
+    for i in range(df.shape[0]):
+        for j in range(df.shape[1]):
+
+            mi = calculate_MI(features_cont[:, i], tunes_cont[:, j])
+            df.iloc[i, j] = mi
+
+            # look into variables closer if correlation is high
+            if inspection_mode and mi > 0.7:
+                fig, ax = pyplot.subplots(figsize=(10, 5))
+
+                ax.scatter(tunes_cont[:, j], features_cont[:, i])
+
+                # adds a title and axes labels
+                ax.set_title(df.index[i] + ' vs ' + df.columns[j] + ": MI = " + str(mi))
+                ax.set_xlabel(df.columns[j])
+                ax.set_ylabel(df.index[i])
+
+                # removing top and right borders
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+                pyplot.show()
+
+    print("number of pairs with MI > 0.7:", numpy.sum(df.values > 0.7))
+
+    # plot a heatmap
+    seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False)
+    pyplot.tight_layout()
+    pyplot.show()
+
+
 if __name__ == "__main__":
 
     if False:
@@ -299,14 +413,17 @@ if __name__ == "__main__":
     condensed_features = pandas.read_csv("/Users/andreidm/ETH/projects/monitoring_system/res/nas2/sparse_pca_features.csv")
 
     meta_info, features, colnames = get_features_data()
+    features_cont, features_names_cont, features_cat, features_names_cat = split_features_to_cont_and_cat(features, numpy.array(colnames[4:]))
+
     full_meta_data = get_meta_data()
-    continuous_tunes, continuous_names, categorical_tunes, categorical_names = get_tunes_and_names()
+
+    tunes_cont, tunes_names_cont, tunes_cat, tunes_names_cat = get_tunes_and_names()
 
     if False:
         # testing of k-means
         perform_k_means(condensed_features)
 
-    if True:
+    if False:
         # cluster by buffer for the whole dataset
         perform_global_clustering(condensed_features, title="All data")
 
@@ -323,3 +440,21 @@ if __name__ == "__main__":
         # clustering of "IPA_H2O_DMSO" buffer
         dmso_subset = condensed_features.iloc[numpy.where(full_meta_data.iloc[:, 15] == 'IPA_H2O_DMSO')[0], :]
         find_and_perform_best_clustering(dmso_subset, title="IPA_H2O_DMSO")
+
+    if False:
+
+        metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
+            features_cont, features_names_cont, tunes_cont, tunes_names_cont, tunes_type='continuous', method="pearson",
+            inspection_mode=False
+        )
+
+        metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
+            features_cont, features_names_cont, tunes_cat, tunes_names_cat, tunes_type='categorical',
+            inspection_mode=True
+        )
+
+    if False:
+
+        compute_mutual_info_between_tunes_and_features(
+            features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=False
+        )

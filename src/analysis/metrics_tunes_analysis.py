@@ -285,10 +285,10 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
                         ax.spines['right'].set_visible(False)
                         plt.show()
 
-        print(df)
+        print("number of pairs with correlation > 0.7:", numpy.sum(numpy.abs(df.values) > 0.7))
 
         # plot a heatmap
-        seaborn.heatmap(df, xticklabels=df.columns, yticklabels=df.index)
+        seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False)
         plt.tight_layout()
         plt.show()
 
@@ -315,7 +315,7 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
                 correlation_ratio = get_correlation_ratio(tunes[:, j], metrics[:, i])
 
                 # look into variables closer if correlation is high
-                if inspection_mode and correlation_ratio > 0.6:
+                if inspection_mode and correlation_ratio > 0.9:
 
                     fig, ax = plt.subplots(figsize=(10, 5))
 
@@ -333,10 +333,10 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
 
                 df.iloc[i, j] = correlation_ratio
 
-        print(df)
+        print("number of pairs with correlation ratio > 0.7:", numpy.sum(numpy.abs(df.values) > 0.7))
 
         # plot a heatmap
-        seaborn.heatmap(df, xticklabels=df.columns, yticklabels=df.index)
+        seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False)
         plt.tight_layout()
         plt.show()
 
@@ -623,12 +623,15 @@ if __name__ == "__main__":
     pandas.set_option('display.max_rows', None)
     pandas.set_option('display.max_columns', None)
 
-    qc_tunes_database_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_tunes_database_mar18.sqlite"
-    qc_metrics_database_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_metrics_database_mar18.sqlite"
+    qc_tunes_database_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_tunes_database_may13.sqlite"
+    qc_metrics_database_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_metrics_database_may13.sqlite"
 
     continuous_tunes, continuous_names, categorical_tunes, categorical_names = get_tunes_and_names(qc_tunes_database_path)
 
     if False:
+
+        # TODO: figure out what's this for?
+
         # assess how imbalanced the categorical data is
         result_categorical = {}
         for i in range(len(categorical_names)):
@@ -658,14 +661,11 @@ if __name__ == "__main__":
 
     if False:
         # explore general correlations between tunes and metrics
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman",
-                                                      inspection_mode=False)
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='categorical',
-                                                      inspection_mode=False)
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman", inspection_mode=False)
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='categorical', inspection_mode=False)
 
         # feed "categorical" tunes to spearman correlation
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='continuous', method="spearman",
-                                                      inspection_mode=False)
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='continuous', method="spearman", inspection_mode=False)
 
     if False:
         # define good or bad based on the score
