@@ -344,6 +344,7 @@ def compare_cat_features_with_cat_tunes(features_cat, tunes_cat, tunes_names_cat
 
             # look into variables closer if correlation is high
             if abs(correlation) > 0.7:
+
                 fig, ax = pyplot.subplots(figsize=(10, 5))
 
                 ax.scatter(tunes_cat[:, j], features_cat[:, i])
@@ -478,7 +479,8 @@ if __name__ == "__main__":
 
         random_seed = 905
 
-        # CLASSIFICATION
+        # CLASSIFICATION (sort of works...)
+
         for i in range(tunes_cat.shape[1]):
 
             le = LabelEncoder().fit(tunes_cat[:,i])
@@ -534,7 +536,8 @@ if __name__ == "__main__":
                            'defaultPos_traditional_0', 'defaultPos_traditional_1', 'defaultPos_polynomial_0', 'defaultPos_polynomial_1',
                            'defaultNeg_traditional_0', 'defaultNeg_traditional_1', 'defaultNeg_polynomial_0', 'defaultNeg_polynomial_1']
 
-        # REGRESSION
+        # REGRESSION: sucks (why?)
+
         for i in range(len(features_to_fit)):
 
             # seaborn.distplot(tunes_cont[:,i])
@@ -575,5 +578,37 @@ if __name__ == "__main__":
             print("best params:", reg.best_params_, '\n')
 
     if True:
+
+        # t-SNE
+
+        random_seed = 905
+
+        from sklearn import manifold
+
+        n_components = 2
+        perplexities = [5]
+
+        for i, perplexity in enumerate(perplexities):
+
+            tsne = manifold.TSNE(n_components=n_components, init='random',
+                                 random_state=random_seed, perplexity=perplexity)
+
+            Y = tsne.fit_transform(features_cont)
+
+            fig, ax = pyplot.subplots(figsize=(10, 5))
+
+            ax.scatter(Y[:, 0], Y[:, 1], c='#A9A9A9', marker='o')
+
+            # adds a title and axes labels
+            ax.set_title("Perplexity=%d" % perplexity)
+
+            for i, txt in enumerate(meta_info[:,0]):
+                ax.annotate(txt,
+                            xy=(Y[i, 0], Y[i, 1]),
+                            xytext=(3, 3),
+                            textcoords='offset points')
+
+            pyplot.show()
+
 
         pass
