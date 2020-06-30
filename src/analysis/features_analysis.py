@@ -1,7 +1,7 @@
 
-import numpy, pandas, scipy, seaborn, math
+import numpy, pandas, scipy, seaborn, math, time
 from sklearn.decomposition import SparsePCA
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, LabelEncoder, label_binarize, MinMaxScaler
 from src.qcmg import db_connector
 from matplotlib import pyplot
 from sklearn.cluster import KMeans, AgglomerativeClustering
@@ -15,7 +15,15 @@ from scipy.cluster.hierarchy import ward, fcluster, linkage
 from scipy.spatial.distance import pdist
 from scipy.cluster import hierarchy
 from src.analysis import metrics_tunes_analysis
-from sklearn.metrics import mutual_info_score
+from sklearn.metrics import mutual_info_score, adjusted_mutual_info_score
+from sklearn.model_selection import StratifiedKFold, train_test_split, GridSearchCV
+from sklearn.feature_selection import SelectKBest, mutual_info_regression, f_regression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import Ridge, Lasso
+from imblearn.combine import SMOTETomek
+from imblearn.over_sampling import RandomOverSampler
+from sklearn.metrics import make_scorer, f1_score, roc_auc_score, accuracy_score, r2_score, mean_squared_error
+from sklearn.pipeline import Pipeline
 
 
 def perform_sparse_pca():
@@ -356,6 +364,9 @@ def compare_cat_features_with_cat_tunes(features_cat, tunes_cat, tunes_names_cat
 
 
 def calculate_MI(x, y):
+    """ Sklearn implementation of MI is used. There, the log base is e, so in fact ln is used, instead of log2.
+        It means, that MI is bound to 2.71 at max. """
+
     c_xy = numpy.histogram2d(x, y)[0]
     mi = mutual_info_score(None, None, contingency=c_xy)
     return mi
@@ -380,8 +391,8 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
             mi = calculate_MI(features_cont[:, i], tunes_cont[:, j])
             df.iloc[i, j] = mi
 
-            # look into variables closer if correlation is high
-            if inspection_mode and mi > 0.7:
+            # look into variables closer if MI > some value
+            if inspection_mode and mi > 1:
                 fig, ax = pyplot.subplots(figsize=(10, 5))
 
                 ax.scatter(tunes_cont[:, j], features_cont[:, i])
@@ -396,7 +407,7 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
                 ax.spines['right'].set_visible(False)
                 pyplot.show()
 
-    print("number of pairs with MI > 0.7:", numpy.sum(df.values > 0.7))
+    print("number of pairs with MI > 1:", numpy.sum(df.values > 1))
 
     # plot a heatmap
     seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False)
@@ -458,3 +469,111 @@ if __name__ == "__main__":
         compute_mutual_info_between_tunes_and_features(
             features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=False
         )
+
+        # compute_mutual_info_between_tunes_and_features(
+        #     features_cont, features_names_cont, tunes_cat, tunes_names_cat, inspection_mode=False
+        # )
+
+    if False:
+
+        random_seed = 905
+
+        # CLASSIFICATION
+        for i in range(tunes_cat.shape[1]):
+
+            le = LabelEncoder().fit(tunes_cat[:,i])
+            classes = le.transform(tunes_cat[:,i])
+
+            start = time.time()
+            # upsample positive class
+            try:
+                resampler = SMOTETomek(random_state=random_seed)
+                X_resampled, y_resampled = resampler.fit_resample(condensed_features, classes)
+                print("SMOTETomek resampling was done")
+            except ValueError:
+                resampler = RandomOverSampler(random_state=random_seed)
+                X_resampled, y_resampled = resampler.fit_resample(condensed_features, classes)
+                print("Random upsampling was done")
+
+            # print("resampling for", tunes_names_cat[i], "took", round(time.time() - start) // 60 + 1, 'min')
+            print("X before: ", condensed_features.shape[0], ', X after: ', X_resampled.shape[0], sep="")
+
+            X_train, X_val, y_train, y_val = train_test_split(X_resampled, y_resampled, stratify=y_resampled, random_state=random_seed)
+
+            scoring = {'roc_auc': make_scorer(roc_auc_score, average='weighted'),
+                       'f1': make_scorer(f1_score, average='weighted'),
+                       'accuracy': make_scorer(accuracy_score)}
+
+            clf = GridSearchCV(estimator=DecisionTreeClassifier(random_state=random_seed),
+                               param_grid={'splitter': ['best', 'random'], 'criterion': ['gini', 'entropy']},
+                               scoring=scoring, refit='f1',
+                               cv=3, n_jobs=-1)
+
+            start = time.time()
+
+            y = label_binarize(y_train, classes=numpy.sort(numpy.unique(y_train)))
+
+            clf.fit(X_train, y)
+            # print("training for ", tunes_names_cat[i], ' took ', round(time.time() - start) // 60 + 1, ' min', sep="")
+
+            y = label_binarize(y_val, classes=numpy.sort(numpy.unique(y_train)))
+
+            val_score = clf.score(X_val, y)
+            print(tunes_names_cat[i], ", validation set size: ", X_val.shape[0], sep="")
+            print('val auc: ', round(clf.cv_results_['mean_test_roc_auc'].mean(), 3),
+                  ', val f1: ', round(clf.cv_results_['mean_test_f1'].mean(), 3),
+                  ', val accuracy: ', round(clf.cv_results_['mean_test_accuracy'].mean(), 3), sep="")
+
+            print("best params:", clf.best_params_, '\n')
+
+    if False:
+
+        random_seed = 905
+
+        features_to_fit = ['Duration', 'TOF_Vac', 'Quad_Vac', 'Rough_Vac', 'Turbo1_Power', 'Turbo2_Power',
+                           'defaultPos_traditional_0', 'defaultPos_traditional_1', 'defaultPos_polynomial_0', 'defaultPos_polynomial_1',
+                           'defaultNeg_traditional_0', 'defaultNeg_traditional_1', 'defaultNeg_polynomial_0', 'defaultNeg_polynomial_1']
+
+        # REGRESSION
+        for i in range(len(features_to_fit)):
+
+            # seaborn.distplot(tunes_cont[:,i])
+            # pyplot.title(tunes_names_cont[i])
+            # pyplot.show()
+
+            X_train, X_val, y_train, y_val = train_test_split(features_cont, tunes_cont[:, tunes_names_cont.index(features_to_fit[i])], random_state=random_seed)
+
+            pipeline = Pipeline([
+                ('scaler', StandardScaler()),
+                ('selector', SelectKBest(score_func=f_regression)),
+                ('regressor', Ridge(random_state=random_seed))
+            ])
+
+            param_grid = {
+                'regressor__alpha': [1e-3, 1e-2, 1e-1, 1, 10, 100, 1000],
+                'regressor__fit_intercept': [True, False],
+                'selector__k': range(2,11)
+            }
+
+            scoring = {'r2': make_scorer(r2_score), 'mse': make_scorer(mean_squared_error)}
+
+            reg = GridSearchCV(estimator=pipeline,
+                               param_grid=param_grid,
+                               scoring=scoring, refit='mse',
+                               cv=3, n_jobs=-1)
+
+            start = time.time()
+
+            reg.fit(X_train, y_train)
+            print("training for ", tunes_names_cont[i], ' took ', round(time.time() - start) // 60 + 1, ' min', sep="")
+
+            val_score = reg.score(X_val, y_val)
+            print(tunes_names_cont[i], ", validation set size: ", X_val.shape[0], sep="")
+            print('val r2: ', reg.cv_results_['mean_test_r2'].mean(),
+                  ', val mse: ', reg.cv_results_['mean_test_mse'].mean(), sep="")
+
+            print("best params:", reg.best_params_, '\n')
+
+    if True:
+
+        pass
