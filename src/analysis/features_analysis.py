@@ -24,6 +24,8 @@ from imblearn.combine import SMOTETomek
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.metrics import make_scorer, f1_score, roc_auc_score, accuracy_score, r2_score, mean_squared_error
 from sklearn.pipeline import Pipeline
+from sklearn import manifold
+
 
 
 def perform_sparse_pca():
@@ -230,11 +232,11 @@ def perform_global_clustering(condensed_features, title=""):
     print("t =", t, "silhouette score =", score)
     print(labels)
 
-    # TODO: assess accuracy of separating buffers
-
     dn = hierarchy.dendrogram(Z)
     pyplot.title(title + ", t={}".format(t) + ", score={}".format(score))
     pyplot.show()
+
+    return labels
 
 
 def find_and_perform_best_clustering(features, title=""):
@@ -435,9 +437,18 @@ if __name__ == "__main__":
         # testing of k-means
         perform_k_means(condensed_features)
 
-    if False:
+    if True:
         # cluster by buffer for the whole dataset
-        perform_global_clustering(condensed_features, title="All data")
+        predicted_buffers = perform_global_clustering(condensed_features, title="All data")
+
+        pairs = [pair for pair in zip(full_meta_data['buffer_id'], predicted_buffers)]
+        unique_pairs = list(set(pairs))
+
+        confusion_matrix = {}
+        for pair in unique_pairs:
+            confusion_matrix[pair] = pairs.count(pair)
+
+        print(confusion_matrix)  # accuracy = 0.98, only 2 false negatives (IPA_H2O assigned to DMSO by mistake)
 
     if False:
         # find the best clustering for the whole dataset
@@ -457,12 +468,12 @@ if __name__ == "__main__":
 
         metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
             features_cont, features_names_cont, tunes_cont, tunes_names_cont, tunes_type='continuous', method="pearson",
-            inspection_mode=False
+            inspection_mode=True
         )
 
         metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
             features_cont, features_names_cont, tunes_cat, tunes_names_cat, tunes_type='categorical',
-            inspection_mode=True
+            inspection_mode=False
         )
 
     if False:
@@ -471,20 +482,24 @@ if __name__ == "__main__":
             features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=False
         )
 
-        # compute_mutual_info_between_tunes_and_features(
-        #     features_cont, features_names_cont, tunes_cat, tunes_names_cat, inspection_mode=False
-        # )
+        compute_mutual_info_between_tunes_and_features(
+            features_cont, features_names_cont, tunes_cat, tunes_names_cat, inspection_mode=False
+        )
 
     if False:
 
         random_seed = 905
 
         # CLASSIFICATION (sort of works...)
+        results = pandas.DataFrame(columns=['full size', '% resampled', 'method', 'val size', 'n classes', 'accuracy'],
+                                   index=tunes_names_cat)
 
         for i in range(tunes_cat.shape[1]):
 
             le = LabelEncoder().fit(tunes_cat[:,i])
             classes = le.transform(tunes_cat[:,i])
+
+            results.loc[tunes_names_cat[i], 'n classes'] = len(le.classes_)
 
             start = time.time()
             # upsample positive class
@@ -492,15 +507,21 @@ if __name__ == "__main__":
                 resampler = SMOTETomek(random_state=random_seed)
                 X_resampled, y_resampled = resampler.fit_resample(condensed_features, classes)
                 print("SMOTETomek resampling was done")
+                results.loc[tunes_names_cat[i], 'method'] = 'SMOTE'
             except ValueError:
                 resampler = RandomOverSampler(random_state=random_seed)
                 X_resampled, y_resampled = resampler.fit_resample(condensed_features, classes)
                 print("Random upsampling was done")
+                results.loc[tunes_names_cat[i], 'method'] = 'random'
 
             # print("resampling for", tunes_names_cat[i], "took", round(time.time() - start) // 60 + 1, 'min')
             print("X before: ", condensed_features.shape[0], ', X after: ', X_resampled.shape[0], sep="")
+            results.loc[tunes_names_cat[i], 'full size'] = X_resampled.shape[0]
+            results.loc[tunes_names_cat[i], '% resampled'] = int(100 * (X_resampled.shape[0] / condensed_features.shape[0] - 1))
 
             X_train, X_val, y_train, y_val = train_test_split(X_resampled, y_resampled, stratify=y_resampled, random_state=random_seed)
+
+            results.loc[tunes_names_cat[i], 'val size'] = X_val.shape[0]
 
             scoring = {'roc_auc': make_scorer(roc_auc_score, average='weighted'),
                        'f1': make_scorer(f1_score, average='weighted'),
@@ -526,7 +547,12 @@ if __name__ == "__main__":
                   ', val f1: ', round(clf.cv_results_['mean_test_f1'].mean(), 3),
                   ', val accuracy: ', round(clf.cv_results_['mean_test_accuracy'].mean(), 3), sep="")
 
+            results.loc[tunes_names_cat[i], 'accuracy'] = round(clf.cv_results_['mean_test_accuracy'].mean(), 3)
+
             print("best params:", clf.best_params_, '\n')
+
+        results.to_csv("/Users/andreidm/ETH/projects/monitoring_system/res/analysis/tunes_predictions.csv")
+        print("predictions saved")
 
     if False:
 
@@ -577,38 +603,24 @@ if __name__ == "__main__":
 
             print("best params:", reg.best_params_, '\n')
 
-    if True:
-
+    if False:
         # t-SNE
-
         random_seed = 905
-
-        from sklearn import manifold
-
-        n_components = 2
         perplexities = [5]
 
         for i, perplexity in enumerate(perplexities):
 
-            tsne = manifold.TSNE(n_components=n_components, init='random',
+            tsne = manifold.TSNE(n_components=2, init='random',
                                  random_state=random_seed, perplexity=perplexity)
 
             Y = tsne.fit_transform(features_cont)
 
             fig, ax = pyplot.subplots(figsize=(10, 5))
-
             ax.scatter(Y[:, 0], Y[:, 1], c='#A9A9A9', marker='o')
-
             # adds a title and axes labels
             ax.set_title("Perplexity=%d" % perplexity)
 
             for i, txt in enumerate(meta_info[:,0]):
-                ax.annotate(txt,
-                            xy=(Y[i, 0], Y[i, 1]),
-                            xytext=(3, 3),
-                            textcoords='offset points')
+                ax.annotate(txt, xy=(Y[i, 0], Y[i, 1]), xytext=(3, 3), textcoords='offset points')
 
             pyplot.show()
-
-
-        pass
