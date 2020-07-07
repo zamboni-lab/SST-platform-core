@@ -239,7 +239,7 @@ def perform_global_clustering(condensed_features, title=""):
     return labels
 
 
-def find_and_perform_best_clustering(features, title=""):
+def find_and_perform_best_clustering(samples_labels, features, title=""):
     """ More special clustering:
         1) finding the best score,
         2) filtering out single classes,
@@ -250,31 +250,36 @@ def find_and_perform_best_clustering(features, title=""):
     results = {'t': [], 'score': [], 'labels': []}
 
     for t in range(2, 30):
-        labels = fcluster(Z, t=t, criterion='maxclust')
-        score = silhouette_score(features, labels)
+        clusters = fcluster(Z, t=t, criterion='maxclust')
+        score = silhouette_score(features, clusters)
 
         results['t'].append(t)
         results['score'].append(score)
-        results['labels'].append(list(labels))
+        results['labels'].append(list(clusters))
 
     # find best clustering
     max_score = max(results['score'])
     print("best score before filtering:", max_score)
-    labels = results['labels'][results['score'].index(max_score)]
+    clusters = results['labels'][results['score'].index(max_score)]
 
     # find unique classes and how frequent they are
-    unique_labels = list(set(labels))
-    occurencies = [labels.count(label) for label in unique_labels]
+    unique_groups = list(set(clusters))
+    occurencies = [clusters.count(label) for label in unique_groups]
 
     qc_outliers_indices = []
     for i in range(len(occurencies)):
         # if some class appears only once, we treat it as outlier
         if occurencies[i] == 1:
-            qc_outliers_indices.append(labels.index(unique_labels[i]))
+            qc_outliers_indices.append(clusters.index(unique_groups[i]))
 
     # drop outliers
+    features.insert(0, 'label', samples_labels)
     features = features.drop(features.index[qc_outliers_indices])
     print("dropped:", qc_outliers_indices)
+
+    # assign index for dendrogram plotting
+    samples_labels = features['label']
+    features = features.drop(columns=['label'])
 
     # recompute Z
     Z = linkage(features, 'ward')
@@ -283,8 +288,8 @@ def find_and_perform_best_clustering(features, title=""):
 
     # find best score again
     for t in range(2, 30):
-        labels = fcluster(Z, t=t, criterion='maxclust')
-        score = silhouette_score(features, labels)
+        clusters = fcluster(Z, t=t, criterion='maxclust')
+        score = silhouette_score(features, clusters)
         # print("t=", t, "score=", score)
 
         results['t'].append(t)
@@ -293,14 +298,26 @@ def find_and_perform_best_clustering(features, title=""):
     max_score = max(results['score'])
     best_t = results['t'][results['score'].index(max_score)]
 
-    labels = fcluster(Z, t=best_t, criterion='maxclust')
-    score = round(silhouette_score(features, labels), 3)
+    clusters = fcluster(Z, t=best_t, criterion='maxclust')
+    score = round(silhouette_score(features, clusters), 3)
     print("best score after filtering =", score)
     print("t =", best_t)
 
-    dn = hierarchy.dendrogram(Z)
+    samples_indices = features.index
+    features.index = samples_labels
+    dn = hierarchy.dendrogram(Z, labels=features.index, leaf_rotation=90)
     pyplot.title(title + ", t={}".format(best_t) + ", score={}".format(score))
+    pyplot.tight_layout()
     pyplot.show()
+
+    cluster_groups = {}
+    for i in range(len(samples_indices)):
+        if clusters[i] not in cluster_groups.keys():
+            cluster_groups[clusters[i]] = [samples_indices[i]]
+        else:
+            cluster_groups[clusters[i]].append(samples_indices[i])
+
+    return cluster_groups
 
 
 def split_features_to_cont_and_cat(features, names):
@@ -368,7 +385,7 @@ def compare_cat_features_with_cat_tunes(features_cat, tunes_cat, tunes_names_cat
 
 def calculate_MI(x, y):
     """ Sklearn implementation of MI is used. There, the log base is e, so in fact ln is used, instead of log2.
-        It means, that MI is bound to 2.71 at max. """
+        It means, that MI is bound to 2.71 (?) at max. """
 
     c_xy = numpy.histogram2d(x, y)[0]
     mi = mutual_info_score(None, None, contingency=c_xy)
@@ -395,7 +412,7 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
             df.iloc[i, j] = mi
 
             # look into variables closer if MI > some value
-            if inspection_mode and mi > 1:
+            if inspection_mode and mi > 0.9:
                 fig, ax = pyplot.subplots(figsize=(10, 5))
 
                 ax.scatter(tunes_cont[:, j], features_cont[:, i])
@@ -410,12 +427,28 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
                 ax.spines['right'].set_visible(False)
                 pyplot.show()
 
-    print("number of pairs with MI > 1:", numpy.sum(df.values > 1))
+    print("number of pairs with MI > 0.9:", numpy.sum(df.values > 0.9))
 
     # plot a heatmap
     seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False)
     pyplot.tight_layout()
     pyplot.show()
+
+
+from scipy.stats import chi2_contingency
+
+
+def calc_MI(x, y, bins=None):
+
+    if bins:
+        c_xy = numpy.histogram2d(x, y, bins)[0]
+    else:
+        c_xy = numpy.histogram2d(x, y)[0]
+
+    g, p, dof, expected = chi2_contingency(c_xy, lambda_="log-likelihood")
+    mi = 0.5 * g / c_xy.sum()
+    return mi
+
 
 
 if __name__ == "__main__":
@@ -437,7 +470,7 @@ if __name__ == "__main__":
         # testing of k-means
         perform_k_means(condensed_features)
 
-    if True:
+    if False:
         # cluster by buffer for the whole dataset
         predicted_buffers = perform_global_clustering(condensed_features, title="All data")
 
@@ -451,24 +484,34 @@ if __name__ == "__main__":
         print(confusion_matrix)  # accuracy = 0.98, only 2 false negatives (IPA_H2O assigned to DMSO by mistake)
 
     if False:
+
+        dates = [date[:10] for date in full_meta_data['acquisition_date']]
         # find the best clustering for the whole dataset
-        find_and_perform_best_clustering(condensed_features, title='All data')
+        predictions = find_and_perform_best_clustering(dates, condensed_features, title='All data')
 
     if False:
         # clustering of "IPA_H2O" buffer
-        ipa_h2o_subset = condensed_features.iloc[numpy.where(full_meta_data.iloc[:, 15] == 'IPA_H2O')[0], :]
-        find_and_perform_best_clustering(ipa_h2o_subset, title="IPA_H2O")
+        ipa_h2o_subset = condensed_features.iloc[numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0], :]
+        dates = [date[:10] for date in full_meta_data['acquisition_date'][numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]]]
+
+        predictions = find_and_perform_best_clustering(dates, ipa_h2o_subset, title="IPA_H2O")
+
+        print(predictions)
 
     if False:
         # clustering of "IPA_H2O_DMSO" buffer
         dmso_subset = condensed_features.iloc[numpy.where(full_meta_data.iloc[:, 15] == 'IPA_H2O_DMSO')[0], :]
-        find_and_perform_best_clustering(dmso_subset, title="IPA_H2O_DMSO")
+        dates = [date[:10] for date in full_meta_data['acquisition_date'][numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O_DMSO')[0]]]
+
+        predictions = find_and_perform_best_clustering(dates, dmso_subset, title="IPA_H2O_DMSO")
+
+        print(predictions)
 
     if False:
 
         metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
             features_cont, features_names_cont, tunes_cont, tunes_names_cont, tunes_type='continuous', method="pearson",
-            inspection_mode=True
+            inspection_mode=False
         )
 
         metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
@@ -477,13 +520,26 @@ if __name__ == "__main__":
         )
 
     if False:
+        # some testing for mutual info...
+
+        x = numpy.linspace(1,10,10)
+        y = numpy.sin(x) + 10
+        z = 10 + 2 ** numpy.random.rand(1,10)
+
+        print(calc_MI(x, x))
+        print(calc_MI(x, z))
+        print(calc_MI(y, z))
+
+        print(calc_MI(x, y, 5))
+
+    if False:
+
+        # compute_mutual_info_between_tunes_and_features(
+        #     features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=True
+        # )
 
         compute_mutual_info_between_tunes_and_features(
-            features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=False
-        )
-
-        compute_mutual_info_between_tunes_and_features(
-            features_cont, features_names_cont, tunes_cat, tunes_names_cat, inspection_mode=False
+            features_cont, features_names_cont, tunes_cat, tunes_names_cat, inspection_mode=True
         )
 
     if False:
@@ -563,6 +619,8 @@ if __name__ == "__main__":
                            'defaultNeg_traditional_0', 'defaultNeg_traditional_1', 'defaultNeg_polynomial_0', 'defaultNeg_polynomial_1']
 
         # REGRESSION: sucks (why?)
+        # - tried condensed features, continuous features
+        # - tried with/without feature selection
 
         for i in range(len(features_to_fit)):
 
@@ -570,10 +628,10 @@ if __name__ == "__main__":
             # pyplot.title(tunes_names_cont[i])
             # pyplot.show()
 
-            X_train, X_val, y_train, y_val = train_test_split(features_cont, tunes_cont[:, tunes_names_cont.index(features_to_fit[i])], random_state=random_seed)
+            X_train, X_val, y_train, y_val = train_test_split(condensed_features, tunes_cont[:, tunes_names_cont.index(features_to_fit[i])], random_state=random_seed)
 
             pipeline = Pipeline([
-                ('scaler', StandardScaler()),
+                ('scaler', MinMaxScaler()),
                 ('selector', SelectKBest(score_func=f_regression)),
                 ('regressor', Ridge(random_state=random_seed))
             ])
@@ -581,7 +639,7 @@ if __name__ == "__main__":
             param_grid = {
                 'regressor__alpha': [1e-3, 1e-2, 1e-1, 1, 10, 100, 1000],
                 'regressor__fit_intercept': [True, False],
-                'selector__k': range(2,11)
+                'selector__k': [10]
             }
 
             scoring = {'r2': make_scorer(r2_score), 'mse': make_scorer(mean_squared_error)}
@@ -589,7 +647,7 @@ if __name__ == "__main__":
             reg = GridSearchCV(estimator=pipeline,
                                param_grid=param_grid,
                                scoring=scoring, refit='mse',
-                               cv=3, n_jobs=-1)
+                               cv=5, n_jobs=-1)
 
             start = time.time()
 
@@ -606,7 +664,8 @@ if __name__ == "__main__":
     if False:
         # t-SNE
         random_seed = 905
-        perplexities = [5]
+
+        perplexities = [20]
 
         for i, perplexity in enumerate(perplexities):
 
@@ -618,7 +677,7 @@ if __name__ == "__main__":
             fig, ax = pyplot.subplots(figsize=(10, 5))
             ax.scatter(Y[:, 0], Y[:, 1], c='#A9A9A9', marker='o')
             # adds a title and axes labels
-            ax.set_title("Perplexity=%d" % perplexity)
+            ax.set_title("t-SNE, perplexity=%d" % perplexity)
 
             for i, txt in enumerate(meta_info[:,0]):
                 ax.annotate(txt, xy=(Y[i, 0], Y[i, 1]), xytext=(3, 3), textcoords='offset points')

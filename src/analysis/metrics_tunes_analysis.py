@@ -333,7 +333,7 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
 
                 df.iloc[i, j] = correlation_ratio
 
-        print("number of pairs with correlation ratio > 0.7:", numpy.sum(numpy.abs(df.values) > 0.7))
+        print("number of pairs with correlation ratio > 0.9:", numpy.sum(numpy.abs(df.values) > 0.9))
 
         # plot a heatmap
         seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False)
