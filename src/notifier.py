@@ -14,10 +14,10 @@ def send_new_qc_notification(qualities):
     SUBJECT = 'New QC added'
 
     TEXT = 'Hi there,\n\n' \
-           'New QC run has just been successfully added to the databases.\n' \
+           'New QC run has just been processed.\n' \
            'Score: ' + str(sum(qualities)) + '/' + str(len(qualities)) + \
-           '\nCheck out trends and detailed info:\n' \
-           'https://imsb-nz-crazy/qc' \
+           '\nMore details:\n' \
+           'http://imsb-nz-crazy/qc' \
            '\n\nCheers,\n' \
            'Mass Spec Monitor'
 
@@ -47,7 +47,7 @@ def send_error_notification(filename, trace):
     SUBJECT = 'New QC crashed'
 
     TEXT = 'Hi there,\n\n' \
-           'The file ' + filename + ' caused unexpected error:\n' + trace + \
+           'The file ' + filename + ' caused an unexpected error:\n' + trace + \
            '\n\nCheck out \'qc_logs.txt\' on the server.' \
            '\n\nCheers,\n' \
            'Mass Spec Monitor'

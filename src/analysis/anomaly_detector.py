@@ -85,8 +85,8 @@ def explore_linear_trends_in_data():
             pyplot.title(subscript)
             pyplot.xlabel("days")
             pyplot.grid()
-            pyplot.savefig("/Users/andreidm/ETH/papers_posters/monitoring_system/img/" + period + "_" + metric + ".pdf")
-            # pyplot.show()
+            # pyplot.savefig("/Users/andreidm/ETH/papers_posters/monitoring_system/img/" + period + "_" + metric + ".pdf")
+            pyplot.show()
 
     for period in linear_trends:
         print(period)
