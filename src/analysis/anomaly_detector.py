@@ -106,16 +106,16 @@ def correct_outlier_prediction_for_metric(metric, prediction, test_values, train
         train_values = train_values.reshape(1,-1)[0]
         test_values = test_values.reshape(1,-1)[0]
         # only low values can be marked as outliers, while high values are ok
-        values_higher_than_median = test_values > numpy.median(train_values)
-        corrected_prediction = prediction | values_higher_than_median  # vectorized bitwise 'or' operator
+        values_higher_than_threshold = test_values > numpy.percentile(train_values, 10)  # was median before
+        corrected_prediction = prediction | values_higher_than_threshold  # vectorized bitwise 'or' operator
 
     elif metric in ["average_accuracy", "chemical_dirt", "instrument_noise", "baseline_25_150", "baseline_50_150", "baseline_25_650", "baseline_50_650"]:
 
         train_values = train_values.reshape(1,-1)[0]
         test_values = test_values.reshape(1,-1)[0]
         # only high values can be marked as outliers, while low values are ok
-        values_lower_than_median = test_values < numpy.median(train_values)
-        corrected_prediction = prediction | values_lower_than_median  # vectorized bitwise 'or' operator
+        values_lower_than_threshold = test_values < numpy.percentile(train_values, 90)  # was median before
+        corrected_prediction = prediction | values_lower_than_threshold  # vectorized bitwise 'or' operator
     else:
         # no correction is done for metrics:
         # "isotopic_presence", "transmission", "fragmentation_305", "fragmentation_712"
@@ -226,8 +226,8 @@ def test_outliers_prediction():
 
     # convert to dataframes for convenience
     metrics_data = pandas.DataFrame(metrics_data, columns=colnames)
-    test_data = metrics_data.loc[(metrics_data["acquisition_date"] <= "2020-02-19") & (metrics_data["acquisition_date"] >= "2019-12-21"),:]
-    metrics_data = metrics_data.loc[metrics_data["acquisition_date"] <= "2019-12-19", :]
+    test_data = metrics_data.loc[(metrics_data["acquisition_date"] >= "2020-04-29"),:]
+    metrics_data = metrics_data.loc[metrics_data["acquisition_date"] < "2020-03-30", :]
 
     for metric_name in all_metrics:
         # reshape data to feed to models
@@ -276,8 +276,8 @@ def test_outliers_prediction():
         pyplot.xticks(test_dates, test_dates_labels, rotation='vertical')
 
         pyplot.tight_layout()
-        pyplot.savefig("/Users/andreidm/ETH/papers_posters/monitoring_system/img/" + metric_name + ".pdf")
-        # pyplot.show()
+        # pyplot.savefig("/Users/andreidm/ETH/papers_posters/monitoring_system/img/" + metric_name + ".pdf")
+        pyplot.show()
 
 
 if __name__ == "__main__":
@@ -285,5 +285,5 @@ if __name__ == "__main__":
     # qualities_data, _ = db_connector.fetch_table(conn, "qc_metrics_qualities")
     # qualities_data = pandas.DataFrame(qualities_data, columns=colnames)
 
-    # test_outliers_prediction()
-    explore_linear_trends_in_data()
+    test_outliers_prediction()
+    # explore_linear_trends_in_data()
