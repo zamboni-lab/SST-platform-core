@@ -27,7 +27,6 @@ from sklearn.pipeline import Pipeline
 from sklearn import manifold
 
 
-
 def perform_sparse_pca():
     """ This method performs sparse PCA on the qc_features_database (local file of some version provided),
         prints sparsity value and variance fraction explained by first N components. """
@@ -46,6 +45,8 @@ def perform_sparse_pca():
 
     # fraction of zero values in the components_ (sparsity)
     print(numpy.mean(transformer.components_ == 0))
+
+    pandas.DataFrame(transformer.components_).to_csv('/Users/andreidm/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings.csv', index=False)
 
     # get variance explained
     variances = [numpy.var(features_transformed[:,i]) for i in range(number_of_components)]
@@ -450,7 +451,6 @@ def calc_MI(x, y, bins=None):
     return mi
 
 
-
 if __name__ == "__main__":
 
     if False:
@@ -465,10 +465,6 @@ if __name__ == "__main__":
     full_meta_data = get_meta_data()
 
     tunes_cont, tunes_names_cont, tunes_cat, tunes_names_cat = get_tunes_and_names()
-
-    if False:
-        # testing of k-means
-        perform_k_means(condensed_features)
 
     if False:
         # cluster by buffer for the whole dataset
@@ -490,15 +486,6 @@ if __name__ == "__main__":
         predictions = find_and_perform_best_clustering(dates, condensed_features, title='All data')
 
     if False:
-        # clustering of "IPA_H2O" buffer
-        ipa_h2o_subset = condensed_features.iloc[numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0], :]
-        dates = [date[:10] for date in full_meta_data['acquisition_date'][numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]]]
-
-        predictions = find_and_perform_best_clustering(dates, ipa_h2o_subset, title="IPA_H2O")
-
-        print(predictions)
-
-    if False:
         # clustering of "IPA_H2O_DMSO" buffer
         dmso_subset = condensed_features.iloc[numpy.where(full_meta_data.iloc[:, 15] == 'IPA_H2O_DMSO')[0], :]
         dates = [date[:10] for date in full_meta_data['acquisition_date'][numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O_DMSO')[0]]]
@@ -507,7 +494,28 @@ if __name__ == "__main__":
 
         print(predictions)
 
+    # filter out DMSO samples
+    ipa_h20_indices = numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]
+
+    condensed_features = condensed_features.iloc[ipa_h20_indices, :]
+    features_cat = features_cat[ipa_h20_indices, :]
+    features_cont = features_cont[ipa_h20_indices, :]
+    tunes_cat = tunes_cat[ipa_h20_indices, :]
+    tunes_cont = tunes_cont[ipa_h20_indices, :]
+
     if False:
+        # testing of k-means
+        perform_k_means(condensed_features)
+
+    if False:
+        # clustering of "IPA_H2O" buffer
+        dates = [date[:10] for date in full_meta_data['acquisition_date'][ipa_h20_indices]]
+
+        predictions = find_and_perform_best_clustering(dates, condensed_features, title="IPA_H2O")
+
+        print(predictions)
+
+    if True:
 
         metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
             features_cont, features_names_cont, tunes_cont, tunes_names_cont, tunes_type='continuous', method="pearson",
@@ -558,56 +566,69 @@ if __name__ == "__main__":
             results.loc[tunes_names_cat[i], 'n classes'] = len(le.classes_)
 
             start = time.time()
+
+            upsampling_successful = False
+
             # upsample positive class
             try:
                 resampler = SMOTETomek(random_state=random_seed)
                 X_resampled, y_resampled = resampler.fit_resample(condensed_features, classes)
                 print("SMOTETomek resampling was done")
                 results.loc[tunes_names_cat[i], 'method'] = 'SMOTE'
+                upsampling_successful = True
             except ValueError:
-                resampler = RandomOverSampler(random_state=random_seed)
-                X_resampled, y_resampled = resampler.fit_resample(condensed_features, classes)
-                print("Random upsampling was done")
-                results.loc[tunes_names_cat[i], 'method'] = 'random'
 
-            # print("resampling for", tunes_names_cat[i], "took", round(time.time() - start) // 60 + 1, 'min')
-            print("X before: ", condensed_features.shape[0], ', X after: ', X_resampled.shape[0], sep="")
-            results.loc[tunes_names_cat[i], 'full size'] = X_resampled.shape[0]
-            results.loc[tunes_names_cat[i], '% resampled'] = int(100 * (X_resampled.shape[0] / condensed_features.shape[0] - 1))
+                try:
+                    resampler = RandomOverSampler(random_state=random_seed)
+                    X_resampled, y_resampled = resampler.fit_resample(condensed_features, classes)
+                    print("Random upsampling was done")
+                    results.loc[tunes_names_cat[i], 'method'] = 'random'
+                    upsampling_successful = True
+                except ValueError:
+                    print("upsampling failed")
 
-            X_train, X_val, y_train, y_val = train_test_split(X_resampled, y_resampled, stratify=y_resampled, random_state=random_seed)
+            if upsampling_successful:
+                # print("resampling for", tunes_names_cat[i], "took", round(time.time() - start) // 60 + 1, 'min')
+                print("X before: ", condensed_features.shape[0], ', X after: ', X_resampled.shape[0], sep="")
+                results.loc[tunes_names_cat[i], 'full size'] = X_resampled.shape[0]
+                results.loc[tunes_names_cat[i], '% resampled'] = int(100 * (X_resampled.shape[0] / condensed_features.shape[0] - 1))
 
-            results.loc[tunes_names_cat[i], 'val size'] = X_val.shape[0]
+                X_train, X_val, y_train, y_val = train_test_split(X_resampled, y_resampled, stratify=y_resampled, random_state=random_seed)
 
-            scoring = {'roc_auc': make_scorer(roc_auc_score, average='weighted'),
-                       'f1': make_scorer(f1_score, average='weighted'),
-                       'accuracy': make_scorer(accuracy_score)}
+                results.loc[tunes_names_cat[i], 'val size'] = X_val.shape[0]
 
-            clf = GridSearchCV(estimator=DecisionTreeClassifier(random_state=random_seed),
-                               param_grid={'splitter': ['best', 'random'], 'criterion': ['gini', 'entropy']},
-                               scoring=scoring, refit='f1',
-                               cv=3, n_jobs=-1)
+                scoring = {'roc_auc': make_scorer(roc_auc_score, average='weighted'),
+                           'f1': make_scorer(f1_score, average='weighted'),
+                           'accuracy': make_scorer(accuracy_score)}
 
-            start = time.time()
+                clf = GridSearchCV(estimator=DecisionTreeClassifier(random_state=random_seed),
+                                   param_grid={'splitter': ['best', 'random'], 'criterion': ['gini', 'entropy']},
+                                   scoring=scoring, refit='f1',
+                                   cv=3, n_jobs=-1)
 
-            y = label_binarize(y_train, classes=numpy.sort(numpy.unique(y_train)))
+                start = time.time()
 
-            clf.fit(X_train, y)
-            # print("training for ", tunes_names_cat[i], ' took ', round(time.time() - start) // 60 + 1, ' min', sep="")
+                y = label_binarize(y_train, classes=numpy.sort(numpy.unique(y_train)))
 
-            y = label_binarize(y_val, classes=numpy.sort(numpy.unique(y_train)))
+                clf.fit(X_train, y)
+                # print("training for ", tunes_names_cat[i], ' took ', round(time.time() - start) // 60 + 1, ' min', sep="")
 
-            val_score = clf.score(X_val, y)
-            print(tunes_names_cat[i], ", validation set size: ", X_val.shape[0], sep="")
-            print('val auc: ', round(clf.cv_results_['mean_test_roc_auc'].mean(), 3),
-                  ', val f1: ', round(clf.cv_results_['mean_test_f1'].mean(), 3),
-                  ', val accuracy: ', round(clf.cv_results_['mean_test_accuracy'].mean(), 3), sep="")
+                y = label_binarize(y_val, classes=numpy.sort(numpy.unique(y_train)))
 
-            results.loc[tunes_names_cat[i], 'accuracy'] = round(clf.cv_results_['mean_test_accuracy'].mean(), 3)
+                val_score = clf.score(X_val, y)
+                print(tunes_names_cat[i], ", validation set size: ", X_val.shape[0], sep="")
+                print('val auc: ', round(clf.cv_results_['mean_test_roc_auc'].mean(), 3),
+                      ', val f1: ', round(clf.cv_results_['mean_test_f1'].mean(), 3),
+                      ', val accuracy: ', round(clf.cv_results_['mean_test_accuracy'].mean(), 3), sep="")
 
-            print("best params:", clf.best_params_, '\n')
+                results.loc[tunes_names_cat[i], 'accuracy'] = round(clf.cv_results_['mean_test_accuracy'].mean(), 3)
 
-        results.to_csv("/Users/andreidm/ETH/projects/monitoring_system/res/analysis/tunes_predictions.csv")
+                print("best params:", clf.best_params_, '\n')
+
+            else:
+                continue
+
+        results.to_csv("/Users/andreidm/ETH/projects/monitoring_system/res/analysis/tunes_predictions_without_dmso.csv")
         print("predictions saved")
 
     if False:
