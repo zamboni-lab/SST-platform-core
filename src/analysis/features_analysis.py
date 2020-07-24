@@ -190,11 +190,13 @@ def perform_hierarchical_clustering_and_plot(features):
     pyplot.show()
 
 
-def get_tunes_and_names(path="/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"):
+def get_tunes_and_names(path="/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"):
     """ This method reads a database with tunes, makes some preprocessing and returns
         categorical and continuous tunes with names. """
 
     conn = db_connector.create_connection(path)
+    if conn is None:
+        raise ValueError("Database connection unsuccessful. Check out path. ")
     database, colnames = db_connector.fetch_table(conn, "qc_tunes")
 
     tunes = numpy.array(database)
@@ -469,9 +471,9 @@ def calc_MI(x, y, bins=None):
 
 if __name__ == "__main__":
 
-    if False:
+    if True:
         # GET DATA
-        condensed_features = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features.csv")
+        condensed_features = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_with_dmso.csv")
 
         meta_info, features, colnames = get_features_data()
         features_cont, features_names_cont, features_cat, features_names_cat = split_features_to_cont_and_cat(features, numpy.array(colnames[4:]))
@@ -480,7 +482,7 @@ if __name__ == "__main__":
 
         tunes_cont, tunes_names_cont, tunes_cat, tunes_names_cat = get_tunes_and_names()
 
-    if False:
+    if True:
         # FILTER OUT DMSO
         ipa_h20_indices = numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]
 
@@ -493,6 +495,41 @@ if __name__ == "__main__":
     if False:
         # CONDENSE AND SAVE FEATURES
         perform_sparse_pca(filter_dmso=False)
+
+    if False:
+        # PCA LOADINGS ANALYSIS
+        loadings = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_without_dmso.csv")
+
+        if True:
+            # FIND INFORMATIVE FEATURES
+            loading_sums = numpy.sum(numpy.abs(loadings.values), axis=0)
+
+            print("number of features with 0 contribution:", numpy.where(loading_sums == 0)[0].shape[0])
+
+            _, _, colnames = get_features_data()
+            colnames = numpy.array(colnames[4:])
+
+            highest_loadings = numpy.sort(loading_sums)[::-1][:100]
+
+            for i in range(highest_loadings.shape[0]):
+                print(colnames[numpy.where(loading_sums == highest_loadings[i])], ": ", highest_loadings[i], sep="")
+
+            seaborn.distplot(loading_sums[numpy.where(loading_sums > 0)])
+            pyplot.title("Total features' contributions")
+            pyplot.grid()
+            pyplot.show()
+
+        if False:
+            # PLOT PC DISTRIBUTIONS
+            fig = pyplot.figure()
+            for i in range(10):
+                ax = fig.add_subplot(2,5,i+1)
+                ax.hist(loadings.iloc[:,i])
+                ax.set_title('PC{}'.format(i+1))
+                ax.grid()
+
+            pyplot.tight_layout()
+            pyplot.show()
 
     if False:
         # CLUSTERING FULL DATA NO FILTERING
@@ -627,6 +664,7 @@ if __name__ == "__main__":
                 print('val auc: ', round(clf.cv_results_['mean_test_roc_auc'].mean(), 3),
                       ', val f1: ', round(clf.cv_results_['mean_test_f1'].mean(), 3),
                       ', val accuracy: ', round(clf.cv_results_['mean_test_accuracy'].mean(), 3), sep="")
+                print("feature importances:", clf.best_estimator_.feature_importances_.tolist())
 
                 results.loc[tunes_names_cat[i], 'accuracy'] = round(clf.cv_results_['mean_test_accuracy'].mean(), 3)
 
@@ -635,7 +673,7 @@ if __name__ == "__main__":
             else:
                 continue
 
-        results.to_csv("/Users/andreidm/ETH/projects/monitoring_system/res/analysis/tunes_predictions_without_dmso.csv")
+        results.to_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/tunes_predictions_without_dmso.csv")
         print("predictions saved")
 
     if False:
