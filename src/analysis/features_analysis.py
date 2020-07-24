@@ -27,11 +27,21 @@ from sklearn.pipeline import Pipeline
 from sklearn import manifold
 
 
-def perform_sparse_pca():
+def perform_sparse_pca(filter_dmso=True):
     """ This method performs sparse PCA on the qc_features_database (local file of some version provided),
         prints sparsity value and variance fraction explained by first N components. """
 
     _, features, _ = get_features_data()
+
+    if filter_dmso:
+        # filter out DMSO samples
+        full_meta_data = get_meta_data()
+        ipa_h20_indices = numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]
+        features = features[ipa_h20_indices,:]
+
+        file_mark = "without_dmso"
+    else:
+        file_mark = "with_dmso"
 
     number_of_components = 10
 
@@ -46,7 +56,7 @@ def perform_sparse_pca():
     # fraction of zero values in the components_ (sparsity)
     print(numpy.mean(transformer.components_ == 0))
 
-    pandas.DataFrame(transformer.components_).to_csv('/Users/andreidm/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings.csv', index=False)
+    pandas.DataFrame(transformer.components_).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_{}.csv'.format(file_mark), index=False)
 
     # get variance explained
     variances = [numpy.var(features_transformed[:,i]) for i in range(number_of_components)]
@@ -54,14 +64,17 @@ def perform_sparse_pca():
 
     print(fraction_explained)
 
-    pandas.DataFrame(features_transformed).to_csv('/Users/andreidm/ETH/projects/monitoring_system/res/nas2/sparse_pca_features.csv', index=False)
+    pandas.DataFrame(features_transformed).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_{}.csv'.format(file_mark), index=False)
 
 
-def get_features_data(path="/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
+def get_features_data(path="/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
     """ This method read metrics database,
         returns a matrix with metrics, metrics names, arrays of quality and acquisitions dates. """
 
     conn = db_connector.create_connection(path)
+    if conn is None:
+        raise ValueError("Database connection unsuccessful. Check out path. ")
+
     database_1, colnames_1 = db_connector.fetch_table(conn, "qc_features_1")
     database_2, colnames_2 = db_connector.fetch_table(conn, "qc_features_2")
 
@@ -75,11 +88,14 @@ def get_features_data(path="/Users/andreidm/ETH/projects/monitoring_system/res/n
     return meta, features, colnames
 
 
-def get_meta_data(path="/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
+def get_meta_data(path="/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
     """ This method read metrics database,
         returns a matrix with metrics, metrics names, arrays of quality and acquisitions dates. """
 
     conn = db_connector.create_connection(path)
+    if conn is None:
+        raise ValueError("Database connection unsuccessful. Check out path.")
+
     meta_data, colnames = db_connector.fetch_table(conn, "qc_meta")
 
     return pandas.DataFrame(meta_data, columns=colnames)
@@ -454,20 +470,32 @@ def calc_MI(x, y, bins=None):
 if __name__ == "__main__":
 
     if False:
-        # condense features and save features
-        perform_sparse_pca()
+        # GET DATA
+        condensed_features = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features.csv")
 
-    condensed_features = pandas.read_csv("/Users/andreidm/ETH/projects/monitoring_system/res/nas2/sparse_pca_features.csv")
+        meta_info, features, colnames = get_features_data()
+        features_cont, features_names_cont, features_cat, features_names_cat = split_features_to_cont_and_cat(features, numpy.array(colnames[4:]))
 
-    meta_info, features, colnames = get_features_data()
-    features_cont, features_names_cont, features_cat, features_names_cat = split_features_to_cont_and_cat(features, numpy.array(colnames[4:]))
+        full_meta_data = get_meta_data()
 
-    full_meta_data = get_meta_data()
-
-    tunes_cont, tunes_names_cont, tunes_cat, tunes_names_cat = get_tunes_and_names()
+        tunes_cont, tunes_names_cont, tunes_cat, tunes_names_cat = get_tunes_and_names()
 
     if False:
-        # cluster by buffer for the whole dataset
+        # FILTER OUT DMSO
+        ipa_h20_indices = numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]
+
+        condensed_features = condensed_features.iloc[ipa_h20_indices, :]
+        features_cat = features_cat[ipa_h20_indices, :]
+        features_cont = features_cont[ipa_h20_indices, :]
+        tunes_cat = tunes_cat[ipa_h20_indices, :]
+        tunes_cont = tunes_cont[ipa_h20_indices, :]
+
+    if False:
+        # CONDENSE AND SAVE FEATURES
+        perform_sparse_pca(filter_dmso=False)
+
+    if False:
+        # CLUSTERING FULL DATA NO FILTERING
         predicted_buffers = perform_global_clustering(condensed_features, title="All data")
 
         pairs = [pair for pair in zip(full_meta_data['buffer_id'], predicted_buffers)]
@@ -480,13 +508,14 @@ if __name__ == "__main__":
         print(confusion_matrix)  # accuracy = 0.98, only 2 false negatives (IPA_H2O assigned to DMSO by mistake)
 
     if False:
+        # CLUSTERING FULL DATA WITH FILTERING
 
         dates = [date[:10] for date in full_meta_data['acquisition_date']]
         # find the best clustering for the whole dataset
         predictions = find_and_perform_best_clustering(dates, condensed_features, title='All data')
 
     if False:
-        # clustering of "IPA_H2O_DMSO" buffer
+        # CLUSTERING "IPA_H2O_DMSO"
         dmso_subset = condensed_features.iloc[numpy.where(full_meta_data.iloc[:, 15] == 'IPA_H2O_DMSO')[0], :]
         dates = [date[:10] for date in full_meta_data['acquisition_date'][numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O_DMSO')[0]]]
 
@@ -494,28 +523,20 @@ if __name__ == "__main__":
 
         print(predictions)
 
-    # filter out DMSO samples
-    ipa_h20_indices = numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]
-
-    condensed_features = condensed_features.iloc[ipa_h20_indices, :]
-    features_cat = features_cat[ipa_h20_indices, :]
-    features_cont = features_cont[ipa_h20_indices, :]
-    tunes_cat = tunes_cat[ipa_h20_indices, :]
-    tunes_cont = tunes_cont[ipa_h20_indices, :]
-
     if False:
-        # testing of k-means
+        # K-MEANS TESTING
         perform_k_means(condensed_features)
 
     if False:
-        # clustering of "IPA_H2O" buffer
+        # CLUSTERING "IPA_H2O"
         dates = [date[:10] for date in full_meta_data['acquisition_date'][ipa_h20_indices]]
 
         predictions = find_and_perform_best_clustering(dates, condensed_features, title="IPA_H2O")
 
         print(predictions)
 
-    if True:
+    if False:
+        # CORRELATIONS FEATURES-TUNES
 
         metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
             features_cont, features_names_cont, tunes_cont, tunes_names_cont, tunes_type='continuous', method="pearson",
@@ -528,19 +549,7 @@ if __name__ == "__main__":
         )
 
     if False:
-        # some testing for mutual info...
-
-        x = numpy.linspace(1,10,10)
-        y = numpy.sin(x) + 10
-        z = 10 + 2 ** numpy.random.rand(1,10)
-
-        print(calc_MI(x, x))
-        print(calc_MI(x, z))
-        print(calc_MI(y, z))
-
-        print(calc_MI(x, y, 5))
-
-    if False:
+        # MUTUAL INFO FEATURES-TUNES
 
         # compute_mutual_info_between_tunes_and_features(
         #     features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=True
@@ -551,12 +560,10 @@ if __name__ == "__main__":
         )
 
     if False:
-
+        # CLASSIFICATION
         random_seed = 905
 
-        # CLASSIFICATION (sort of works...)
-        results = pandas.DataFrame(columns=['full size', '% resampled', 'method', 'val size', 'n classes', 'accuracy'],
-                                   index=tunes_names_cat)
+        results = pandas.DataFrame(columns=['full size', '% resampled', 'method', 'val size', 'n classes', 'accuracy'], index=tunes_names_cat)
 
         for i in range(tunes_cat.shape[1]):
 
@@ -632,16 +639,14 @@ if __name__ == "__main__":
         print("predictions saved")
 
     if False:
-
+        # REGRESSION: sucks (why?)
+        # - tried condensed features, continuous features
+        # - tried with/without feature selection
         random_seed = 905
 
         features_to_fit = ['Duration', 'TOF_Vac', 'Quad_Vac', 'Rough_Vac', 'Turbo1_Power', 'Turbo2_Power',
                            'defaultPos_traditional_0', 'defaultPos_traditional_1', 'defaultPos_polynomial_0', 'defaultPos_polynomial_1',
                            'defaultNeg_traditional_0', 'defaultNeg_traditional_1', 'defaultNeg_polynomial_0', 'defaultNeg_polynomial_1']
-
-        # REGRESSION: sucks (why?)
-        # - tried condensed features, continuous features
-        # - tried with/without feature selection
 
         for i in range(len(features_to_fit)):
 
@@ -683,7 +688,7 @@ if __name__ == "__main__":
             print("best params:", reg.best_params_, '\n')
 
     if False:
-        # t-SNE
+        # T-SNE FEATURES
         random_seed = 905
 
         perplexities = [20]
