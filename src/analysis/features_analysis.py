@@ -573,6 +573,15 @@ if __name__ == "__main__":
         print(predictions)
 
     if False:
+        # CROSS CORRELATIONS FEATURES
+        df = pandas.DataFrame(features_cont).corr()
+
+        # plot a heatmap
+        seaborn.heatmap(df)
+        pyplot.tight_layout()
+        pyplot.show()
+
+    if False:
         # CORRELATIONS FEATURES-TUNES
 
         metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
