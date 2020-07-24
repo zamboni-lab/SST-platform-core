@@ -572,9 +572,17 @@ if __name__ == "__main__":
 
         print(predictions)
 
-    if False:
+    if True:
         # CROSS CORRELATIONS FEATURES
         df = pandas.DataFrame(features_cont).corr()
+
+        """ some key observations:
+            1) ~97% of pair correlate with r < 0.5, 
+            2) those pairs with r > 0.9 are related to "top 10 noisy peaks",
+            3) those pairs with moderate correlation around 0.6 < r < 0.8 are related to frames features:
+               (i.e. top peaks, num of peaks, int sums, percentiles, top percentiles...
+               within frames 350-400 and 400-450, for example),
+            4) majority of continuous features don't cross-correlate much """
 
         # plot a heatmap
         seaborn.heatmap(df)
