@@ -1,6 +1,6 @@
 
 import numpy, pandas, scipy, seaborn, math, time
-from sklearn.decomposition import SparsePCA
+from sklearn.decomposition import SparsePCA, PCA
 from sklearn.preprocessing import StandardScaler, LabelEncoder, label_binarize, MinMaxScaler
 from src.qcmg import db_connector
 from matplotlib import pyplot
@@ -27,6 +27,55 @@ from sklearn.pipeline import Pipeline
 from sklearn import manifold
 
 
+def plot_sparse_pca_variance_explained(filter_dmso=True):
+
+    _, features, _ = get_features_data()
+
+    if filter_dmso:
+        # filter out DMSO samples
+        full_meta_data = get_meta_data()
+        ipa_h20_indices = numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]
+        features = features[ipa_h20_indices,:]
+
+        file_mark = "without_dmso"
+    else:
+        file_mark = "with_dmso"
+
+    total_variance_percent = []
+    number_of_components = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+
+    for n in number_of_components:
+
+        transformer = SparsePCA(n_components=n)
+        scaler = StandardScaler()
+
+        scaled_features = scaler.fit_transform(features)
+        features_transformed = transformer.fit_transform(scaled_features)
+
+        print(features_transformed.shape)
+
+        P_hat = transformer.components_.T
+        T_hat = numpy.dot(numpy.dot(scaled_features, P_hat), numpy.linalg.pinv(numpy.dot(P_hat.T, P_hat)))
+        E = scaled_features - numpy.dot(T_hat, P_hat.T)
+
+        trace_PT_squared = numpy.trace(numpy.dot(numpy.dot(P_hat, T_hat.T), numpy.dot(T_hat, P_hat.T)))
+        trace_E_squared = numpy.trace(numpy.dot(E.T, E))
+        trace_features_squared = numpy.trace(numpy.dot(scaled_features.T, scaled_features))
+
+        TotPT = (trace_PT_squared + trace_E_squared) / trace_features_squared
+        print("N components = {}, TotPT = {}".format(n, TotPT))
+        print("Fraction of total variance explained:", round(trace_PT_squared / trace_features_squared, 3))
+        total_variance_percent.append(trace_PT_squared / trace_features_squared)
+
+        # fraction of zero values in the components_ (sparsity)
+        print("Sparsity:", round(numpy.mean(transformer.components_ == 0), 3))
+
+    pyplot.plot(number_of_components, total_variance_percent, '--bo')
+    pyplot.grid()
+    pyplot.title("Sparse PCA: explained variance")
+    pyplot.show()
+
+
 def perform_sparse_pca(filter_dmso=True):
     """ This method performs sparse PCA on the qc_features_database (local file of some version provided),
         prints sparsity value and variance fraction explained by first N components. """
@@ -43,7 +92,7 @@ def perform_sparse_pca(filter_dmso=True):
     else:
         file_mark = "with_dmso"
 
-    number_of_components = 10
+    number_of_components = 15  # try also 30
 
     transformer = SparsePCA(n_components=number_of_components)
     scaler = StandardScaler()
@@ -53,18 +102,67 @@ def perform_sparse_pca(filter_dmso=True):
 
     print(features_transformed.shape)
 
+    # calculate properly total variance explained
+    P_hat = transformer.components_.T
+    T_hat = numpy.dot(numpy.dot(scaled_features, P_hat), numpy.linalg.pinv(numpy.dot(P_hat.T, P_hat)))
+    E = scaled_features - numpy.dot(T_hat, P_hat.T)
+
+    trace_PT_squared = numpy.trace(numpy.dot(numpy.dot(P_hat, T_hat.T), numpy.dot(T_hat, P_hat.T)))
+    trace_E_squared = numpy.trace(numpy.dot(E.T, E))
+    trace_features_squared = numpy.trace(numpy.dot(scaled_features.T, scaled_features))
+
+    TotPT = (trace_PT_squared + trace_E_squared) / trace_features_squared
+    print("N components = {}, TotPT = {}".format(number_of_components, TotPT))
+    print("Fraction of total variance explained:", round(trace_PT_squared / trace_features_squared, 3))
+
     # fraction of zero values in the components_ (sparsity)
-    print(numpy.mean(transformer.components_ == 0))
+    print("Sparsity:", round(numpy.mean(transformer.components_ == 0), 3))
 
     pandas.DataFrame(transformer.components_).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_{}.csv'.format(file_mark), index=False)
-
-    # get variance explained
-    variances = [numpy.var(features_transformed[:,i]) for i in range(number_of_components)]
-    fraction_explained = [var / sum(variances) for var in variances]
-
-    print(fraction_explained)
-
     pandas.DataFrame(features_transformed).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_{}.csv'.format(file_mark), index=False)
+
+
+def perform_pca(filter_dmso=True):
+    """ This method performs PCA on the qc_features_database (local file of some version provided),
+        prints sparsity value and variance fraction explained by first N components. """
+
+    _, features, _ = get_features_data()
+
+    if filter_dmso:
+        # filter out DMSO samples
+        full_meta_data = get_meta_data()
+        ipa_h20_indices = numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]
+        features = features[ipa_h20_indices,:]
+
+        file_mark = "without_dmso"
+    else:
+        file_mark = "with_dmso"
+
+    number_of_components = 2850
+
+    transformer = PCA(n_components=10)
+    scaler = StandardScaler()
+
+    scaled_features = scaler.fit_transform(features)
+    features_transformed = transformer.fit_transform(scaled_features)
+
+    print(features_transformed.shape)
+
+    # # fraction of zero values in the components_ (sparsity)
+    # print(numpy.mean(transformer.components_ == 0))
+
+    # percent of variance explained
+    print(transformer.explained_variance_ratio_ * 100)
+
+    # # pandas.DataFrame(transformer.components_).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_{}.csv'.format(file_mark), index=False)
+    #
+    # # get variance explained
+    # variances = [numpy.var(features_transformed[:,i]) for i in range(number_of_components)]
+    # fraction_explained = [var / sum(variances) for var in variances]
+    #
+    # print(fraction_explained)
+    #
+    # # pandas.DataFrame(features_transformed).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_{}.csv'.format(file_mark), index=False)
 
 
 def get_features_data(path="/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
@@ -471,7 +569,7 @@ def calc_MI(x, y, bins=None):
 
 if __name__ == "__main__":
 
-    if True:
+    if False:
         # GET DATA
         condensed_features = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_with_dmso.csv")
 
@@ -482,7 +580,7 @@ if __name__ == "__main__":
 
         tunes_cont, tunes_names_cont, tunes_cat, tunes_names_cat = get_tunes_and_names()
 
-    if True:
+    if False:
         # FILTER OUT DMSO
         ipa_h20_indices = numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]
 
@@ -492,9 +590,12 @@ if __name__ == "__main__":
         tunes_cat = tunes_cat[ipa_h20_indices, :]
         tunes_cont = tunes_cont[ipa_h20_indices, :]
 
-    if False:
+    if True:
         # CONDENSE AND SAVE FEATURES
         perform_sparse_pca(filter_dmso=False)
+
+    if False:
+        perform_pca(filter_dmso=False)
 
     if False:
         # PCA LOADINGS ANALYSIS
@@ -572,16 +673,16 @@ if __name__ == "__main__":
 
         print(predictions)
 
-    if True:
+    if False:
         # CROSS CORRELATIONS FEATURES
         df = pandas.DataFrame(features_cont).corr()
 
         """ some key observations:
-            1) ~97% of pair correlate with r < 0.5, 
+            1) ~97% of pairs correlate with r < 0.5, 
             2) those pairs with r > 0.9 are related to "top 10 noisy peaks",
             3) those pairs with moderate correlation around 0.6 < r < 0.8 are related to frames features:
                (i.e. top peaks, num of peaks, int sums, percentiles, top percentiles...
-               within frames 350-400 and 400-450, for example),
+               within frames 350-400 and 400-450, 950-1000 and 1000-1050, etc.),
             4) majority of continuous features don't cross-correlate much """
 
         # plot a heatmap
