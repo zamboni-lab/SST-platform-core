@@ -54,9 +54,10 @@ def plot_sparse_pca_variance_explained(filter_dmso=True):
 
         print(features_transformed.shape)
 
-        P_hat = transformer.components_.T
-        T_hat = numpy.dot(numpy.dot(scaled_features, P_hat), numpy.linalg.pinv(numpy.dot(P_hat.T, P_hat)))
-        E = scaled_features - numpy.dot(T_hat, P_hat.T)
+        # calculate properly total variance explained
+        P_hat = transformer.components_.T  # loadings
+        T_hat = numpy.dot(numpy.dot(scaled_features, P_hat), numpy.linalg.pinv(numpy.dot(P_hat.T, P_hat)))  # scores
+        E = scaled_features - numpy.dot(T_hat, P_hat.T)  # errors
 
         trace_PT_squared = numpy.trace(numpy.dot(numpy.dot(P_hat, T_hat.T), numpy.dot(T_hat, P_hat.T)))
         trace_E_squared = numpy.trace(numpy.dot(E.T, E))
@@ -76,7 +77,7 @@ def plot_sparse_pca_variance_explained(filter_dmso=True):
     pyplot.show()
 
 
-def perform_sparse_pca(filter_dmso=True):
+def perform_sparse_pca(filter_dmso=True, n=None):
     """ This method performs sparse PCA on the qc_features_database (local file of some version provided),
         prints sparsity value and variance fraction explained by first N components. """
 
@@ -92,7 +93,10 @@ def perform_sparse_pca(filter_dmso=True):
     else:
         file_mark = "with_dmso"
 
-    number_of_components = 15  # try also 30
+    if n is None:
+        number_of_components = 15
+    else:
+        number_of_components = n
 
     transformer = SparsePCA(n_components=number_of_components)
     scaler = StandardScaler()
@@ -118,8 +122,8 @@ def perform_sparse_pca(filter_dmso=True):
     # fraction of zero values in the components_ (sparsity)
     print("Sparsity:", round(numpy.mean(transformer.components_ == 0), 3))
 
-    pandas.DataFrame(transformer.components_).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_{}.csv'.format(file_mark), index=False)
-    pandas.DataFrame(features_transformed).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_{}.csv'.format(file_mark), index=False)
+    pandas.DataFrame(transformer.components_).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_{}_n={}.csv'.format(file_mark, number_of_components), index=False)
+    pandas.DataFrame(features_transformed).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_{}_n={}.csv'.format(file_mark, number_of_components), index=False)
 
 
 def perform_pca(filter_dmso=True):
@@ -137,8 +141,6 @@ def perform_pca(filter_dmso=True):
         file_mark = "without_dmso"
     else:
         file_mark = "with_dmso"
-
-    number_of_components = 2850
 
     transformer = PCA(n_components=10)
     scaler = StandardScaler()
@@ -569,9 +571,10 @@ def calc_MI(x, y, bins=None):
 
 if __name__ == "__main__":
 
-    if False:
+    if True:
         # GET DATA
-        condensed_features = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_with_dmso.csv")
+        condensed_features = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_without_dmso_n=15.csv")
+        loadings = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_without_dmso_n=15.csv")
 
         meta_info, features, colnames = get_features_data()
         features_cont, features_names_cont, features_cat, features_names_cat = split_features_to_cont_and_cat(features, numpy.array(colnames[4:]))
@@ -580,17 +583,18 @@ if __name__ == "__main__":
 
         tunes_cont, tunes_names_cont, tunes_cat, tunes_names_cat = get_tunes_and_names()
 
-    if False:
+    if True:
         # FILTER OUT DMSO
         ipa_h20_indices = numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]
 
-        condensed_features = condensed_features.iloc[ipa_h20_indices, :]
+        # condensed_features = condensed_features.iloc[ipa_h20_indices, :]
+
         features_cat = features_cat[ipa_h20_indices, :]
         features_cont = features_cont[ipa_h20_indices, :]
         tunes_cat = tunes_cat[ipa_h20_indices, :]
         tunes_cont = tunes_cont[ipa_h20_indices, :]
 
-    if True:
+    if False:
         # CONDENSE AND SAVE FEATURES
         perform_sparse_pca(filter_dmso=False)
 
@@ -598,8 +602,6 @@ if __name__ == "__main__":
         perform_pca(filter_dmso=False)
 
     if False:
-        # PCA LOADINGS ANALYSIS
-        loadings = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_without_dmso.csv")
 
         if True:
             # FIND INFORMATIVE FEATURES
@@ -614,6 +616,8 @@ if __name__ == "__main__":
 
             for i in range(highest_loadings.shape[0]):
                 print(colnames[numpy.where(loading_sums == highest_loadings[i])], ": ", highest_loadings[i], sep="")
+
+            print("Normality test p =", scipy.stats.shapiro(loading_sums[numpy.where(loading_sums > 0)]).pvalue)
 
             seaborn.distplot(loading_sums[numpy.where(loading_sums > 0)])
             pyplot.title("Total features' contributions")
@@ -643,7 +647,7 @@ if __name__ == "__main__":
         for pair in unique_pairs:
             confusion_matrix[pair] = pairs.count(pair)
 
-        print(confusion_matrix)  # accuracy = 0.98, only 2 false negatives (IPA_H2O assigned to DMSO by mistake)
+        print(confusion_matrix)  # accuracy >= 0.98, only few false negatives (IPA_H2O assigned to DMSO by mistake)
 
     if False:
         # CLUSTERING FULL DATA WITH FILTERING
@@ -714,7 +718,7 @@ if __name__ == "__main__":
             features_cont, features_names_cont, tunes_cat, tunes_names_cat, inspection_mode=True
         )
 
-    if False:
+    if True:
         # CLASSIFICATION
         random_seed = 905
 
@@ -788,11 +792,37 @@ if __name__ == "__main__":
 
                 print("best params:", clf.best_params_, '\n')
 
+                inspect_feature_contributions = True
+                if inspect_feature_contributions:
+
+                    feature_contributions = (clf.best_estimator_.feature_importances_ * loadings.T).T
+
+                    loading_sums = numpy.sum(numpy.abs(feature_contributions.values), axis=0)
+
+                    normalised_loadings = loading_sums / numpy.max(loading_sums)
+
+                    print("number of features with 0 contribution:", numpy.where(normalised_loadings == 0)[0].shape[0])
+
+                    _, _, colnames = get_features_data()
+                    colnames = numpy.array(colnames[4:])
+
+                    highest_loadings = numpy.sort(normalised_loadings)[::-1][:100]
+
+                    for j in range(highest_loadings.shape[0]):
+                        print(colnames[numpy.where(normalised_loadings == highest_loadings[j])], ": ", highest_loadings[j],
+                              sep="")
+                    print()
+
+                    seaborn.distplot(normalised_loadings[numpy.where(loading_sums > 0)])
+                    pyplot.title("Features importances to predict {}".format(tunes_names_cat[i]))
+                    pyplot.grid()
+                    pyplot.show()
+
             else:
                 continue
 
-        results.to_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/tunes_predictions_without_dmso.csv")
-        print("predictions saved")
+        # results.to_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/tunes_predictions_without_dmso_n=15.csv")
+        # print("predictions saved")
 
     if False:
         # REGRESSION: sucks (why?)
@@ -813,15 +843,15 @@ if __name__ == "__main__":
             X_train, X_val, y_train, y_val = train_test_split(condensed_features, tunes_cont[:, tunes_names_cont.index(features_to_fit[i])], random_state=random_seed)
 
             pipeline = Pipeline([
-                ('scaler', MinMaxScaler()),
-                ('selector', SelectKBest(score_func=f_regression)),
-                ('regressor', Ridge(random_state=random_seed))
+                ('scaler', StandardScaler()),
+                # ('selector', SelectKBest(score_func=f_regression)),
+                ('regressor', Lasso(random_state=random_seed))
             ])
 
             param_grid = {
-                'regressor__alpha': [1e-3, 1e-2, 1e-1, 1, 10, 100, 1000],
-                'regressor__fit_intercept': [True, False],
-                'selector__k': [10]
+                'regressor__alpha': numpy.concatenate((numpy.linspace(1e-3, 1, 100), numpy.linspace(1, 1000, 100))),
+                'regressor__fit_intercept': [True, False]
+                # 'selector__k': [10]
             }
 
             scoring = {'r2': make_scorer(r2_score), 'mse': make_scorer(mean_squared_error)}
@@ -829,7 +859,7 @@ if __name__ == "__main__":
             reg = GridSearchCV(estimator=pipeline,
                                param_grid=param_grid,
                                scoring=scoring, refit='mse',
-                               cv=5, n_jobs=-1)
+                               cv=3, n_jobs=-1)
 
             start = time.time()
 
