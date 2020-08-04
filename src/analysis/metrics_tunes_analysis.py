@@ -623,8 +623,8 @@ if __name__ == "__main__":
     pandas.set_option('display.max_rows', None)
     pandas.set_option('display.max_columns', None)
 
-    qc_tunes_database_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_tunes_database_may13.sqlite"
-    qc_metrics_database_path = "/Users/andreidm/ETH/projects/shiny_qc/data/nas2_qc_metrics_database_may13.sqlite"
+    qc_tunes_database_path = "/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"
+    qc_metrics_database_path = "/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_metrics_database.sqlite"
 
     continuous_tunes, continuous_names, categorical_tunes, categorical_names = get_tunes_and_names(qc_tunes_database_path)
 
@@ -661,11 +661,11 @@ if __name__ == "__main__":
 
     if False:
         # explore general correlations between tunes and metrics
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman", inspection_mode=False)
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='categorical', inspection_mode=False)
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman", inspection_mode=True)
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='categorical', inspection_mode=True)
 
         # feed "categorical" tunes to spearman correlation
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='continuous', method="spearman", inspection_mode=False)
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='continuous', method="spearman", inspection_mode=True)
 
     if False:
         # define good or bad based on the score

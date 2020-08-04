@@ -6,7 +6,7 @@ from src.qcmg import db_connector
 from matplotlib import pyplot
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from scipy.cluster.hierarchy import dendrogram
-from sklearn.metrics import silhouette_samples, silhouette_score
+from sklearn.metrics import silhouette_samples, silhouette_score, confusion_matrix
 from scipy.stats import ks_2samp, mannwhitneyu, kruskal
 from scipy.stats import chi2_contingency
 from collections import Counter
@@ -19,6 +19,7 @@ from sklearn.metrics import mutual_info_score, adjusted_mutual_info_score
 from sklearn.model_selection import StratifiedKFold, train_test_split, GridSearchCV
 from sklearn.feature_selection import SelectKBest, mutual_info_regression, f_regression
 from sklearn.tree import DecisionTreeClassifier
+from sklearn import tree
 from sklearn.linear_model import Ridge, Lasso
 from imblearn.combine import SMOTETomek
 from imblearn.over_sampling import RandomOverSampler
@@ -74,6 +75,41 @@ def plot_sparse_pca_variance_explained(filter_dmso=True):
     pyplot.plot(number_of_components, total_variance_percent, '--bo')
     pyplot.grid()
     pyplot.title("Sparse PCA: explained variance")
+    pyplot.show()
+
+
+def plot_pca_variance_explained(filter_dmso=True):
+
+    _, features, _ = get_features_data()
+
+    if filter_dmso:
+        # filter out DMSO samples
+        full_meta_data = get_meta_data()
+        ipa_h20_indices = numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]
+        features = features[ipa_h20_indices,:]
+
+        file_mark = "without_dmso"
+    else:
+        file_mark = "with_dmso"
+
+
+    transformer = PCA()
+    scaler = StandardScaler()
+
+    scaled_features = scaler.fit_transform(features)
+    features_transformed = transformer.fit_transform(scaled_features)
+
+    # x = range(len(transformer.explained_variance_ratio_))
+    # y = [sum(transformer.explained_variance_ratio_[:i]) for i in x]
+
+    x = range(len(transformer.explained_variance_ratio_))[::5]
+    y = transformer.explained_variance_ratio_[::5]
+
+    pyplot.plot(x, y, '--bo')
+    pyplot.grid()
+    pyplot.title("PCA: explained variance")
+    pyplot.xlabel("Principal components")
+    pyplot.ylabel("Percent of total variance")
     pyplot.show()
 
 
@@ -326,13 +362,21 @@ def get_tunes_and_names(path="/Users/dmitrav/ETH/projects/monitoring_system/res/
     continuous_names, categorical_names = [], []
 
     for i in range(informative_tunes.shape[1]):
-        # let 12 be a max number of values for a tune to be categorical
-        if len(set(informative_tunes[:, i])) > 12:
-            continuous_tunes.append(informative_tunes[:, i])
-            continuous_names.append(informative_colnames[i])
-        else:
-            categorical_tunes.append(informative_tunes[:, i])
-            categorical_names.append(informative_colnames[i])
+
+        is_calibration_coef = False
+        for n in ['2', '3', '4', '5', '6', '7']:
+            if 'polynomial_' + n in informative_colnames[i]:
+                is_calibration_coef = True
+                break
+
+        if not is_calibration_coef:
+            # let 12 be a max number of values for a tune to be categorical
+            if len(set(informative_tunes[:, i])) > 12:
+                continuous_tunes.append(informative_tunes[:, i])
+                continuous_names.append(informative_colnames[i])
+            else:
+                categorical_tunes.append(informative_tunes[:, i])
+                categorical_names.append(informative_colnames[i])
 
     continuous_tunes = numpy.array(continuous_tunes).T
     categorical_tunes = numpy.array(categorical_tunes).T
@@ -508,7 +552,7 @@ def calculate_MI(x, y):
 
     c_xy = numpy.histogram2d(x, y)[0]
     mi = mutual_info_score(None, None, contingency=c_xy)
-    return mi
+    return mi / numpy.log(2)
 
 
 def compute_mutual_info_between_tunes_and_features(features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=False):
@@ -530,8 +574,8 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
             mi = calculate_MI(features_cont[:, i], tunes_cont[:, j])
             df.iloc[i, j] = mi
 
-            # look into variables closer if MI > some value
-            if inspection_mode and mi > 0.9:
+            # look into variables closer if MI > 1 bit
+            if inspection_mode and mi > 1.:
                 fig, ax = pyplot.subplots(figsize=(10, 5))
 
                 ax.scatter(tunes_cont[:, j], features_cont[:, i])
@@ -546,7 +590,8 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
                 ax.spines['right'].set_visible(False)
                 pyplot.show()
 
-    print("number of pairs with MI > 0.9:", numpy.sum(df.values > 0.9))
+    print("number of pairs with MI > 1 bit:", numpy.sum(df.values > 1.))
+    print("number of pairs with MI < 0.1 bit:", numpy.sum(df.values < 0.1))
 
     # plot a heatmap
     seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False)
@@ -596,10 +641,19 @@ if __name__ == "__main__":
 
     if False:
         # CONDENSE AND SAVE FEATURES
-        perform_sparse_pca(filter_dmso=False)
+
+        from multiprocessing import Process
+        for n in [500, 1000]:
+            p = Process(target=perform_sparse_pca, args=(True, n,))
+            p.start()
+
+        # perform_sparse_pca(filter_dmso=True)
 
     if False:
         perform_pca(filter_dmso=False)
+
+    if False:
+        plot_pca_variance_explained(filter_dmso=True)
 
     if False:
 
@@ -699,7 +753,7 @@ if __name__ == "__main__":
 
         metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
             features_cont, features_names_cont, tunes_cont, tunes_names_cont, tunes_type='continuous', method="pearson",
-            inspection_mode=False
+            inspection_mode=True
         )
 
         metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
@@ -707,18 +761,18 @@ if __name__ == "__main__":
             inspection_mode=False
         )
 
-    if False:
+    if True:
         # MUTUAL INFO FEATURES-TUNES
 
-        # compute_mutual_info_between_tunes_and_features(
-        #     features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=True
-        # )
-
         compute_mutual_info_between_tunes_and_features(
-            features_cont, features_names_cont, tunes_cat, tunes_names_cat, inspection_mode=True
+            features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=False
         )
 
-    if True:
+        compute_mutual_info_between_tunes_and_features(
+            features_cont, features_names_cont, tunes_cat, tunes_names_cat, inspection_mode=False
+        )
+
+    if False:
         # CLASSIFICATION
         random_seed = 905
 
@@ -792,14 +846,14 @@ if __name__ == "__main__":
 
                 print("best params:", clf.best_params_, '\n')
 
-                inspect_feature_contributions = True
+                inspect_feature_contributions = False
                 if inspect_feature_contributions:
 
                     feature_contributions = (clf.best_estimator_.feature_importances_ * loadings.T).T
 
                     loading_sums = numpy.sum(numpy.abs(feature_contributions.values), axis=0)
 
-                    normalised_loadings = loading_sums / numpy.max(loading_sums)
+                    normalised_loadings = loading_sums / numpy.median(loading_sums)
 
                     print("number of features with 0 contribution:", numpy.where(normalised_loadings == 0)[0].shape[0])
 
@@ -817,6 +871,24 @@ if __name__ == "__main__":
                     pyplot.title("Features importances to predict {}".format(tunes_names_cat[i]))
                     pyplot.grid()
                     pyplot.show()
+
+                inspect_decision_tree = True
+                if inspect_decision_tree:
+
+                    import graphviz
+                    dot_data = tree.export_graphviz(clf.best_estimator_, out_file=None,
+                                                    feature_names=["PC{}".format(x) for x in range(1,16)],
+                                                    class_names=numpy.array([str(x) for x in list(set(y_val))]),
+                                                    filled=True, rounded=True,
+                                                    special_characters=True)
+                    graph = graphviz.Source(dot_data)
+
+                    # TODO: I can parse and edit graph representation to add classes in multiclass cases:
+                    #   - find nodes with entropy or gini == 0,
+                    #   - convert value representation to class (where it's [0 N], index of this array is the class)
+                    #   Easy, but haven't tried or tested.
+
+                    graph.render('/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/decision_trees/{}.gv.pdf'.format(tunes_names_cat[i]), view=False)
 
             else:
                 continue
