@@ -1,6 +1,7 @@
 import numpy, pandas, scipy, seaborn, math
 from sklearn.decomposition import SparsePCA
 from src.qcmg import db_connector
+from src.analysis import features_analysis
 import matplotlib.pyplot as plt
 from scipy.stats import ks_2samp, mannwhitneyu, kruskal
 from scipy.stats import chi2_contingency
@@ -285,7 +286,7 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
                         ax.spines['right'].set_visible(False)
                         plt.show()
 
-        print("number of pairs with correlation > 0.7:", numpy.sum(numpy.abs(df.values) > 0.7))
+        print("number of pairs with correlation > 0.6:", numpy.sum(numpy.abs(df.values) > 0.6))
 
         # plot a heatmap
         seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False)
@@ -315,7 +316,7 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
                 correlation_ratio = get_correlation_ratio(tunes[:, j], metrics[:, i])
 
                 # look into variables closer if correlation is high
-                if inspection_mode and correlation_ratio > 0.9:
+                if inspection_mode and correlation_ratio > 0.6:
 
                     fig, ax = plt.subplots(figsize=(10, 5))
 
@@ -333,7 +334,7 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
 
                 df.iloc[i, j] = correlation_ratio
 
-        print("number of pairs with correlation ratio > 0.9:", numpy.sum(numpy.abs(df.values) > 0.9))
+        print("number of pairs with correlation ratio > 0.8:", numpy.sum(numpy.abs(df.values) > 0.8))
 
         # plot a heatmap
         seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False)
@@ -341,7 +342,7 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
         plt.show()
 
 
-def plot_tunes_values_by_groups(tunes, index, group_1_indices, group_2_indices, group_names, metric_split_by, testing_result):
+def plot_tunes_values_by_groups(tunes, index, group_1_indices, group_2_indices, group_names, metric_split_by, testing_result, min_p=""):
     """ This method visualises samples of tunes that were statistically different.
         It makes scatter plots for two groups of values. """
 
@@ -363,6 +364,7 @@ def plot_tunes_values_by_groups(tunes, index, group_1_indices, group_2_indices, 
 
     seaborn.stripplot(x="groups", y=testing_result.columns[index], data=data)
     plt.grid()
+    plt.savefig("/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/metrics_different_split_by_tunes/{}_by_{}_p={}.pdf".format(testing_result.columns[index], metric_split_by, min_p))
     plt.show()
 
 
@@ -395,11 +397,12 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
 
         for i in range(df.shape[1]):
             if sum(df.iloc[:,i] <= level) >= 2:
+                min_p = str(round(numpy.min(df.iloc[:, i]), 3))
                 boolean_result.iloc[0,i] = True
 
                 # look into variables closer if they are statistically different
                 if inspection_mode:
-                    plot_tunes_values_by_groups(tunes, i, group_1_indices, group_2_indices, group_names, metric_split_by, boolean_result)
+                    plot_tunes_values_by_groups(tunes, i, group_1_indices, group_2_indices, group_names, metric_split_by, boolean_result, min_p=min_p)
 
         return pandas.concat([df, boolean_result], axis=0)
 
@@ -425,11 +428,12 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
 
         for i in range(df.shape[1]):
             if round(df.iloc[0, i], 2) <= level:
+                min_p = str(round(df.iloc[0, i], 3))
                 boolean_result.iloc[0, i] = True
 
                 # look into variables closer if they are statistically different
                 if inspection_mode:
-                    plot_tunes_values_by_groups(tunes, i, group_1_indices, group_2_indices, group_names, metric_split_by, boolean_result)
+                    plot_tunes_values_by_groups(tunes, i, group_1_indices, group_2_indices, group_names, metric_split_by, boolean_result, min_p=min_p)
 
         return pandas.concat([df, boolean_result], axis=0)
 
@@ -468,6 +472,7 @@ def get_tunes_and_names(path):
     database, colnames = db_connector.fetch_table(conn, "qc_tunes")
 
     tunes = numpy.array(database)
+    tunes = tunes[tunes[:, 2].argsort()]
 
     # extract numeric values only
     indices = [10, 13, 16]
@@ -504,6 +509,9 @@ def get_tunes_and_names(path):
 
     continuous_tunes = numpy.array(continuous_tunes).T
     categorical_tunes = numpy.array(categorical_tunes).T
+    continuous_names = numpy.array(continuous_names).T
+    categorical_names = numpy.array(categorical_names).T
+
 
     return continuous_tunes, continuous_names, categorical_tunes, categorical_names
 
@@ -626,7 +634,21 @@ if __name__ == "__main__":
     qc_tunes_database_path = "/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"
     qc_metrics_database_path = "/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_metrics_database.sqlite"
 
+    # read qc metrics
+    metrics, metrics_names, acquisition, quality = get_metrics_data(qc_metrics_database_path)
+    # read tunes
     continuous_tunes, continuous_names, categorical_tunes, categorical_names = get_tunes_and_names(qc_tunes_database_path)
+    # read meta data
+    full_meta_data = features_analysis.get_meta_data()
+
+    # FILTER OUT DMSO
+    ipa_h20_indices = numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]
+
+    continuous_tunes = continuous_tunes[ipa_h20_indices, :]
+    categorical_tunes = categorical_tunes[ipa_h20_indices, :]
+    metrics = metrics[ipa_h20_indices, :]
+    acquisition = acquisition[ipa_h20_indices]
+    quality = quality[ipa_h20_indices]
 
     if False:
 
@@ -656,16 +678,13 @@ if __name__ == "__main__":
         assess_cross_correlations(continuous_tunes, continuous_names, type='continuous', level=0.65)
         assess_cross_correlations(categorical_tunes, categorical_names, type='categorical', level=0.65)
 
-    # read qc metrics
-    metrics, metrics_names, acquisition, quality = get_metrics_data(qc_metrics_database_path)
-
     if False:
         # explore general correlations between tunes and metrics
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman", inspection_mode=True)
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman", inspection_mode=False)
         assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='categorical', inspection_mode=True)
 
-        # feed "categorical" tunes to spearman correlation
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='continuous', method="spearman", inspection_mode=True)
+        # # feed "categorical" tunes to spearman correlation
+        # assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='continuous', method="spearman", inspection_mode=True)
 
     if False:
         # define good or bad based on the score
@@ -686,16 +705,47 @@ if __name__ == "__main__":
                                                                                        inspection_mode=False)
 
     if False:
-        # test tunes grouped by a recent trend in resolution & baselines
-        good_resolution_indices = (quality == '1') * (acquisition < "2020-03-04")
-        bad_resolution_indices = (quality == '1') * (acquisition >= "2020-03-04")
+        # # test tunes grouped by a recent trend in resolution & baselines
+        # good_resolution_indices = (quality == '1') * (acquisition < "2020-03-04")
+        # bad_resolution_indices = (quality == '1') * (acquisition >= "2020-03-04")
+
+        good_resolution_indices = metrics[:, 1] < numpy.percentile(metrics[:, 1], 90)
+        bad_resolution_indices = metrics[:, 1] >= numpy.percentile(metrics[:, 1], 90)
 
         comparisons_for_resolution_trend = {
-            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_resolution_indices, bad_resolution_indices, ["normal", "decreasing"], "resolution\ trend",
-                                                                 tunes_type="continuous", inspection_mode=False),
-            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, good_resolution_indices, bad_resolution_indices,  ["normal", "decreasing"], "resolution\ trend",
-                                                                  tunes_type="categorical", inspection_mode=False)
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_resolution_indices, bad_resolution_indices, ["good", "bad"], "mass\ accuracy",
+                                                                 tunes_type="continuous", inspection_mode=True),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, good_resolution_indices, bad_resolution_indices,  ["good", "bad"], "mass\ accuracy",
+                                                                  tunes_type="categorical", inspection_mode=True)
         }
+
+    if False:
+        # this code I used to generate plots:
+        # - how tunes evolve with time (just examples)
+        # - how metrics split by tunes are different
+        # all done with hardcode
+
+        x = [x for x in range(categorical_tunes.shape[0])][21:88][::2]
+        y = categorical_tunes[:, 18][21:88][::2]
+
+        dates = numpy.sort(full_meta_data.iloc[ipa_h20_indices, :]['acquisition_date'].values)[21:88][::2]
+        dates = [str(date)[:10] for date in dates]
+
+        plt.plot(x, y, 'o-')
+        plt.xticks(ticks=x, labels=dates, rotation='vertical')
+        plt.title("Ion Focus")
+        plt.grid()
+        plt.tight_layout()
+        plt.savefig("/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/fig4-1.pdf")
+        plt.show()
+
+        # first_group_indices = numpy.concatenate([[False for x in range(9)], [True for x in range(36-9)], [False for x in range(100-36)]])
+        # second_group_indices = numpy.concatenate([[False for x in range(41)], [True for x in range(68-41)], [False for x in range(100-68)]])
+        #
+        # comparisons = {
+        #     "continuous": test_tunes_for_statistical_differences(metrics, metrics_names, first_group_indices, second_group_indices, ["group 1", "group 2"], "Amp_Offset", level=0.05,
+        #                                                          tunes_type="continuous", inspection_mode=True)
+        # }
 
     if False:
         # test tunes grouped by trends in chemical_dirt
@@ -738,9 +788,9 @@ if __name__ == "__main__":
 
         comparisons_for_instrument_noise_levels = {
             "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, higher_noise_indices, lower_noise_indices, ["higher level", "lower level"], "instrument\ noise",
-                                                                 tunes_type="continuous", inspection_mode=False),
+                                                                 tunes_type="continuous", inspection_mode=True),
             "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, higher_noise_indices, lower_noise_indices, ["higher level", "lower level"], "instrument\ noise",
-                                                                  tunes_type="categorical", inspection_mode=False)
+                                                                  tunes_type="categorical", inspection_mode=True)
         }
 
     if False:
@@ -755,8 +805,7 @@ if __name__ == "__main__":
                                                                   tunes_type="categorical", inspection_mode=False)
         }
 
-    pass
-
+    print()
 
 
 

@@ -92,7 +92,6 @@ def plot_pca_variance_explained(filter_dmso=True):
     else:
         file_mark = "with_dmso"
 
-
     transformer = PCA()
     scaler = StandardScaler()
 
@@ -102,15 +101,18 @@ def plot_pca_variance_explained(filter_dmso=True):
     # x = range(len(transformer.explained_variance_ratio_))
     # y = [sum(transformer.explained_variance_ratio_[:i]) for i in x]
 
-    x = range(len(transformer.explained_variance_ratio_))[::5]
+    x = range(1, 1 + len(transformer.explained_variance_ratio_))[::5]
     y = transformer.explained_variance_ratio_[::5]
 
-    pyplot.plot(x, y, '--bo')
+    pyplot.plot(x, y, '--b.')
     pyplot.grid()
     pyplot.title("PCA: explained variance")
     pyplot.xlabel("Principal components")
     pyplot.ylabel("Percent of total variance")
+    pyplot.xticks(x)
+    pyplot.tight_layout()
     pyplot.show()
+    # pyplot.savefig("/Users/dmitrav/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/img/fig1a.pdf")
 
 
 def perform_sparse_pca(filter_dmso=True, n=None):
@@ -594,12 +596,14 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
     print("number of pairs with MI < 0.1 bit:", numpy.sum(df.values < 0.1))
 
     # plot a heatmap
-    seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False)
+    df = df.iloc[numpy.where(df.values > 0.9)[0], :]
+
+    ax = pyplot.axes()
+    seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False, ax=ax)
+    ax.set_title("Mutual information: features-tunes")
     pyplot.tight_layout()
     pyplot.show()
-
-
-from scipy.stats import chi2_contingency
+    # pyplot.savefig("/Users/dmitrav/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/img/fig3-1.pdf")
 
 
 def calc_MI(x, y, bins=None):
@@ -642,12 +646,12 @@ if __name__ == "__main__":
     if False:
         # CONDENSE AND SAVE FEATURES
 
-        from multiprocessing import Process
-        for n in [500, 1000]:
-            p = Process(target=perform_sparse_pca, args=(True, n,))
-            p.start()
+        # from multiprocessing import Process
+        # for n in [500, 1000]:
+        #     p = Process(target=perform_sparse_pca, args=(True, n,))
+        #     p.start()
 
-        # perform_sparse_pca(filter_dmso=True)
+        perform_sparse_pca(filter_dmso=True, n=100)
 
     if False:
         perform_pca(filter_dmso=False)
@@ -661,6 +665,9 @@ if __name__ == "__main__":
             # FIND INFORMATIVE FEATURES
             loading_sums = numpy.sum(numpy.abs(loadings.values), axis=0)
 
+            # normalize
+            loading_sums = loading_sums / numpy.max(loading_sums)
+
             print("number of features with 0 contribution:", numpy.where(loading_sums == 0)[0].shape[0])
 
             _, _, colnames = get_features_data()
@@ -673,10 +680,11 @@ if __name__ == "__main__":
 
             print("Normality test p =", scipy.stats.shapiro(loading_sums[numpy.where(loading_sums > 0)]).pvalue)
 
-            seaborn.distplot(loading_sums[numpy.where(loading_sums > 0)])
-            pyplot.title("Total features' contributions")
+            seaborn.distplot(loading_sums[numpy.where(loading_sums >= 0)])
+            pyplot.title("Sparse PCA features' loadings")
             pyplot.grid()
             pyplot.show()
+            # pyplot.savefig("/Users/dmitrav/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/img/fig1b.pdf")
 
         if False:
             # PLOT PC DISTRIBUTIONS
@@ -733,7 +741,11 @@ if __name__ == "__main__":
 
     if False:
         # CROSS CORRELATIONS FEATURES
-        df = pandas.DataFrame(features_cont).corr()
+
+        df = pandas.DataFrame(features_cont)
+        df = df.iloc[:, 800:1500]
+
+        df = df.corr()
 
         """ some key observations:
             1) ~97% of pairs correlate with r < 0.5, 
@@ -744,9 +756,12 @@ if __name__ == "__main__":
             4) majority of continuous features don't cross-correlate much """
 
         # plot a heatmap
+
         seaborn.heatmap(df)
+        pyplot.title("Cross-correlations: features")
         pyplot.tight_layout()
-        pyplot.show()
+        # pyplot.show()
+        pyplot.savefig("/Users/dmitrav/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/img/fig2.pdf")
 
     if False:
         # CORRELATIONS FEATURES-TUNES
@@ -764,9 +779,9 @@ if __name__ == "__main__":
     if True:
         # MUTUAL INFO FEATURES-TUNES
 
-        compute_mutual_info_between_tunes_and_features(
-            features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=False
-        )
+        # compute_mutual_info_between_tunes_and_features(
+        #     features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=False
+        # )
 
         compute_mutual_info_between_tunes_and_features(
             features_cont, features_names_cont, tunes_cat, tunes_names_cat, inspection_mode=False
@@ -846,14 +861,14 @@ if __name__ == "__main__":
 
                 print("best params:", clf.best_params_, '\n')
 
-                inspect_feature_contributions = False
+                inspect_feature_contributions = True
                 if inspect_feature_contributions:
 
                     feature_contributions = (clf.best_estimator_.feature_importances_ * loadings.T).T
 
                     loading_sums = numpy.sum(numpy.abs(feature_contributions.values), axis=0)
 
-                    normalised_loadings = loading_sums / numpy.median(loading_sums)
+                    normalised_loadings = loading_sums / numpy.max(loading_sums)
 
                     print("number of features with 0 contribution:", numpy.where(normalised_loadings == 0)[0].shape[0])
 
@@ -867,12 +882,15 @@ if __name__ == "__main__":
                               sep="")
                     print()
 
+                    pyplot.figure()
                     seaborn.distplot(normalised_loadings[numpy.where(loading_sums > 0)])
                     pyplot.title("Features importances to predict {}".format(tunes_names_cat[i]))
                     pyplot.grid()
                     pyplot.show()
+                    # pyplot.savefig("/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/feature_importances_in_tunes_prediction/{}.pdf".format(tunes_names_cat[i]))
 
-                inspect_decision_tree = True
+
+                inspect_decision_tree = False
                 if inspect_decision_tree:
 
                     import graphviz
