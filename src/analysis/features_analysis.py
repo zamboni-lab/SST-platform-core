@@ -1,5 +1,5 @@
 
-import numpy, pandas, scipy, seaborn, math, time
+import numpy, pandas, scipy, seaborn, math, time, umap
 from sklearn.decomposition import SparsePCA, PCA
 from sklearn.preprocessing import StandardScaler, LabelEncoder, label_binarize, MinMaxScaler
 from src.qcmg import db_connector
@@ -126,6 +126,7 @@ def perform_sparse_pca(filter_dmso=True, n=None):
         full_meta_data = get_meta_data()
         ipa_h20_indices = numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]
         features = features[ipa_h20_indices,:]
+        print('dmso filtered: {} entries remained'.format(features.shape[0]))
 
         file_mark = "without_dmso"
     else:
@@ -160,8 +161,8 @@ def perform_sparse_pca(filter_dmso=True, n=None):
     # fraction of zero values in the components_ (sparsity)
     print("Sparsity:", round(numpy.mean(transformer.components_ == 0), 3))
 
-    pandas.DataFrame(transformer.components_).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_{}_n={}.csv'.format(file_mark, number_of_components), index=False)
-    pandas.DataFrame(features_transformed).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_{}_n={}.csv'.format(file_mark, number_of_components), index=False)
+    pandas.DataFrame(transformer.components_).to_csv('/Users/andreidm/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_{}_n={}.csv'.format(file_mark, number_of_components), index=False)
+    pandas.DataFrame(features_transformed).to_csv('/Users/andreidm/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_{}_n={}.csv'.format(file_mark, number_of_components), index=False)
 
 
 def perform_pca(filter_dmso=True):
@@ -205,7 +206,7 @@ def perform_pca(filter_dmso=True):
     # # pandas.DataFrame(features_transformed).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_{}.csv'.format(file_mark), index=False)
 
 
-def get_features_data(path="/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
+def get_features_data(path="/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
     """ This method read metrics database,
         returns a matrix with metrics, metrics names, arrays of quality and acquisitions dates. """
 
@@ -226,7 +227,7 @@ def get_features_data(path="/Users/dmitrav/ETH/projects/monitoring_system/res/na
     return meta, features, colnames
 
 
-def get_meta_data(path="/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
+def get_meta_data(path="/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
     """ This method read metrics database,
         returns a matrix with metrics, metrics names, arrays of quality and acquisitions dates. """
 
@@ -328,7 +329,7 @@ def perform_hierarchical_clustering_and_plot(features):
     pyplot.show()
 
 
-def get_tunes_and_names(path="/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"):
+def get_tunes_and_names(path="/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"):
     """ This method reads a database with tunes, makes some preprocessing and returns
         categorical and continuous tunes with names. """
 
@@ -622,8 +623,8 @@ if __name__ == "__main__":
 
     if True:
         # GET DATA
-        condensed_features = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_without_dmso_n=15.csv")
-        loadings = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_without_dmso_n=15.csv")
+        condensed_features = pandas.read_csv("/Users/andreidm/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_without_dmso_n=15.csv")
+        loadings = pandas.read_csv("/Users/andreidm/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_without_dmso_n=15.csv")
 
         meta_info, features, colnames = get_features_data()
         features_cont, features_names_cont, features_cat, features_names_cat = split_features_to_cont_and_cat(features, numpy.array(colnames[4:]))
@@ -651,7 +652,7 @@ if __name__ == "__main__":
         #     p = Process(target=perform_sparse_pca, args=(True, n,))
         #     p.start()
 
-        perform_sparse_pca(filter_dmso=True, n=100)
+        perform_sparse_pca(filter_dmso=True)
 
     if False:
         perform_pca(filter_dmso=False)
@@ -776,7 +777,7 @@ if __name__ == "__main__":
             inspection_mode=False
         )
 
-    if True:
+    if False:
         # MUTUAL INFO FEATURES-TUNES
 
         # compute_mutual_info_between_tunes_and_features(
@@ -985,3 +986,47 @@ if __name__ == "__main__":
                 ax.annotate(txt, xy=(Y[i, 0], Y[i, 1]), xytext=(3, 3), textcoords='offset points')
 
             pyplot.show()
+
+    if True:
+
+        neighbors = [5, 10, 15]
+        metric = 'euclidean'
+        min_dist = 0.1
+
+        start = time.time()
+        scaled_data = StandardScaler().fit_transform(features_cont)
+        print('scaling took {} s'.format(time.time() - start))
+
+        pyplot.subplots(nrows=1, ncols=3, figsize=(9, 3))
+        seaborn.set(font_scale=1.)
+        seaborn.color_palette('colorblind')
+        seaborn.axes_style('whitegrid')
+
+        # # for annotation
+        # dates = []
+        # for date in full_meta_data.loc[ipa_h20_indices, 'acquisition_date'].values:
+        #     if '2020-03' in date:
+        #         dates.append(date[:10])
+        #     else:
+        #         dates.append('')
+
+        for i, n in enumerate(neighbors):
+            reducer = umap.UMAP(n_neighbors=n, metric=metric, min_dist=min_dist)
+            start = time.time()
+            embedding = reducer.fit_transform(scaled_data)
+            print('umap transform with n = {} took {} s'.format(n, time.time() - start))
+
+            pyplot.subplot(1, 3, i + 1)
+            seaborn.scatterplot(x=embedding[:, 0], y=embedding[:, 1], alpha=0.7)
+            pyplot.title('UMAP: n={}, metric={}, min_dist={}'.format(n, metric, min_dist))
+
+            # # annotate points
+            # for i in range(len(dates)):
+            #     pyplot.annotate(dates[i],  # this is the text
+            #                  (embedding[i, 0], embedding[i, 1]),  # this is the point to label
+            #                  textcoords="offset points",  # how to position the text
+            #                  xytext=(0, 10),  # distance from text to points (x,y)
+            #                  ha='center')  # horizontal alignment can be left, right or center
+
+        pyplot.show()
+        # pyplot.savefig(save_plots_to + 'umap_batch1_{}.pdf'.format(metric))
