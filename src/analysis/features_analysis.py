@@ -989,44 +989,46 @@ if __name__ == "__main__":
 
     if True:
 
-        neighbors = [5, 10, 15]
-        metric = 'euclidean'
-        min_dist = 0.1
+        neighbors = [15, 15, 15]
+        metrics = ['correlation', 'euclidean', 'cosine']
+        min_dist = 0.3
 
         start = time.time()
         scaled_data = StandardScaler().fit_transform(features_cont)
         print('scaling took {} s'.format(time.time() - start))
 
-        pyplot.subplots(nrows=1, ncols=3, figsize=(9, 3))
-        seaborn.set(font_scale=1.)
+        pyplot.subplots(nrows=1, ncols=3, figsize=(12, 4))
+        seaborn.set(font_scale=.8)
         seaborn.color_palette('colorblind')
         seaborn.axes_style('whitegrid')
 
-        # # for annotation
-        # dates = []
-        # for date in full_meta_data.loc[ipa_h20_indices, 'acquisition_date'].values:
-        #     if '2020-03' in date:
-        #         dates.append(date[:10])
-        #     else:
-        #         dates.append('')
+        # for annotation
+        dates = []
+        for date in full_meta_data.loc[ipa_h20_indices, 'acquisition_date'].values:
+            if '' in date:
+                dates.append(date[:10])
+            else:
+                dates.append('')
 
         for i, n in enumerate(neighbors):
-            reducer = umap.UMAP(n_neighbors=n, metric=metric, min_dist=min_dist)
+            reducer = umap.UMAP(n_neighbors=n, metric=metrics[i], min_dist=min_dist)
             start = time.time()
             embedding = reducer.fit_transform(scaled_data)
             print('umap transform with n = {} took {} s'.format(n, time.time() - start))
 
             pyplot.subplot(1, 3, i + 1)
-            seaborn.scatterplot(x=embedding[:, 0], y=embedding[:, 1], alpha=0.7)
-            pyplot.title('UMAP: n={}, metric={}, min_dist={}'.format(n, metric, min_dist))
+            seaborn.scatterplot(x=embedding[:, 0], y=embedding[:, 1], alpha=0.8)
+            pyplot.title('UMAP: n={}, metric={}'.format(n, metrics[i]), fontsize=12)
 
-            # # annotate points
-            # for i in range(len(dates)):
-            #     pyplot.annotate(dates[i],  # this is the text
-            #                  (embedding[i, 0], embedding[i, 1]),  # this is the point to label
-            #                  textcoords="offset points",  # how to position the text
-            #                  xytext=(0, 10),  # distance from text to points (x,y)
-            #                  ha='center')  # horizontal alignment can be left, right or center
+            # annotate points
+            for i in range(len(dates)):
+                pyplot.annotate(dates[i],  # this is the text
+                                (embedding[i, 0], embedding[i, 1]),  # this is the point to label
+                                textcoords="offset points",  # how to position the text
+                                xytext=(0, 3),  # distance from text to points (x,y)
+                                ha='center',  # horizontal alignment can be left, right or center
+                                fontsize=4)
 
-        pyplot.show()
-        # pyplot.savefig(save_plots_to + 'umap_batch1_{}.pdf'.format(metric))
+        # pyplot.show()
+        pyplot.tight_layout()
+        pyplot.savefig('/Users/andreidm/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/img/umap/umap_features.pdf')
