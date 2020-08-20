@@ -637,8 +637,6 @@ if __name__ == "__main__":
         # FILTER OUT DMSO
         ipa_h20_indices = numpy.where(full_meta_data['buffer_id'] == 'IPA_H2O')[0]
 
-        # condensed_features = condensed_features.iloc[ipa_h20_indices, :]
-
         features_cat = features_cat[ipa_h20_indices, :]
         features_cont = features_cont[ipa_h20_indices, :]
         tunes_cat = tunes_cat[ipa_h20_indices, :]
@@ -887,11 +885,10 @@ if __name__ == "__main__":
                     seaborn.distplot(normalised_loadings[numpy.where(loading_sums > 0)])
                     pyplot.title("Features importances to predict {}".format(tunes_names_cat[i]))
                     pyplot.grid()
-                    pyplot.show()
-                    # pyplot.savefig("/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/feature_importances_in_tunes_prediction/{}.pdf".format(tunes_names_cat[i]))
+                    # pyplot.show()
+                    pyplot.savefig("/Users/andreidm/ETH/projects/monitoring_system/res/analysis/feature_importances_in_tunes_prediction/{}.pdf".format(tunes_names_cat[i]))
 
-
-                inspect_decision_tree = False
+                inspect_decision_tree = True
                 if inspect_decision_tree:
 
                     import graphviz
@@ -907,13 +904,13 @@ if __name__ == "__main__":
                     #   - convert value representation to class (where it's [0 N], index of this array is the class)
                     #   Easy, but haven't tried or tested.
 
-                    graph.render('/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/decision_trees/{}.gv.pdf'.format(tunes_names_cat[i]), view=False)
+                    graph.render('/Users/andreidm/ETH/projects/monitoring_system/res/analysis/decision_trees/{}.gv.pdf'.format(tunes_names_cat[i]), view=False)
 
             else:
                 continue
 
-        # results.to_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/tunes_predictions_without_dmso_n=15.csv")
-        # print("predictions saved")
+        results.to_csv("/Users/andreidm/ETH/projects/monitoring_system/res/analysis/tunes_predictions_without_dmso_n=15.csv")
+        print("predictions saved")
 
     if False:
         # REGRESSION: sucks (why?)
@@ -987,7 +984,9 @@ if __name__ == "__main__":
 
             pyplot.show()
 
-    if True:
+    if False:
+
+        random_seed = 905
 
         neighbors = [15, 15, 15]
         metrics = ['correlation', 'euclidean', 'cosine']
@@ -1011,7 +1010,7 @@ if __name__ == "__main__":
                 dates.append('')
 
         for i, n in enumerate(neighbors):
-            reducer = umap.UMAP(n_neighbors=n, metric=metrics[i], min_dist=min_dist)
+            reducer = umap.UMAP(n_neighbors=n, metric=metrics[i], min_dist=min_dist, random_state=random_seed)
             start = time.time()
             embedding = reducer.fit_transform(scaled_data)
             print('umap transform with n = {} took {} s'.format(n, time.time() - start))
@@ -1032,3 +1031,69 @@ if __name__ == "__main__":
         # pyplot.show()
         pyplot.tight_layout()
         pyplot.savefig('/Users/andreidm/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/img/umap/umap_features.pdf')
+
+    if True:
+
+        random_seed = 905
+
+        neighbors = 15
+        metric = 'cosine'
+        min_dist = 0.1
+
+        start = time.time()
+        scaled_data = StandardScaler().fit_transform(features_cont)
+        print('scaling took {} s'.format(time.time() - start))
+
+        seaborn.set(font_scale=.8)
+        seaborn.color_palette('colorblind')
+        seaborn.axes_style('whitegrid')
+
+        # for annotation
+        dates = []
+        for date in full_meta_data.loc[ipa_h20_indices, 'acquisition_date'].values:
+            if '' in date:
+                dates.append(date[:10])
+            else:
+                dates.append('')
+
+        reducer = umap.UMAP(n_neighbors=neighbors, metric=metric, min_dist=min_dist, random_state=random_seed)
+        start = time.time()
+        embedding = reducer.fit_transform(scaled_data)
+        print('umap transform with n = {} took {} s'.format(neighbors, time.time() - start))
+
+        # tune_values = tunes_cat[:, tunes_names_cat.index('InstrumentFW')]
+        # tune_names = ['InstrumentFW='+str(val) for val in tune_values]
+        #
+        # pyplot.subplot(121)
+        # seaborn.scatterplot(x=embedding[:, 0], y=embedding[:, 1], hue=tune_names, alpha=1)
+        # pyplot.title('UMAP on QC features: n={}, metric={}'.format(neighbors, metric), fontsize=12)
+        #
+        # # annotate points
+        # for i in range(len(dates)):
+        #     pyplot.annotate(dates[i],  # this is the text
+        #                     (embedding[i, 0], embedding[i, 1]),  # this is the point to label
+        #                     textcoords="offset points",  # how to position the text
+        #                     xytext=(0, 3),  # distance from text to points (x,y)
+        #                     ha='center',  # horizontal alignment can be left, right or center
+        #                     fontsize=4)
+
+        tune_values = tunes_cat[:, tunes_names_cat.index('Mirror_Mid')]
+        tune_names = ['value='+str(round(val, 1)) for val in tune_values]
+
+        pyplot.figure(figsize=(8,6))
+        seaborn.scatterplot(x=embedding[:, 0], y=embedding[:, 1], hue=tune_names, alpha=1)
+        pyplot.title('UMAP on QC features: n={}, metric={}'.format(neighbors, metric), fontsize=12)
+
+        # annotate points
+        for i in range(len(dates)):
+            pyplot.annotate(dates[i],  # this is the text
+                            (embedding[i, 0], embedding[i, 1]),  # this is the point to label
+                            textcoords="offset points",  # how to position the text
+                            xytext=(0, 3),  # distance from text to points (x,y)
+                            ha='center',  # horizontal alignment can be left, right or center
+                            fontsize=4)
+
+        pyplot.legend(title='Mirror_Mid', bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., fontsize=10)
+        pyplot.tight_layout()
+        pyplot.show()
+        # pyplot.savefig('/Users/andreidm/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/img/umap/umap_mirror_mid.pdf')
