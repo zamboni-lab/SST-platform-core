@@ -8,14 +8,15 @@ from src import logger
 from email.mime.text import MIMEText
 
 
-def send_new_qc_notification(qualities):
+def send_new_qc_notification(qualities, info):
     """ This method sends a notification of a successful execution on a new QC file."""
 
     SUBJECT = 'New QC added'
 
     TEXT = 'Hi there,\n\n' \
-           'New QC run has just been processed.\n' \
-           'Score: ' + str(sum(qualities)) + '/' + str(len(qualities)) + \
+           'A new QC run with {} buffer has just been processed.\n'.format(info['buffer']) + \
+           'Score: ' + str(sum(qualities)) + '/' + str(len(qualities)) + '\n' + \
+           'Total: ' + str(info['total_qcs']) + \
            '\nMore details:\n' \
            'http://imsb-nz-crazy/qc' \
            '\n\nCheers,\n' \

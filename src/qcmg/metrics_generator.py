@@ -358,7 +358,7 @@ def calculate_metrics_and_update_qc_databases(ms_run, in_debug_mode=False):
     add_signal_to_noise_metrics(metrics_values, metrics_names, ms_run)
 
     # assign quality for each metric based on previous records
-    metrics_qualities = assign_metrics_qualities(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
+    metrics_qualities, info = assign_metrics_qualities(metrics_values, metrics_names, ms_run, in_debug_mode=in_debug_mode)
     metrics_qualities = [int(x) for x in metrics_qualities]
     quality = int(sum(metrics_qualities) >= int(len(all_metrics) * percent_of_good[anomaly_detection_method]))
 
@@ -400,7 +400,7 @@ def calculate_metrics_and_update_qc_databases(ms_run, in_debug_mode=False):
         # if the databases already exist
         db_connector.insert_new_qc_run(new_qc_run, in_debug_mode=in_debug_mode)
         logger.print_qc_info('QC databases have been updated\n')
-        notifier.send_new_qc_notification(metrics_qualities)
+        notifier.send_new_qc_notification(metrics_qualities, info)
 
 
 def create_and_fill_quality_table_using_percentiles(data):
@@ -598,9 +598,13 @@ def assign_metrics_qualities(last_run_metrics, metrics_names, last_ms_run, in_de
     """ This method calculates quality values for metrics of the last run,
         based on the previous entries of QC metrics database. """
 
+    buffer = last_ms_run['buffer_id']
+    total_qcs = 0
+
     if not (os.path.isfile(qc_metrics_database_path) or os.path.isfile(qc_features_database_path) or os.path.isfile(qc_tunes_database_path)):
         # if there's yet no databases, return all "good"
         qualities = [1 for x in last_run_metrics]
+        total_qcs += 1
 
     else:
         metrics_db = db_connector.create_connection(qc_metrics_database_path)
@@ -608,7 +612,8 @@ def assign_metrics_qualities(last_run_metrics, metrics_names, last_ms_run, in_de
         meta_data, colnames = db_connector.fetch_table(metrics_db, "qc_meta")
         meta_data = pandas.DataFrame(meta_data, columns=colnames)
         # get meta_ids of all runs corresponding to the same buffer
-        meta_ids = meta_data.loc[meta_data['buffer_id'] == last_ms_run['buffer_id'], 'id']
+        meta_ids = meta_data.loc[meta_data['buffer_id'] == buffer, 'id']
+        total_qcs = meta_ids.shape[0] + 1
 
         # get metrics data with meta_ids corresponding to the same buffer
         metrics_data, colnames = db_connector.fetch_table(metrics_db, "qc_metrics")
@@ -640,7 +645,7 @@ def assign_metrics_qualities(last_run_metrics, metrics_names, last_ms_run, in_de
             # and predict qualities of this run, based on previous runs
             qualities = recompute_quality_table_and_predict_new_qualities(last_run_metrics, metrics_names, metrics_data, qualities_data)
 
-    return qualities
+    return qualities, {'buffer': buffer, 'total_qcs': total_qcs}
 
 
 if __name__ == '__main__':
