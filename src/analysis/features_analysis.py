@@ -181,7 +181,7 @@ def perform_pca(filter_dmso=True):
     else:
         file_mark = "with_dmso"
 
-    transformer = PCA(n_components=10)
+    transformer = PCA(n_components=100)
     scaler = StandardScaler()
 
     scaled_features = scaler.fit_transform(features)
@@ -206,7 +206,7 @@ def perform_pca(filter_dmso=True):
     # # pandas.DataFrame(features_transformed).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_{}.csv'.format(file_mark), index=False)
 
 
-def get_features_data(path="/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
+def get_features_data(path="/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
     """ This method read metrics database,
         returns a matrix with metrics, metrics names, arrays of quality and acquisitions dates. """
 
@@ -227,7 +227,7 @@ def get_features_data(path="/Users/andreidm/ETH/projects/monitoring_system/res/n
     return meta, features, colnames
 
 
-def get_meta_data(path="/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
+def get_meta_data(path="/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
     """ This method read metrics database,
         returns a matrix with metrics, metrics names, arrays of quality and acquisitions dates. """
 
@@ -329,7 +329,7 @@ def perform_hierarchical_clustering_and_plot(features):
     pyplot.show()
 
 
-def get_tunes_and_names(path="/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"):
+def get_tunes_and_names(path="/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"):
     """ This method reads a database with tunes, makes some preprocessing and returns
         categorical and continuous tunes with names. """
 
@@ -405,17 +405,17 @@ def perform_global_clustering(condensed_features, title=""):
     return labels
 
 
-def find_and_perform_best_clustering(samples_labels, features, title=""):
+def find_and_perform_best_clustering(samples_labels, features, max_t=30, method='ward', title=""):
     """ More special clustering:
         1) finding the best score,
         2) filtering out single classes,
         3) finding the best score again """
 
-    Z = linkage(features, 'ward')
+    Z = linkage(features, method)
 
     results = {'t': [], 'score': [], 'labels': []}
 
-    for t in range(2, 30):
+    for t in range(2, max_t):
         clusters = fcluster(Z, t=t, criterion='maxclust')
         score = silhouette_score(features, clusters)
 
@@ -440,6 +440,7 @@ def find_and_perform_best_clustering(samples_labels, features, title=""):
 
     # drop outliers
     features.insert(0, 'label', samples_labels)
+    # SHOULDN'T indices be +1, because of insertion?
     features = features.drop(features.index[qc_outliers_indices])
     print("dropped:", qc_outliers_indices)
 
@@ -453,10 +454,10 @@ def find_and_perform_best_clustering(samples_labels, features, title=""):
     results = {'t': [], 'score': []}
 
     # find best score again
-    for t in range(2, 30):
+    for t in range(2, max_t):
         clusters = fcluster(Z, t=t, criterion='maxclust')
         score = silhouette_score(features, clusters)
-        # print("t=", t, "score=", score)
+        print("t =", t, "score =", score)
 
         results['t'].append(t)
         results['score'].append(score)
@@ -472,16 +473,24 @@ def find_and_perform_best_clustering(samples_labels, features, title=""):
     samples_indices = features.index
     features.index = samples_labels
     dn = hierarchy.dendrogram(Z, labels=features.index, leaf_rotation=90)
+
+    # # plot with no labels
+    # dn = hierarchy.dendrogram(Z)
+    # plot = pyplot.gca()
+    # plot.axes.get_xaxis().set_visible(False)
+
     pyplot.title(title + ", t={}".format(best_t) + ", score={}".format(score))
     pyplot.tight_layout()
     pyplot.show()
 
+    # print cluster groups
     cluster_groups = {}
     for i in range(len(samples_indices)):
         if clusters[i] not in cluster_groups.keys():
-            cluster_groups[clusters[i]] = [samples_indices[i]]
+            cluster_groups[clusters[i]] = {'labels': [samples_labels[i]], 'indices': [samples_indices[i]]}
         else:
-            cluster_groups[clusters[i]].append(samples_indices[i])
+            cluster_groups[clusters[i]]['labels'].append(samples_labels[i])
+            cluster_groups[clusters[i]]['indices'].append(samples_indices[i])
 
     return cluster_groups
 
@@ -623,8 +632,8 @@ if __name__ == "__main__":
 
     if True:
         # GET DATA
-        condensed_features = pandas.read_csv("/Users/andreidm/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_without_dmso_n=15.csv")
-        loadings = pandas.read_csv("/Users/andreidm/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_without_dmso_n=15.csv")
+        condensed_features = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_without_dmso_n=15.csv")
+        loadings = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_without_dmso_n=15.csv")
 
         meta_info, features, colnames = get_features_data()
         features_cont, features_names_cont, features_cat, features_names_cat = split_features_to_cont_and_cat(features, numpy.array(colnames[4:]))
@@ -742,6 +751,95 @@ if __name__ == "__main__":
         # CROSS CORRELATIONS FEATURES
 
         df = pandas.DataFrame(features_cont)
+        df = df.corr()
+        df = df.fillna(0)
+
+        predictions = find_and_perform_best_clustering(features_names_cont, df[:], max_t=30, title="QC features cross-correlations")
+
+        for group in predictions:
+            print("\nGroup", group)
+            print('size:', len(predictions[group]['indices']), '\n')
+            values = df.iloc[:, predictions[group]['indices']].values.flatten()
+            values = values[values <= 1.]
+
+            print("min = ",  numpy.min(values))
+            print("median =",  numpy.median(values))
+            print("max =",  numpy.max(values), '\n')
+
+            for feature in predictions[group]['labels']:
+                print(feature)
+
+            seaborn.distplot(values, label=group)
+            pyplot.title('Group ' + str(group))
+            pyplot.show()
+
+    if False:
+        # TRENDS FOR FEATURES = f(TUNES):
+        # Ion Focus
+
+        x = [x for x in range(tunes_cat.shape[0])][21:88][::2]
+        y = tunes_cat[:, 18][21:88][::2]
+
+        dates = numpy.sort(full_meta_data.iloc[ipa_h20_indices, :]['acquisition_date'].values)[21:88][::2]
+        dates = [str(date)[:10] for date in dates]
+
+        pyplot.plot(x, y, 'o-')
+        pyplot.xticks(ticks=x, labels=dates, rotation='vertical')
+        pyplot.title("Ion Focus")
+        pyplot.grid()
+        pyplot.tight_layout()
+        pyplot.savefig("/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/features_different_split_by_tunes/ion_focus_drop.pdf")
+        # pyplot.show()
+
+        first_group_indices = numpy.concatenate([[False for x in range(55)], [True for x in range(88 - 55)], [False for x in range(100 - 88)]])
+        second_group_indices = numpy.concatenate([[False for x in range(21)], [True for x in range(55 - 21)], [False for x in range(100 - 55)]])
+
+        comparisons = {
+            "continuous": metrics_tunes_analysis.test_tunes_for_statistical_differences(
+                features_cont, features_names_cont,
+                first_group_indices, second_group_indices,
+                ["group 1", "group 2"], "Ion Focus", level=0.01, tunes_type="continuous", inspection_mode=True)
+        }
+
+        print("Number of significantly different QC features:", comparisons['continuous'].iloc[3,:].sum())
+
+    if True:
+        # TRENDS FOR FEATURES = f(TUNES):
+        # TOF Vac
+
+        x = [x for x in range(tunes_cont.shape[0])][70:97]
+        y = tunes_cont[:, 1][70:97]
+
+        dates = numpy.sort(full_meta_data.iloc[ipa_h20_indices, :]['acquisition_date'].values)[70:97]
+        dates = [str(date)[:10] for date in dates]
+
+        pyplot.plot(x, y, 'o-')
+        pyplot.xticks(ticks=x, labels=dates, rotation='vertical')
+        pyplot.title("TOF Vac")
+        pyplot.grid()
+        pyplot.tight_layout()
+        pyplot.savefig("/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/features_different_split_by_tunes/tof_vac_drop.pdf")
+        # pyplot.show()
+
+        first_group_indices = numpy.concatenate([[False for x in range(70)], [True for x in range(88 - 70)], [False for x in range(100 - 88)]])
+        second_group_indices = numpy.concatenate([[False for x in range(88)], [True for x in range(97 - 88)], [False for x in range(100 - 97)]])
+
+        print()
+
+        comparisons = {
+            "continuous": metrics_tunes_analysis.test_tunes_for_statistical_differences(
+                features_cont, features_names_cont,
+                first_group_indices, second_group_indices,
+                ["group 1", "group 2"], "TOF_Vac", level=0.05, tunes_type="continuous", inspection_mode=True)
+        }
+
+        print("Number of significantly different QC features:", comparisons['continuous'].iloc[3,:].sum())
+
+
+    if False:
+        # CROSS CORRELATIONS FEATURES
+
+        df = pandas.DataFrame(features_cont)
         df = df.iloc[:, 800:1500]
 
         df = df.corr()
@@ -755,24 +853,29 @@ if __name__ == "__main__":
             4) majority of continuous features don't cross-correlate much """
 
         # plot a heatmap
-
         seaborn.heatmap(df)
         pyplot.title("Cross-correlations: features")
         pyplot.tight_layout()
-        # pyplot.show()
-        pyplot.savefig("/Users/dmitrav/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/img/fig2.pdf")
+        pyplot.show()
+        # pyplot.savefig("/Users/dmitrav/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/img/fig2.pdf")
+
 
     if False:
         # CORRELATIONS FEATURES-TUNES
 
-        metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
-            features_cont, features_names_cont, tunes_cont, tunes_names_cont, tunes_type='continuous', method="pearson",
-            inspection_mode=True
-        )
+        # metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
+        #     features_cont, features_names_cont, tunes_cont, tunes_names_cont, tunes_type='continuous', method="pearson",
+        #     inspection_mode=True
+        # )
+        #
+        # metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
+        #     features_cont, features_names_cont, tunes_cat, tunes_names_cat, tunes_type='categorical',
+        #     inspection_mode=True
+        # )
 
         metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
-            features_cont, features_names_cont, tunes_cat, tunes_names_cat, tunes_type='categorical',
-            inspection_mode=False
+            features_cont, features_names_cont, tunes_cat, tunes_names_cat, tunes_type='continuous',
+            inspection_mode=True
         )
 
     if False:
@@ -783,7 +886,7 @@ if __name__ == "__main__":
         # )
 
         compute_mutual_info_between_tunes_and_features(
-            features_cont, features_names_cont, tunes_cat, tunes_names_cat, inspection_mode=False
+            features_cont, features_names_cont, tunes_cat, tunes_names_cat, inspection_mode=True
         )
 
     if False:
@@ -1032,7 +1135,7 @@ if __name__ == "__main__":
         pyplot.tight_layout()
         pyplot.savefig('/Users/andreidm/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/img/umap/umap_features.pdf')
 
-    if True:
+    if False:
 
         random_seed = 905
 

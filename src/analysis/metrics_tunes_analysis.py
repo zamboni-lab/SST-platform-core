@@ -334,7 +334,7 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
 
                 df.iloc[i, j] = correlation_ratio
 
-        print("number of pairs with correlation ratio > 0.8:", numpy.sum(numpy.abs(df.values) > 0.8))
+        print("number of pairs with correlation ratio > 0.6:", numpy.sum(numpy.abs(df.values) > 0.6))
 
         # plot a heatmap
         seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False)
@@ -342,7 +342,7 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
         plt.show()
 
 
-def plot_tunes_values_by_groups(tunes, index, group_1_indices, group_2_indices, group_names, metric_split_by, testing_result, min_p=""):
+def plot_tunes_values_by_groups(tunes, index, group_1_indices, group_2_indices, group_names, metric_split_by, testing_result, max_p=""):
     """ This method visualises samples of tunes that were statistically different.
         It makes scatter plots for two groups of values. """
 
@@ -364,8 +364,8 @@ def plot_tunes_values_by_groups(tunes, index, group_1_indices, group_2_indices, 
 
     seaborn.stripplot(x="groups", y=testing_result.columns[index], data=data)
     plt.grid()
-    plt.savefig("/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/metrics_different_split_by_tunes/{}_by_{}_p={}.pdf".format(testing_result.columns[index], metric_split_by, min_p))
-    plt.show()
+    plt.savefig("/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/features_different_split_by_tunes/{}_by_{}_p={}.pdf".format(testing_result.columns[index], metric_split_by, max_p))
+    # plt.show()
 
 
 def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, group_2_indices, group_names, metric_split_by, tunes_type="continuous", level=0.05, inspection_mode=False):
@@ -380,9 +380,28 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
 
         for i in range(tunes.shape[1]):
             # test continuous tunes of group 1 and group 2 runs
-            p1 = ks_2samp(tunes[group_1_indices, i], tunes[group_2_indices, i])[1]
-            p2 = mannwhitneyu(tunes[group_1_indices, i], tunes[group_2_indices, i])[1]
-            p3 = kruskal(tunes[group_1_indices, i], tunes[group_2_indices, i])[1]
+
+            group_1_values = tunes[group_1_indices, i][tunes[group_1_indices, i] != -1]  # filtering out missing values
+            group_2_values = tunes[group_2_indices, i][tunes[group_2_indices, i] != -1]  # filtering out missing values
+
+            try:
+                p1 = ks_2samp(group_1_values, group_2_values)[1]
+                if numpy.isnan(p1):
+                    p1 = 1.
+            except Exception:
+                p1 = 1.
+            try:
+                p2 = mannwhitneyu(group_1_values, group_2_values)[1]
+                if numpy.isnan(p2):
+                    p2 = 1.
+            except Exception:
+                p2 = 1.
+            try:
+                p3 = kruskal(group_1_values, group_2_values)[1]
+                if numpy.isnan(p3):
+                    p3 = 1.
+            except Exception:
+                p3 = 1.
 
             df.iloc[:, i] = numpy.array([p1, p2, p3])
 
@@ -396,13 +415,13 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
         boolean_result.columns = tunes_names
 
         for i in range(df.shape[1]):
-            if sum(df.iloc[:,i] <= level) >= 2:
-                min_p = str(round(numpy.min(df.iloc[:, i]), 3))
+            if sum(df.iloc[:,i] <= level) >= 3:
+                max_p = str(round(numpy.max(df.iloc[:, i]), 3))
                 boolean_result.iloc[0,i] = True
 
                 # look into variables closer if they are statistically different
                 if inspection_mode:
-                    plot_tunes_values_by_groups(tunes, i, group_1_indices, group_2_indices, group_names, metric_split_by, boolean_result, min_p=min_p)
+                    plot_tunes_values_by_groups(tunes, i, group_1_indices, group_2_indices, group_names, metric_split_by, boolean_result, max_p=max_p)
 
         return pandas.concat([df, boolean_result], axis=0)
 
@@ -719,33 +738,33 @@ if __name__ == "__main__":
                                                                   tunes_type="categorical", inspection_mode=True)
         }
 
-    if False:
+    if True:
         # this code I used to generate plots:
         # - how tunes evolve with time (just examples)
         # - how metrics split by tunes are different
         # all done with hardcode
 
-        x = [x for x in range(categorical_tunes.shape[0])][21:88][::2]
-        y = categorical_tunes[:, 18][21:88][::2]
-
-        dates = numpy.sort(full_meta_data.iloc[ipa_h20_indices, :]['acquisition_date'].values)[21:88][::2]
-        dates = [str(date)[:10] for date in dates]
-
-        plt.plot(x, y, 'o-')
-        plt.xticks(ticks=x, labels=dates, rotation='vertical')
-        plt.title("Ion Focus")
-        plt.grid()
-        plt.tight_layout()
-        plt.savefig("/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/fig4-1.pdf")
-        plt.show()
-
-        # first_group_indices = numpy.concatenate([[False for x in range(9)], [True for x in range(36-9)], [False for x in range(100-36)]])
-        # second_group_indices = numpy.concatenate([[False for x in range(41)], [True for x in range(68-41)], [False for x in range(100-68)]])
+        # x = [x for x in range(categorical_tunes.shape[0])][21:88][::2]
+        # y = categorical_tunes[:, 18][21:88][::2]
         #
-        # comparisons = {
-        #     "continuous": test_tunes_for_statistical_differences(metrics, metrics_names, first_group_indices, second_group_indices, ["group 1", "group 2"], "Amp_Offset", level=0.05,
-        #                                                          tunes_type="continuous", inspection_mode=True)
-        # }
+        # dates = numpy.sort(full_meta_data.iloc[ipa_h20_indices, :]['acquisition_date'].values)[21:88][::2]
+        # dates = [str(date)[:10] for date in dates]
+        #
+        # plt.plot(x, y, 'o-')
+        # plt.xticks(ticks=x, labels=dates, rotation='vertical')
+        # plt.title("Ion Focus")
+        # plt.grid()
+        # plt.tight_layout()
+        # # plt.savefig("/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/fig4-1.pdf")
+        # plt.show()
+
+        first_group_indices = numpy.concatenate([[False for x in range(9)], [True for x in range(36-9)], [False for x in range(100-36)]])
+        second_group_indices = numpy.concatenate([[False for x in range(41)], [True for x in range(68-41)], [False for x in range(100-68)]])
+
+        comparisons = {
+            "continuous": test_tunes_for_statistical_differences(metrics, metrics_names, first_group_indices, second_group_indices, ["group 1", "group 2"], "Amp_Offset", level=0.05,
+                                                                 tunes_type="continuous", inspection_mode=True)
+        }
 
     if False:
         # test tunes grouped by trends in chemical_dirt
