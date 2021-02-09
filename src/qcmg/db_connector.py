@@ -73,7 +73,7 @@ def remove_row_from_table_by_id(conn, table_name, id):
     sql = ''' DELETE FROM table_name
               WHERE id=? '''
 
-    sql = sql.replace("table_name", table_name).replace("?", id)
+    sql = sql.replace("table_name", table_name).replace("?", str(id))
 
     cur = conn.cursor()
     cur.execute(sql)
@@ -574,7 +574,10 @@ def add_quality_column_to_databases(qualities, meta_ids):
     update_column_in_database(tunes_db, "qc_tunes", "quality", qualities, "meta_id", meta_ids)
 
 
-def update_all_databases_with_qualities(quality_table, metrics_data):
+def update_all_databases_with_qualities(quality_table, metrics_data,
+                                        metrics_db_path=qc_metrics_database_path,
+                                        features_db_path=qc_features_database_path,
+                                        tunes_db_path=qc_tunes_database_path):
     """ This methods updates the quality column (summed over all metrics) and qualities for each QC metric
         to all the databases. """
 
@@ -582,9 +585,9 @@ def update_all_databases_with_qualities(quality_table, metrics_data):
     main_qualities = [int(x) for x in quality_table['quality'].tolist()]
 
     # connect to all dbs
-    metrics_db = create_connection(qc_metrics_database_path)
-    features_db = create_connection(qc_features_database_path)
-    tunes_db = create_connection(qc_tunes_database_path)
+    metrics_db = create_connection(metrics_db_path)
+    features_db = create_connection(features_db_path)
+    tunes_db = create_connection(tunes_db_path)
 
     # update qc_metrics_qualities table in qc_metrics database
     for metric_name in all_metrics:

@@ -13,6 +13,10 @@ new_features_database_path = folder + 'qc_features_15_12_20.sqlite'
 new_tunes_database_path = folder + 'qc_tunes_15_12_20.sqlite'
 in_debug_mode = True
 
+qc_tunes_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"
+qc_metrics_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_metrics_database.sqlite"
+qc_features_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"
+
 
 def assign_metrics_qualities_for_local_db(last_run_metrics, metrics_names, buffer):
     """ This method calculates quality values for metrics of the last run,
@@ -22,13 +26,13 @@ def assign_metrics_qualities_for_local_db(last_run_metrics, metrics_names, buffe
 
     total_qcs = 0
 
-    if not (os.path.isfile(qc_metrics_database_path) or os.path.isfile(qc_features_database_path) or os.path.isfile(qc_tunes_database_path)):
+    if not (os.path.isfile(new_metrics_database_path) or os.path.isfile(new_features_database_path) or os.path.isfile(new_tunes_database_path)):
         # if there's yet no databases, return all "good"
         qualities = [1 for x in last_run_metrics]
         total_qcs += 1
 
     else:
-        metrics_db = db_connector.create_connection(qc_metrics_database_path)
+        metrics_db = db_connector.create_connection(new_metrics_database_path)
 
         meta_data, colnames = db_connector.fetch_table(metrics_db, "qc_meta")
         meta_data = pandas.DataFrame(meta_data, columns=colnames)
@@ -56,7 +60,10 @@ def assign_metrics_qualities_for_local_db(last_run_metrics, metrics_names, buffe
             # compute quality table for the first time
             quality_table = metrics_generator.recompute_quality_table_for_all_runs(last_run_metrics, metrics_data)
 
-            db_connector.update_all_databases_with_qualities(quality_table, metrics_data)
+            db_connector.update_all_databases_with_qualities(quality_table, metrics_data,
+                                                             metrics_db_path=new_metrics_database_path,
+                                                             features_db_path=new_features_database_path,
+                                                             tunes_db_path=new_tunes_database_path)
 
             # last run metrics qualities are in the last row of quality table now
             qualities = list(quality_table.iloc[-1, 1:])
@@ -64,16 +71,19 @@ def assign_metrics_qualities_for_local_db(last_run_metrics, metrics_names, buffe
         else:
             # recompute qualities for all the previous runs in the db,
             # and predict qualities of this run, based on previous runs
-            qualities = metrics_generator.recompute_quality_table_and_predict_new_qualities(last_run_metrics, metrics_names, metrics_data, qualities_data)
+            quality_table, qualities = metrics_generator.estimate_qualities_using_iforest(last_run_metrics, metrics_data)
+
+            db_connector.update_all_databases_with_qualities(quality_table, metrics_data,
+                                                             metrics_db_path=new_metrics_database_path,
+                                                             features_db_path=new_features_database_path,
+                                                             tunes_db_path=new_tunes_database_path)
 
     return qualities, {'buffer': buffer, 'total_qcs': total_qcs}
 
 
-if __name__ == '__main__':
-
-    qc_tunes_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"
-    qc_metrics_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_metrics_database.sqlite"
-    qc_features_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"
+def split_databases():
+    """ This method moves 191 single day (15-12-2020) QC injections to a new database.
+        6 QC injections (of 2 batches) from that day are kept in the common database. """
 
     # read qc metrics
     metrics, metrics_names, acquisition, quality = metrics_tunes_analysis.get_metrics_data(qc_metrics_database_path)
@@ -85,13 +95,12 @@ if __name__ == '__main__':
     features_meta, features, features_names = features_analysis.get_features_data(path=qc_features_database_path)
 
     # FILTER
-    rep_indices = [numpy.where(full_meta_data['acquisition_date'].values == x)[0][0] for x in full_meta_data['acquisition_date'].values if x[:10] == '2020-12-15']
+    rep_indices = [numpy.where(full_meta_data['acquisition_date'].values == x)[0][0] for x in
+                   full_meta_data['acquisition_date'].values if x[:10] == '2020-12-15']
 
     tunes = tunes[numpy.array(rep_indices), :]
     metrics = metrics[numpy.array(rep_indices), :]
-    acquisition = acquisition[numpy.array(rep_indices)]
     features = features[numpy.array(rep_indices), :]
-    features_meta = features_meta[numpy.array(rep_indices), :]
     full_meta_data = full_meta_data.iloc[numpy.array(rep_indices), :]
 
     for i in range(metrics.shape[0]):
@@ -161,9 +170,15 @@ if __name__ == '__main__':
             print('QC databases have been updated')
 
         # REMOVE from the old db
-        run_id = full_meta_data['id'].values[i]
-        db_connector.remove_row_from_all_databases_by_id(run_id,
-                                                         metrics_db_path=qc_metrics_database_path,
-                                                         features_db_path=qc_features_database_path,
-                                                         tunes_db_path=qc_tunes_database_path)
-        print('Run ID {} has been removed from old databases\n'.format(run_id))
+        run_id = str(full_meta_data['id'].values[i])
+
+        if run_id not in ['157', '158', '159', '242', '249', '250']:
+            db_connector.remove_row_from_all_databases_by_id(run_id,
+                                                             metrics_db_path=qc_metrics_database_path,
+                                                             features_db_path=qc_features_database_path,
+                                                             tunes_db_path=qc_tunes_database_path)
+            print('Run ID {} has been removed from old databases\n'.format(run_id))
+
+
+if __name__ == '__main__':
+    split_databases()
