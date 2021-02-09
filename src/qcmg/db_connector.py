@@ -67,6 +67,40 @@ def add_column_to_database(conn, table_name, column_name, column_type):
     conn.commit()
 
 
+def remove_row_from_table_by_id(conn, table_name, id):
+    """ This method removes a row of given id from an existing database. """
+
+    sql = ''' DELETE FROM table_name
+              WHERE id=? '''
+
+    sql = sql.replace("table_name", table_name).replace("?", id)
+
+    cur = conn.cursor()
+    cur.execute(sql)
+    conn.commit()
+
+
+def remove_row_from_all_databases_by_id(run_id,
+                                        features_db_path=qc_features_database_path,
+                                        metrics_db_path=qc_metrics_database_path,
+                                        tunes_db_path=qc_tunes_database_path):
+    """ This method removes a row with a given id from all tables of all databases. """
+
+    conn = create_connection(features_db_path)
+    remove_row_from_table_by_id(conn, 'qc_features_1', run_id)
+    remove_row_from_table_by_id(conn, 'qc_features_2', run_id)
+    remove_row_from_table_by_id(conn, 'qc_meta', run_id)
+
+    conn = create_connection(metrics_db_path)
+    remove_row_from_table_by_id(conn, 'qc_metrics', run_id)
+    remove_row_from_table_by_id(conn, 'qc_metrics_qualities', run_id)
+    remove_row_from_table_by_id(conn, 'qc_meta', run_id)
+
+    conn = create_connection(tunes_db_path)
+    remove_row_from_table_by_id(conn, 'qc_tunes', run_id)
+    remove_row_from_table_by_id(conn, 'qc_meta', run_id)
+
+
 def insert_qc_metrics(db, qc_run, meta_id):
     """ Adds last runs QC  metrics values to the table. """
 
@@ -115,6 +149,9 @@ def insert_qc_metrics_qualities(db, qc_run, meta_id):
     db.commit()
 
     return cur.lastrowid
+
+
+
 
 
 def insert_qc_features(db, new_qc_run, meta_id):

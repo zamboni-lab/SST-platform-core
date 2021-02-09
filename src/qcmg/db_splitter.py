@@ -101,6 +101,7 @@ if __name__ == '__main__':
         metrics_qualities = [int(x) for x in metrics_qualities]
         quality = int(sum(metrics_qualities) >= int(len(all_metrics) * percent_of_good[anomaly_detection_method]))
 
+        # prepare information for copying
         new_qc_run = {
 
             'md5': full_meta_data['md5'].values[i],
@@ -112,15 +113,15 @@ if __name__ == '__main__':
             'buffer_id': full_meta_data['buffer_id'].values[i],
             'msfe_version': full_meta_data['msfe_version'].values[i],
             'scans_processed': {
-                'normal': [full_meta_data['norm_scan_1'].values[i],
-                           full_meta_data['norm_scan_2'].values[i],
-                           full_meta_data['norm_scan_3'].values[i]],
+                'normal': [int(full_meta_data['norm_scan_1'].values[i]),
+                           int(full_meta_data['norm_scan_2'].values[i]),
+                           int(full_meta_data['norm_scan_3'].values[i])],
                 'chemical_noise': [17],  # constant
                 'instrument_noise': [174]  # constant
             },
 
             'features_values': list(features[i, :]),
-            'features_names': features_names,
+            'features_names': features_names[4:],
             'metrics_values': list(metrics[i, :]),
             'metrics_names': metrics_names,
             'metrics_qualities': metrics_qualities,
@@ -139,6 +140,7 @@ if __name__ == '__main__':
             'quality': quality
         }
 
+        # COPY to a new db
         if not (os.path.isfile(new_metrics_database_path) or os.path.isfile(new_features_database_path)
                 or os.path.isfile(new_tunes_database_path)):
 
@@ -148,7 +150,7 @@ if __name__ == '__main__':
                                                       features_db_path=new_features_database_path,
                                                       tunes_db_path=new_tunes_database_path,
                                                       in_debug_mode=in_debug_mode)
-            print('New QC databases have been created (SQLite)\n')
+            print('New QC databases have been created (SQLite)')
         else:
             # if the databases already exist
             db_connector.insert_new_qc_run(new_qc_run,
@@ -156,5 +158,12 @@ if __name__ == '__main__':
                                            features_db_path=new_features_database_path,
                                            tunes_db_path=new_tunes_database_path,
                                            in_debug_mode=in_debug_mode)
-            print('QC databases have been updated\n')
+            print('QC databases have been updated')
 
+        # REMOVE from the old db
+        run_id = full_meta_data['id'].values[i]
+        db_connector.remove_row_from_all_databases_by_id(run_id,
+                                                         metrics_db_path=qc_metrics_database_path,
+                                                         features_db_path=qc_features_database_path,
+                                                         tunes_db_path=qc_tunes_database_path)
+        print('Run ID {} has been removed from old databases\n'.format(run_id))
