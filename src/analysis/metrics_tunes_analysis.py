@@ -483,7 +483,7 @@ def get_contingency_table(tunes, index, group_1_indices, group_2_indices):
     return numpy.array([good_values_occurencies, bad_values_occurencies])
 
 
-def get_tunes_and_names(path):
+def get_tunes_and_names(path, no_filter=False):
     """ This method reads a database with tunes, makes some preprocessing and returns
         categorical and continuous tunes with names. """
 
@@ -492,6 +492,10 @@ def get_tunes_and_names(path):
 
     tunes = numpy.array(database)
     tunes = tunes[tunes[:, 2].argsort()]
+
+    if no_filter:
+        # get a db as is
+        return tunes, colnames
 
     # extract numeric values only
     indices = [10, 13, 16]
@@ -530,7 +534,6 @@ def get_tunes_and_names(path):
     categorical_tunes = numpy.array(categorical_tunes).T
     continuous_names = numpy.array(continuous_names).T
     categorical_names = numpy.array(categorical_names).T
-
 
     return continuous_tunes, continuous_names, categorical_tunes, categorical_names
 

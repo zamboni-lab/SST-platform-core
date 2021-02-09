@@ -1,5 +1,5 @@
 
-msfe_version = '0.4.21'
+msfe_version = '0.4.23'
 chemical_mix_id = '20190522_4GHz'
 
 
@@ -77,7 +77,7 @@ gmail_sender = 'mass.spec.monitor@gmail.com'
 gmail_password = 'metabeta1'
 
 error_recipients = ['andreidm@ethz.ch']
-new_qcs_recipients = ['andreidm@ethz.ch', 'reid@imsb.biol.ethz.ch', 'zamboni@imsb.biol.ethz.ch']
+new_qcs_recipients = ['andreidm@ethz.ch', 'zamboni@imsb.biol.ethz.ch']
 
 
 """ QC METRICS GENERATOR (QCMG) CONSTANTS """
