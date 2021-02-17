@@ -641,14 +641,34 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
                 ax.spines['right'].set_visible(False)
                 pyplot.show()
 
-    print("number of pairs with MI > 1 bit:", numpy.sum(df.values > 1.))
+    print("number of pairs with MI > 0.9 bit:", numpy.sum(df.values > .9))
     print("number of pairs with MI < 0.1 bit:", numpy.sum(df.values < 0.1))
 
     # plot a heatmap
-    df = df.iloc[numpy.where(df.values > 0.9)[0], :]
+    df = df.iloc[numpy.where(df.values > 1.)[0], :]
 
+    features_types = sorted(type_generator.get_feature_types(df.index))
+
+    pyplot.figure(figsize=(9,9))
     ax = pyplot.axes()
-    seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False, ax=ax)
+    res = seaborn.heatmap(df, xticklabels=df.columns, yticklabels=features_types, ax=ax)
+    res.set_yticklabels(res.get_ymajorticklabels(), fontsize=6)
+    ax.set_title("Mutual information: features-tunes")
+    pyplot.tight_layout()
+    pyplot.show()
+    # pyplot.savefig("/Users/dmitrav/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/img/fig3-1.pdf")
+
+    features_masses = type_generator.get_mass_types(df.index)
+    # substitute tuples with the first element
+    for i, mass_type in enumerate(features_masses):
+        if isinstance(mass_type, tuple):
+            features_masses[i] = mass_type[0]
+    features_masses = sorted(features_masses)
+
+    pyplot.figure(figsize=(9,9))
+    ax = pyplot.axes()
+    res = seaborn.heatmap(df, xticklabels=df.columns, yticklabels=features_masses, ax=ax)
+    res.set_yticklabels(res.get_ymajorticklabels(), fontsize=6)
     ax.set_title("Mutual information: features-tunes")
     pyplot.tight_layout()
     pyplot.show()
@@ -834,7 +854,7 @@ if __name__ == "__main__":
         pyplot.tight_layout()
         pyplot.show()
 
-    if True:
+    if False:
         # CROSS CORRELATIONS FEATURES: CLUSTER ENRICHMENTS WITH MASS TYPES
 
         df = pandas.DataFrame(features_cont)
@@ -993,15 +1013,15 @@ if __name__ == "__main__":
             inspection_mode=True
         )
 
-    if False:
+    if True:
         # MUTUAL INFO FEATURES-TUNES
 
-        # compute_mutual_info_between_tunes_and_features(
-        #     features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=False
-        # )
+        compute_mutual_info_between_tunes_and_features(
+            features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=False
+        )
 
         compute_mutual_info_between_tunes_and_features(
-            features_cont, features_names_cont, tunes_cat, tunes_names_cat, inspection_mode=True
+            features_cont, features_names_cont, tunes_cat, tunes_names_cat, inspection_mode=False
         )
 
     if False:
