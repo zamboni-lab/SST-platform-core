@@ -22,7 +22,6 @@ from src.qcmg import db_connector
 from src.constants import qc_metrics_database_path
 
 
-
 def extract_peak_features(continuous_mz, fitted_intensity, fit_info, spectrum, centroids_indexes, peak_id):
     """ This method extracts features related to expected ions of interest and expected mixture chemicals. """
 

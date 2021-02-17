@@ -795,12 +795,15 @@ if __name__ == "__main__":
 
         predictions = perform_best_clustering(features_names_cont, df[:], 88, title="QC features cross-correlations", no_labels=True)
 
+        # TODO: set up a matrix of features types over clusters
+
         for group in predictions:
             print("\nGroup", group)
             print('size:', len(predictions[group]['indices']))
             values = df.iloc[predictions[group]['indices'], predictions[group]['indices']].values.flatten()
             print("median =",  numpy.median(values))
 
+            # TODO: fill in the matrix
 
 
     if False:
