@@ -788,14 +788,14 @@ if __name__ == "__main__":
 
         print(predictions)
 
-    if True:
-        # CROSS CORRELATIONS FEATURES
+    if False:
+        # CROSS CORRELATIONS FEATURES: CLUSTER ENRICHMENTS WITH FEATURES TYPES
 
         df = pandas.DataFrame(features_cont)
         df = df.corr()
         df = df.fillna(0)
 
-        n_clusters = 88  # second best is 3
+        n_clusters = 88  # the best is 88, the second best is 3
 
         predictions = perform_best_clustering(features_names_cont, df[:], n_clusters, title="QC features cross-correlations", no_labels=True)
 
@@ -814,11 +814,11 @@ if __name__ == "__main__":
             medians.append(numpy.median(values))
             print("median =",  numpy.median(values))
 
-            group_types = type_generator.get_feature_types(predictions[group]['labels'])
-            unique_types = list(set(group_types))
-            counts = [group_types.count(x) for x in unique_types]
+            group_masses = type_generator.get_feature_types(predictions[group]['labels'])
+            unique_masses = list(set(group_masses))
+            counts = [group_masses.count(x) for x in unique_masses]
 
-            for i, group_type in enumerate(unique_types):
+            for i, group_type in enumerate(unique_masses):
                 # fill in the heatmap
                 cluster_enrichments.loc[group_type, group] += counts[i]
 
@@ -830,7 +830,63 @@ if __name__ == "__main__":
 
         pyplot.figure(figsize=(12,6))
         seaborn.heatmap(cluster_enrichments, xticklabels=cluster_enrichments.columns, yticklabels=cluster_enrichments.index)
-        pyplot.title("Cluster enrichments: features' cross-correlations")
+        pyplot.title("Cluster enrichments with types: features' cross-correlations")
+        pyplot.tight_layout()
+        pyplot.show()
+
+    if True:
+        # CROSS CORRELATIONS FEATURES: CLUSTER ENRICHMENTS WITH MASS TYPES
+
+        df = pandas.DataFrame(features_cont)
+        df = df.corr()
+        df = df.fillna(0)
+
+        n_clusters = 88  # the best is 88, the second best is 3
+
+        predictions = perform_best_clustering(features_names_cont, df[:], n_clusters, title="QC features cross-correlations", no_labels=True)
+
+        all_types = [x for x in type_generator.get_mass_types(features_names_cont) if not isinstance(x, tuple)]
+        all_types = sorted(list(set(all_types)))
+
+        cluster_enrichments = pandas.DataFrame(columns=[x+1 for x in range(n_clusters)], index=all_types)
+        cluster_enrichments = cluster_enrichments.fillna(0)
+
+        medians = []
+        groups = []
+        for group in predictions:
+            print("\nGroup", group)
+            print('size:', len(predictions[group]['indices']))
+            values = df.iloc[predictions[group]['indices'], predictions[group]['indices']].values.flatten()
+
+            groups.append(group)
+            medians.append(numpy.median(values))
+            print("median =",  numpy.median(values))
+
+            group_masses = type_generator.get_mass_types(predictions[group]['labels'])
+            unique_masses = list(set(group_masses))
+            counts = [group_masses.count(x) for x in unique_masses]
+
+            for i, group_type in enumerate(unique_masses):
+
+                if isinstance(group_type, str):
+                    # fill in the heatmap
+                    cluster_enrichments.loc[group_type, group] += counts[i]
+                elif isinstance(group_type, tuple):
+                    # fill in the heatmap for two types with half count for each
+                    cluster_enrichments.loc[group_type[0], group] += counts[i]
+                    cluster_enrichments.loc[group_type[1], group] += counts[i]
+                else:
+                    raise ValueError('Unrecognized group type')
+
+        # sort columns by increasing cross-correlation median
+        sorted_groups = numpy.array([groups[medians.index(x)] for x in sorted(medians)])
+        cluster_enrichments = cluster_enrichments.loc[:, sorted_groups]
+
+        print('\ntotal sum =', cluster_enrichments.sum().sum())  # debug
+
+        pyplot.figure(figsize=(12,6))
+        seaborn.heatmap(cluster_enrichments, xticklabels=cluster_enrichments.columns, yticklabels=cluster_enrichments.index)
+        pyplot.title("Cluster enrichments with masses: features' cross-correlations")
         pyplot.tight_layout()
         pyplot.show()
 
