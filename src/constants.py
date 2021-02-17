@@ -1,6 +1,7 @@
 
-msfe_version = '0.4.25'
+msfe_version = '0.4.26'
 chemical_mix_id = '20190522_4GHz'
+user = 'andreidm'
 
 
 def get_buffer_id(date):

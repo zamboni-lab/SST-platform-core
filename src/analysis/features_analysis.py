@@ -3,6 +3,7 @@ import numpy, pandas, scipy, seaborn, math, time, umap
 from sklearn.decomposition import SparsePCA, PCA
 from sklearn.preprocessing import StandardScaler, LabelEncoder, label_binarize, MinMaxScaler
 from src.qcmg import db_connector
+from src.constants import user
 from matplotlib import pyplot
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from scipy.cluster.hierarchy import dendrogram
@@ -206,7 +207,7 @@ def perform_pca(filter_dmso=True):
     # # pandas.DataFrame(features_transformed).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_{}.csv'.format(file_mark), index=False)
 
 
-def get_features_data(path="/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
+def get_features_data(path="/Users/{}/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite".format(user)):
     """ This method read metrics database,
         returns a matrix with metrics, metrics names, arrays of quality and acquisitions dates. """
 
@@ -227,7 +228,7 @@ def get_features_data(path="/Users/dmitrav/ETH/projects/monitoring_system/res/na
     return meta, features, colnames
 
 
-def get_meta_data(path="/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite"):
+def get_meta_data(path="/Users/{}/ETH/projects/monitoring_system/res/nas2/qc_features_database.sqlite".format(user)):
     """ This method read metrics database,
         returns a matrix with metrics, metrics names, arrays of quality and acquisitions dates. """
 
@@ -329,7 +330,7 @@ def perform_hierarchical_clustering_and_plot(features):
     pyplot.show()
 
 
-def get_tunes_and_names(path="/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"):
+def get_tunes_and_names(path="/Users/{}/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite".format(user)):
     """ This method reads a database with tunes, makes some preprocessing and returns
         categorical and continuous tunes with names. """
 
@@ -405,7 +406,42 @@ def perform_global_clustering(condensed_features, title=""):
     return labels
 
 
-def find_and_perform_best_clustering(samples_labels, features, max_t=30, method='ward', title=""):
+def perform_best_clustering(samples_labels, features, best_t, method='ward', title="", no_labels=False):
+
+    # recompute Z
+    Z = linkage(features, method)
+
+    clusters = fcluster(Z, t=best_t, criterion='maxclust')
+    score = round(silhouette_score(features, clusters), 3)
+    print("clustering score =", score)
+
+    samples_indices = features.index
+
+    if no_labels:
+        # plot with no labels
+        dn = hierarchy.dendrogram(Z)
+        plot = pyplot.gca()
+        plot.axes.get_xaxis().set_visible(False)
+    else:
+        dn = hierarchy.dendrogram(Z, labels=samples_labels, leaf_rotation=90)
+
+    pyplot.title(title + ", t={}".format(best_t) + ", score={}".format(score))
+    pyplot.tight_layout()
+    pyplot.show()
+
+    # print cluster groups
+    cluster_groups = {}
+    for i in range(len(samples_indices)):
+        if clusters[i] not in cluster_groups.keys():
+            cluster_groups[clusters[i]] = {'labels': [samples_labels[i]], 'indices': [samples_indices[i]]}
+        else:
+            cluster_groups[clusters[i]]['labels'].append(samples_labels[i])
+            cluster_groups[clusters[i]]['indices'].append(samples_indices[i])
+
+    return cluster_groups
+
+
+def find_and_perform_best_clustering(samples_labels, features, max_t=30, method='ward', title="", no_labels=False):
     """ More special clustering:
         1) finding the best score,
         2) filtering out single classes,
@@ -471,13 +507,14 @@ def find_and_perform_best_clustering(samples_labels, features, max_t=30, method=
     print("t =", best_t)
 
     samples_indices = features.index
-    features.index = samples_labels
-    dn = hierarchy.dendrogram(Z, labels=features.index, leaf_rotation=90)
 
-    # # plot with no labels
-    # dn = hierarchy.dendrogram(Z)
-    # plot = pyplot.gca()
-    # plot.axes.get_xaxis().set_visible(False)
+    if no_labels:
+        # plot with no labels
+        dn = hierarchy.dendrogram(Z)
+        plot = pyplot.gca()
+        plot.axes.get_xaxis().set_visible(False)
+    else:
+        dn = hierarchy.dendrogram(Z, labels=samples_labels, leaf_rotation=90)
 
     pyplot.title(title + ", t={}".format(best_t) + ", score={}".format(score))
     pyplot.tight_layout()
@@ -632,8 +669,10 @@ if __name__ == "__main__":
 
     if True:
         # GET DATA
-        condensed_features = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_without_dmso_n=15.csv")
-        loadings = pandas.read_csv("/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_without_dmso_n=15.csv")
+
+        # # not updated with the latest db
+        # condensed_features = pandas.read_csv("/Users/{}/ETH/projects/monitoring_system/res/nas2/sparse_pca_features_without_dmso_n=15.csv".format(user))
+        # loadings = pandas.read_csv("/Users/{}/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_without_dmso_n=15.csv".format(user))
 
         meta_info, features, colnames = get_features_data()
         features_cont, features_names_cont, features_cat, features_names_cat = split_features_to_cont_and_cat(features, numpy.array(colnames[4:]))
@@ -747,31 +786,22 @@ if __name__ == "__main__":
 
         print(predictions)
 
-    if False:
+    if True:
         # CROSS CORRELATIONS FEATURES
 
         df = pandas.DataFrame(features_cont)
         df = df.corr()
         df = df.fillna(0)
 
-        predictions = find_and_perform_best_clustering(features_names_cont, df[:], max_t=30, title="QC features cross-correlations")
+        predictions = perform_best_clustering(features_names_cont, df[:], 88, title="QC features cross-correlations", no_labels=True)
 
         for group in predictions:
             print("\nGroup", group)
-            print('size:', len(predictions[group]['indices']), '\n')
-            values = df.iloc[:, predictions[group]['indices']].values.flatten()
-            values = values[values <= 1.]
-
-            print("min = ",  numpy.min(values))
+            print('size:', len(predictions[group]['indices']))
+            values = df.iloc[predictions[group]['indices'], predictions[group]['indices']].values.flatten()
             print("median =",  numpy.median(values))
-            print("max =",  numpy.max(values), '\n')
 
-            for feature in predictions[group]['labels']:
-                print(feature)
 
-            seaborn.distplot(values, label=group)
-            pyplot.title('Group ' + str(group))
-            pyplot.show()
 
     if False:
         # TRENDS FOR FEATURES = f(TUNES):
@@ -803,7 +833,7 @@ if __name__ == "__main__":
 
         print("Number of significantly different QC features:", comparisons['continuous'].iloc[3,:].sum())
 
-    if True:
+    if False:
         # TRENDS FOR FEATURES = f(TUNES):
         # TOF Vac
 
@@ -835,7 +865,6 @@ if __name__ == "__main__":
 
         print("Number of significantly different QC features:", comparisons['continuous'].iloc[3,:].sum())
 
-
     if False:
         # CROSS CORRELATIONS FEATURES
 
@@ -858,7 +887,6 @@ if __name__ == "__main__":
         pyplot.tight_layout()
         pyplot.show()
         # pyplot.savefig("/Users/dmitrav/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/img/fig2.pdf")
-
 
     if False:
         # CORRELATIONS FEATURES-TUNES
