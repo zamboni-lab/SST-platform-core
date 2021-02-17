@@ -62,7 +62,7 @@ def get_feature_types(continuous_features_names):
         ion_related = False
         for ion in [*qc_mix_ions, *chem_bg_ions]:
             if ion in feature:
-                type = ion_types_dict[feature.split(ion)[0][:-1]] + '_{}'.format(ion)
+                type = ion_types_dict[feature.split(ion)[0][:-1]]  # + '_{}'.format(ion)
                 feature_types.append(type)
                 ion_related = True
                 break

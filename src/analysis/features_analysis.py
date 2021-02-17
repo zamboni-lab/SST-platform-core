@@ -1,9 +1,12 @@
 
 import numpy, pandas, scipy, seaborn, math, time, umap
-from sklearn.decomposition import SparsePCA, PCA
-from sklearn.preprocessing import StandardScaler, LabelEncoder, label_binarize, MinMaxScaler
 from src.qcmg import db_connector
 from src.constants import user
+from src.analysis import metrics_tunes_analysis
+from src.msfe import type_generator
+
+from sklearn.decomposition import SparsePCA, PCA
+from sklearn.preprocessing import StandardScaler, LabelEncoder, label_binarize, MinMaxScaler
 from matplotlib import pyplot
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from scipy.cluster.hierarchy import dendrogram
@@ -15,7 +18,6 @@ from statsmodels.stats.multitest import multipletests
 from scipy.cluster.hierarchy import ward, fcluster, linkage
 from scipy.spatial.distance import pdist
 from scipy.cluster import hierarchy
-from src.analysis import metrics_tunes_analysis
 from sklearn.metrics import mutual_info_score, adjusted_mutual_info_score
 from sklearn.model_selection import StratifiedKFold, train_test_split, GridSearchCV
 from sklearn.feature_selection import SelectKBest, mutual_info_regression, f_regression
@@ -793,18 +795,44 @@ if __name__ == "__main__":
         df = df.corr()
         df = df.fillna(0)
 
-        predictions = perform_best_clustering(features_names_cont, df[:], 88, title="QC features cross-correlations", no_labels=True)
+        n_clusters = 88  # second best is 3
 
-        # TODO: set up a matrix of features types over clusters
+        predictions = perform_best_clustering(features_names_cont, df[:], n_clusters, title="QC features cross-correlations", no_labels=True)
 
+        all_types = sorted(list(set(type_generator.get_feature_types(features_names_cont))))
+        cluster_enrichments = pandas.DataFrame(columns=[x+1 for x in range(n_clusters)], index=all_types)
+        cluster_enrichments = cluster_enrichments.fillna(0)
+
+        medians = []
+        groups = []
         for group in predictions:
             print("\nGroup", group)
             print('size:', len(predictions[group]['indices']))
             values = df.iloc[predictions[group]['indices'], predictions[group]['indices']].values.flatten()
+
+            groups.append(group)
+            medians.append(numpy.median(values))
             print("median =",  numpy.median(values))
 
-            # TODO: fill in the matrix
+            group_types = type_generator.get_feature_types(predictions[group]['labels'])
+            unique_types = list(set(group_types))
+            counts = [group_types.count(x) for x in unique_types]
 
+            for i, group_type in enumerate(unique_types):
+                # fill in the heatmap
+                cluster_enrichments.loc[group_type, group] += counts[i]
+
+        # sort columns by increasing cross-correlation median
+        sorted_groups = numpy.array([groups[medians.index(x)] for x in sorted(medians)])
+        cluster_enrichments = cluster_enrichments.loc[:, sorted_groups]
+
+        print('\ntotal sum =', cluster_enrichments.sum().sum())  # debug
+
+        pyplot.figure(figsize=(12,6))
+        seaborn.heatmap(cluster_enrichments, xticklabels=cluster_enrichments.columns, yticklabels=cluster_enrichments.index)
+        pyplot.title("Cluster enrichments: features' cross-correlations")
+        pyplot.tight_layout()
+        pyplot.show()
 
     if False:
         # TRENDS FOR FEATURES = f(TUNES):
