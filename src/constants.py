@@ -1,5 +1,5 @@
 
-msfe_version = '0.4.31'
+msfe_version = '0.4.32'
 chemical_mix_id = '20190522_4GHz'
 user = 'andreidm'
 
@@ -143,6 +143,9 @@ s2b_features_names = ['intensity_3Heptadecafluorooctylaniline_i1_mean', 'percent
 
 s2n_features_names = ['intensity_3Heptadecafluorooctylaniline_i1_mean', 'percentiles_norm_500_550_0_mean', 'percentiles_norm_500_550_1_mean']
 
+ions = ['Caffeine', 'Fluconazole', '3Heptadecafluorooctylaniline', 'Albendazole',
+        'Triamcinolone_acetonide', 'Perfluorodecanoic_acid', 'Tricosafluorododecanoic_acid',
+        'Perfluorotetradecanoic_acid', 'Pentadecafluoroheptyl', 'HOT', 'HEX']
 # TYPE GENERATOR CONSTANTS
 
 qc_mix_ions = [
