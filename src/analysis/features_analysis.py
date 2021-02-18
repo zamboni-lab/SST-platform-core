@@ -606,30 +606,30 @@ def calculate_MI(x, y):
     return mi / numpy.log(2)
 
 
-def compute_mutual_info_between_tunes_and_features(features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=False):
+def compute_mutual_info_between_tunes_and_features(features_cont, features_names_cont, tunes, tunes_names, features_type='features', tunes_type='continuous', inspection_mode=False):
     """ This method calculates mutual information between tunes and features. """
 
-    # create dataframe to store correlations
-    df = pandas.DataFrame(numpy.empty([len(features_names_cont), len(tunes_names_cont)]), index=features_names_cont)
+    # create dataframe to store results
+    df = pandas.DataFrame(numpy.empty([len(features_names_cont), len(tunes_names)]), index=features_names_cont)
 
     # change names for better display
-    for i in range(len(tunes_names_cont)):
-        tunes_names_cont[i] = tunes_names_cont[i].replace("default", "").replace("traditional", "trad").replace("polynomial", "poly")
+    for i in range(len(tunes_names)):
+        tunes_names[i] = tunes_names[i].replace("default", "").replace("traditional", "trad").replace("polynomial", "poly")
 
-    df.columns = tunes_names_cont
+    df.columns = tunes_names
 
-    # calculate correlations and fill the dataframe
+    # calculate MIs and fill the dataframe
     for i in range(df.shape[0]):
         for j in range(df.shape[1]):
 
-            mi = calculate_MI(features_cont[:, i], tunes_cont[:, j])
+            mi = calculate_MI(features_cont[:, i], tunes[:, j])
             df.iloc[i, j] = mi
 
             # look into variables closer if MI > 1 bit
             if inspection_mode and mi > 1.:
                 fig, ax = pyplot.subplots(figsize=(10, 5))
 
-                ax.scatter(tunes_cont[:, j], features_cont[:, i])
+                ax.scatter(tunes[:, j], features_cont[:, i])
 
                 # adds a title and axes labels
                 ax.set_title(df.index[i] + ' vs ' + df.columns[j] + ": MI = " + str(mi))
@@ -644,35 +644,55 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
     print("number of pairs with MI > 0.9 bit:", numpy.sum(df.values > .9))
     print("number of pairs with MI < 0.1 bit:", numpy.sum(df.values < 0.1))
 
-    # plot a heatmap
-    df = df.iloc[numpy.where(df.values > 1.)[0], :]
+    # get types and filter, depending on features / metrics
+    if features_type == 'features':
+        features_types = sorted(type_generator.get_feature_types(df.index))
+        df = df.iloc[numpy.where(df.values > 1.)[0], :]
 
-    features_types = sorted(type_generator.get_feature_types(df.index))
+    elif features_type == 'metrics':
+        features_types = features_names_cont
+        # filter out calibration coefs, as they are not informative at all
+        df = df.loc[:, numpy.array([name for name in tunes_names if name[-1] not in '34567'])]
 
-    pyplot.figure(figsize=(9,9))
+    else:
+        raise ValueError('Unknown feature type')
+
+    pyplot.figure(figsize=(10,6))
     ax = pyplot.axes()
     res = seaborn.heatmap(df, xticklabels=df.columns, yticklabels=features_types, ax=ax)
-    res.set_yticklabels(res.get_ymajorticklabels(), fontsize=6)
-    ax.set_title("Mutual information: features-tunes")
-    pyplot.tight_layout()
-    pyplot.show()
-    # pyplot.savefig("/Users/dmitrav/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/img/fig3-1.pdf")
+    # res.set_yticklabels(res.get_ymajorticklabels(), fontsize=6)
 
-    features_masses = type_generator.get_mass_types(df.index)
-    # substitute tuples with the first element
-    for i, mass_type in enumerate(features_masses):
-        if isinstance(mass_type, tuple):
-            features_masses[i] = mass_type[0]
-    features_masses = sorted(features_masses)
+    if features_type == 'features':
+        ax.set_title("Mutual information: QC features vs machine settings")
+    elif features_type == 'metrics':
+        ax.set_title("Mutual information: QC indicators vs machine settings")
+    else:
+        raise ValueError('Unknown feature type')
 
-    pyplot.figure(figsize=(9,9))
-    ax = pyplot.axes()
-    res = seaborn.heatmap(df, xticklabels=df.columns, yticklabels=features_masses, ax=ax)
-    res.set_yticklabels(res.get_ymajorticklabels(), fontsize=6)
-    ax.set_title("Mutual information: features-tunes")
     pyplot.tight_layout()
-    pyplot.show()
-    # pyplot.savefig("/Users/dmitrav/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/img/fig3-1.pdf")
+    # pyplot.show()
+    pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/mi_{}_tunes_{}_with_types.pdf'.format(user, features_type, tunes_type))
+    pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/mi_{}_tunes_{}_with_types.png'.format(user, features_type, tunes_type))
+
+    if features_type == 'features':
+
+        features_masses = type_generator.get_mass_types(df.index)
+        # substitute tuples with the first element
+        for i, mass_type in enumerate(features_masses):
+            if isinstance(mass_type, tuple):
+                features_masses[i] = mass_type[0]
+        features_masses = sorted(features_masses)
+
+        pyplot.figure(figsize=(10,6))
+        ax = pyplot.axes()
+        res = seaborn.heatmap(df, xticklabels=df.columns, yticklabels=features_masses, ax=ax)
+        # res.set_yticklabels(res.get_ymajorticklabels(), fontsize=6)
+
+        ax.set_title("Mutual information: QC features vs machine settings")
+        pyplot.tight_layout()
+        pyplot.show()
+        # pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/mi_{}_tunes_{}_with_masses.pdf'.format(user, features_type, tunes_type))
+        # pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/mi_{}_tunes_{}_with_masses.png'.format(user, features_type, tunes_type))
 
 
 def calc_MI(x, y, bins=None):
@@ -848,11 +868,28 @@ if __name__ == "__main__":
 
         print('\ntotal sum =', cluster_enrichments.sum().sum())  # debug
 
-        pyplot.figure(figsize=(12,6))
-        seaborn.heatmap(cluster_enrichments, xticklabels=cluster_enrichments.columns, yticklabels=cluster_enrichments.index)
+        pyplot.figure(figsize=(10,6))
+        # seaborn.heatmap(cluster_enrichments, xticklabels=cluster_enrichments.columns, yticklabels=cluster_enrichments.index)
+        seaborn.heatmap(cluster_enrichments, yticklabels=cluster_enrichments.index)
         pyplot.title("Cluster enrichments with types: features' cross-correlations")
         pyplot.tight_layout()
+        pyplot.xticks(rotation=45)
         pyplot.show()
+        # pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/corr_enrichments_types_{}.pdf'.format(user, n_clusters))
+        # pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/corr_enrichments_types_{}.png'.format(user, n_clusters))
+
+        # save medians as well
+        medians_df = pandas.DataFrame({'cluster': [str(x) for x in sorted_groups], 'median_corr': sorted(medians)})
+        pyplot.figure(figsize=(12,6))
+        res = seaborn.barplot(x='cluster', y='median_corr', data=medians_df, order=medians_df['cluster'])
+        res.set_xticklabels(res.get_xmajorticklabels(), fontsize=8)
+        pyplot.xlabel('Cluster')
+        pyplot.ylabel('Median correlation')
+        pyplot.grid(True)
+        pyplot.xticks(rotation=45)
+        pyplot.tight_layout()
+        # pyplot.show()
+        pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/cluster_corr_medians_{}.png'.format(user, n_clusters))
 
     if False:
         # CROSS CORRELATIONS FEATURES: CLUSTER ENRICHMENTS WITH MASS TYPES
@@ -861,7 +898,7 @@ if __name__ == "__main__":
         df = df.corr()
         df = df.fillna(0)
 
-        n_clusters = 88  # the best is 88, the second best is 3
+        n_clusters = 3  # the best is 88, the second best is 3
 
         predictions = perform_best_clustering(features_names_cont, df[:], n_clusters, title="QC features cross-correlations", no_labels=True)
 
@@ -904,11 +941,15 @@ if __name__ == "__main__":
 
         print('\ntotal sum =', cluster_enrichments.sum().sum())  # debug
 
-        pyplot.figure(figsize=(12,6))
-        seaborn.heatmap(cluster_enrichments, xticklabels=cluster_enrichments.columns, yticklabels=cluster_enrichments.index)
+        pyplot.figure(figsize=(10,6))
+        # seaborn.heatmap(cluster_enrichments, xticklabels=cluster_enrichments.columns, yticklabels=cluster_enrichments.index)
+        seaborn.heatmap(cluster_enrichments, yticklabels=cluster_enrichments.index)
         pyplot.title("Cluster enrichments with masses: features' cross-correlations")
         pyplot.tight_layout()
-        pyplot.show()
+        # pyplot.xticks(rotation=45)
+        # pyplot.show()
+        pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/corr_enrichments_masses_{}.pdf'.format(user, n_clusters))
+        pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/corr_enrichments_masses_{}.png'.format(user, n_clusters))
 
     if False:
         # TRENDS FOR FEATURES = f(TUNES):
@@ -1013,15 +1054,15 @@ if __name__ == "__main__":
             inspection_mode=True
         )
 
-    if True:
+    if False:
         # MUTUAL INFO FEATURES-TUNES
 
         compute_mutual_info_between_tunes_and_features(
-            features_cont, features_names_cont, tunes_cont, tunes_names_cont, inspection_mode=False
+            features_cont, features_names_cont, tunes_cont, tunes_names_cont, tunes_type='cont', inspection_mode=False
         )
 
         compute_mutual_info_between_tunes_and_features(
-            features_cont, features_names_cont, tunes_cat, tunes_names_cat, inspection_mode=False
+            features_cont, features_names_cont, tunes_cat, tunes_names_cat, tunes_type='cat', inspection_mode=False
         )
 
     if False:

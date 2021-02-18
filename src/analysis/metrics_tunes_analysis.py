@@ -1,7 +1,10 @@
 import numpy, pandas, scipy, seaborn, math
-from sklearn.decomposition import SparsePCA
+
 from src.qcmg import db_connector
 from src.analysis import features_analysis
+from src.constants import user
+
+from sklearn.decomposition import SparsePCA
 import matplotlib.pyplot as plt
 from scipy.stats import ks_2samp, mannwhitneyu, kruskal
 from scipy.stats import chi2_contingency
@@ -289,7 +292,9 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
         print("number of pairs with correlation > 0.6:", numpy.sum(numpy.abs(df.values) > 0.6))
 
         # plot a heatmap
-        seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False)
+        plt.figure(figsize=(10, 6))
+        seaborn.heatmap(df, xticklabels=df.columns, yticklabels=df.index)
+        plt.title('Correlations: QC indicators vs machine settings')
         plt.tight_layout()
         plt.show()
 
@@ -337,7 +342,9 @@ def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes,
         print("number of pairs with correlation ratio > 0.6:", numpy.sum(numpy.abs(df.values) > 0.6))
 
         # plot a heatmap
-        seaborn.heatmap(df, xticklabels=df.columns, yticklabels=False)
+        plt.figure(figsize=(10,6))
+        seaborn.heatmap(df, xticklabels=df.columns, yticklabels=df.index)
+        plt.title('Correlations: QC indicators vs machine settings')
         plt.tight_layout()
         plt.show()
 
@@ -653,8 +660,8 @@ if __name__ == "__main__":
     pandas.set_option('display.max_rows', None)
     pandas.set_option('display.max_columns', None)
 
-    qc_tunes_database_path = "/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite"
-    qc_metrics_database_path = "/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/qc_metrics_database.sqlite"
+    qc_tunes_database_path = "/Users/{}/ETH/projects/monitoring_system/res/nas2/qc_tunes_database.sqlite".format(user)
+    qc_metrics_database_path = "/Users/{}/ETH/projects/monitoring_system/res/nas2/qc_metrics_database.sqlite".format(user)
 
     # read qc metrics
     metrics, metrics_names, acquisition, quality = get_metrics_data(qc_metrics_database_path)
@@ -673,8 +680,6 @@ if __name__ == "__main__":
     quality = quality[ipa_h20_indices]
 
     if False:
-
-        # TODO: figure out what's this for?
 
         # assess how imbalanced the categorical data is
         result_categorical = {}
@@ -702,11 +707,27 @@ if __name__ == "__main__":
 
     if False:
         # explore general correlations between tunes and metrics
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names, tunes_type='continuous', method="spearman", inspection_mode=False)
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='categorical', inspection_mode=True)
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names,
+                                                      tunes_type='continuous', method='spearman', inspection_mode=False)
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names,
+                                                      tunes_type='categorical', inspection_mode=False)
 
-        # # feed "categorical" tunes to spearman correlation
-        # assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names, tunes_type='continuous', method="spearman", inspection_mode=True)
+        # feed "categorical" tunes to spearman correlation
+        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names,
+                                                      tunes_type='continuous', method="spearman", inspection_mode=True)
+
+    if True:
+        # plot MI between metrics (QC indicators) and tunes (machine settings)
+
+
+
+        features_analysis.compute_mutual_info_between_tunes_and_features(
+            metrics, metrics_names, continuous_tunes, continuous_names, features_type='metrics', tunes_type='cont', inspection_mode=False
+        )
+
+        features_analysis.compute_mutual_info_between_tunes_and_features(
+            metrics, metrics_names, categorical_tunes, categorical_names, features_type='metrics', tunes_type='cat', inspection_mode=False
+        )
 
     if False:
         # define good or bad based on the score
@@ -741,7 +762,7 @@ if __name__ == "__main__":
                                                                   tunes_type="categorical", inspection_mode=True)
         }
 
-    if True:
+    if False:
         # this code I used to generate plots:
         # - how tunes evolve with time (just examples)
         # - how metrics split by tunes are different
