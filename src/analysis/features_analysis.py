@@ -1039,20 +1039,20 @@ if __name__ == "__main__":
     if False:
         # CORRELATIONS FEATURES-TUNES
 
-        # metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
-        #     features_cont, features_names_cont, tunes_cont, tunes_names_cont, tunes_type='continuous', method="pearson",
-        #     inspection_mode=True
-        # )
-        #
+        metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
+            features_cont, features_names_cont, tunes_cont, tunes_names_cont, tunes_type='continuous', method="pearson",
+            inspection_mode=False
+        )
+
         # metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
         #     features_cont, features_names_cont, tunes_cat, tunes_names_cat, tunes_type='categorical',
         #     inspection_mode=True
         # )
 
-        metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
-            features_cont, features_names_cont, tunes_cat, tunes_names_cat, tunes_type='continuous',
-            inspection_mode=True
-        )
+        # metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
+        #     features_cont, features_names_cont, tunes_cat, tunes_names_cat, tunes_type='continuous',
+        #     inspection_mode=True
+        # )
 
     if False:
         # MUTUAL INFO FEATURES-TUNES

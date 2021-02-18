@@ -424,7 +424,7 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
 
         for i in range(df.shape[1]):
             if sum(df.iloc[:,i] <= level) >= 3:
-                max_p = str(round(numpy.max(df.iloc[:, i]), 3))
+                max_p = str(round(numpy.max(df.iloc[:, i]), 4))
                 boolean_result.iloc[0,i] = True
 
                 # look into variables closer if they are statistically different
@@ -463,7 +463,7 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
 
         for i in range(df.shape[1]):
             if round(df.iloc[0, i], 2) <= level:
-                max_p = str(round(df.iloc[0, i], 3))
+                max_p = str(round(df.iloc[0, i], 4))
                 boolean_result.iloc[0, i] = True
 
                 # look into variables closer if they are statistically different
@@ -796,7 +796,6 @@ if __name__ == "__main__":
                 # pyplot.show()
                 pyplot.savefig('/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/resolution-trend-correlation-with-tunes/{}.pdf'.format(continuous_names[i]))
 
-
     if False:
 
         # assess how imbalanced the categorical data is
@@ -834,11 +833,8 @@ if __name__ == "__main__":
         assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names,
                                                       tunes_type='continuous', method="spearman", inspection_mode=True)
 
-    if True:
+    if False:
         # plot MI between metrics (QC indicators) and tunes (machine settings)
-
-
-
         features_analysis.compute_mutual_info_between_tunes_and_features(
             metrics, metrics_names, continuous_tunes, continuous_names, features_type='metrics', tunes_type='cont', inspection_mode=False
         )
@@ -860,25 +856,30 @@ if __name__ == "__main__":
                                                                   tunes_type="categorical", inspection_mode=False)
         }
 
-    if True:
+    if False:
         # test tunes grouped by extreme metrics values
         comparisons_for_metric_outliers = test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition, continuous_tunes, continuous_names, categorical_tunes, categorical_names,
                                                                                        inspection_mode=True)
 
-    if False:
-        # # test tunes grouped by a recent trend in resolution & baselines
-        # good_resolution_indices = (quality == '1') * (acquisition < "2020-03-04")
-        # bad_resolution_indices = (quality == '1') * (acquisition >= "2020-03-04")
+    if True:
+        # # test tunes grouped by QC metrics values
 
-        good_resolution_indices = metrics[:, 1] < numpy.percentile(metrics[:, 1], 90)
-        bad_resolution_indices = metrics[:, 1] >= numpy.percentile(metrics[:, 1], 90)
+        metric_of_interest = 's2n'
+        percentile = 20  # split in below and above this percentile
 
-        comparisons_for_resolution_trend = {
-            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_resolution_indices, bad_resolution_indices, ["good", "bad"], "mass\ accuracy",
-                                                                 tunes_type="continuous", inspection_mode=True),
-            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, good_resolution_indices, bad_resolution_indices,  ["good", "bad"], "mass\ accuracy",
-                                                                  tunes_type="categorical", inspection_mode=True)
+        save_to = '/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/statistical_comparisons/'.format(user)
+
+        low_values_indices = metrics[:, metrics_names.index(metric_of_interest)] < numpy.percentile(metrics[:, metrics_names.index(metric_of_interest)], percentile)
+        high_values_indices = metrics[:, metrics_names.index(metric_of_interest)] >= numpy.percentile(metrics[:, metrics_names.index(metric_of_interest)], percentile)
+
+        comparisons = {
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, low_values_indices, high_values_indices, ["< {}%".format(percentile), "< {}%".format(percentile)], metric_of_interest,
+                                                                 tunes_type="continuous", inspection_mode=True, save_plots_to=save_to),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, low_values_indices, high_values_indices, ["< {}%".format(percentile), "< {}%".format(percentile)], metric_of_interest,
+                                                                  tunes_type="categorical", inspection_mode=True, save_plots_to=save_to)
         }
+
+        print(comparisons)
 
     if False:
         # this code I used to generate plots:
