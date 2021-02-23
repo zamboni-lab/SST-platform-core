@@ -863,7 +863,7 @@ if __name__ == "__main__":
 
         print(predictions)
 
-    if True:
+    if False:
         # CROSS CORRELATIONS FEATURES: CLUSTER ENRICHMENTS WITH FEATURES TYPES
 
         df = pandas.DataFrame(features_cont)
@@ -970,21 +970,53 @@ if __name__ == "__main__":
             pyplot.savefig(save_to + 'cluster_corr_medians_NAP_{}.png'.format(n_clusters))
             pyplot.savefig(save_to + 'cluster_corr_medians_NAP_{}.pdf'.format(n_clusters))
 
-    if False:
+    if True:
         # CROSS CORRELATIONS FEATURES: CLUSTER ENRICHMENTS WITH MASS TYPES
 
         df = pandas.DataFrame(features_cont)
         df = df.corr()
         df = df.fillna(0)
 
-        n_clusters = 3  # the best is 88, the second best is 3
+        use_HDBSCAN = True
+        save_to = '/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/correlation_cluster_enrichments/'.format(user)
 
-        predictions = perform_best_clustering(features_names_cont, df[:], n_clusters, title="QC features cross-correlations", no_labels=True)
+        if use_HDBSCAN:
+
+            # min_cluster_size, min_samples = get_hdbscan_best_parameters(df.values, print_info=True)
+
+            # min_cluster_size, min_samples = (80, 10)  # -> 4 clusters, 29% of noise
+            min_cluster_size, min_samples = (10, 1)  # -> 85 clusters, 34% of noise
+            # min_cluster_size, min_samples = (80, 1)  # -> 7 clusters, 35% of noise
+
+            clusterer = HDBSCAN(metric='euclidean', min_samples=min_samples, min_cluster_size=min_cluster_size, allow_single_cluster=False)
+            clusterer.fit(df)
+            clusters = clusterer.labels_
+
+            n_clusters = numpy.max(clusters) + 1
+            noise = int(numpy.sum(clusters == -1) / len(clusters) * 100)
+            print('min_cluster_size={}, min_samples={}, n clusters={}'.format(min_cluster_size, min_samples, n_clusters))
+            print('noise={}%\n'.format(noise))
+
+            # almost copy-paste from perform_best_clustering
+            samples_indices = df.index.values
+            samples_labels = features_names_cont
+            predictions = {}
+            for i in range(len(samples_indices)):
+                if str(clusters[i]) not in predictions.keys():
+                    predictions[str(clusters[i])] = {'labels': [samples_labels[i]], 'indices': [samples_indices[i]]}
+                else:
+                    predictions[str(clusters[i])]['labels'].append(samples_labels[i])
+                    predictions[str(clusters[i])]['indices'].append(samples_indices[i])
+
+        else:
+            # Nearest Point Algorithm
+            n_clusters = 88  # the best is 88, the second best is 3
+            predictions = perform_best_clustering(features_names_cont, df[:], n_clusters, title="QC features cross-correlations", no_labels=True)
 
         all_types = [x for x in type_generator.get_mass_types(features_names_cont) if not isinstance(x, tuple)]
         all_types = sorted(list(set(all_types)))
 
-        cluster_enrichments = pandas.DataFrame(columns=[x+1 for x in range(n_clusters)], index=all_types)
+        cluster_enrichments = pandas.DataFrame(columns=[x for x in predictions.keys()], index=all_types)
         cluster_enrichments = cluster_enrichments.fillna(0)
 
         medians = []
@@ -1020,15 +1052,21 @@ if __name__ == "__main__":
 
         print('\ntotal sum =', cluster_enrichments.sum().sum())  # debug
 
-        pyplot.figure(figsize=(10,6))
-        # seaborn.heatmap(cluster_enrichments, xticklabels=cluster_enrichments.columns, yticklabels=cluster_enrichments.index)
-        seaborn.heatmap(cluster_enrichments, yticklabels=cluster_enrichments.index)
+        pyplot.figure(figsize=(12,6))
+        res = seaborn.heatmap(cluster_enrichments, xticklabels=cluster_enrichments.columns, yticklabels=cluster_enrichments.index)
+        res.set_xticklabels(res.get_xmajorticklabels(), fontsize=8)
+        # seaborn.heatmap(cluster_enrichments, yticklabels=cluster_enrichments.index)
         pyplot.title("Cluster enrichments with masses: features' cross-correlations")
         pyplot.tight_layout()
-        # pyplot.xticks(rotation=45)
+        pyplot.xticks(rotation=45)
         # pyplot.show()
-        pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/corr_enrichments_masses_{}.pdf'.format(user, n_clusters))
-        pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/corr_enrichments_masses_{}.png'.format(user, n_clusters))
+
+        if use_HDBSCAN:
+            pyplot.savefig(save_to + 'corr_enrichments_masses_HDBSCAN_mcs={}_ms={}.png'.format(min_cluster_size, min_samples))
+            pyplot.savefig(save_to + 'corr_enrichments_masses_HDBSCAN_mcs={}_ms={}.pdf'.format(min_cluster_size, min_samples))
+        else:
+            pyplot.savefig(save_to + 'corr_enrichments_masses_NAP_{}.png'.format(n_clusters))
+            pyplot.savefig(save_to + 'corr_enrichments_masses_NAP_{}.pdf'.format(n_clusters))
 
     if False:
         # TRENDS FOR FEATURES = f(TUNES):
