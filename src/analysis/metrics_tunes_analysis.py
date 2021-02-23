@@ -861,10 +861,10 @@ if __name__ == "__main__":
         comparisons_for_metric_outliers = test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition, continuous_tunes, continuous_names, categorical_tunes, categorical_names,
                                                                                        inspection_mode=True)
 
-    if False:
+    if True:
         # # test tunes grouped by QC metrics values
 
-        metric_of_interest = 's2n'
+        metric_of_interest = 's2b'
         percentile = 20  # split in below and above this percentile
 
         save_to = '/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/statistical_comparisons/'.format(user)
@@ -873,9 +873,9 @@ if __name__ == "__main__":
         high_values_indices = metrics[:, metrics_names.index(metric_of_interest)] >= numpy.percentile(metrics[:, metrics_names.index(metric_of_interest)], percentile)
 
         comparisons = {
-            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, low_values_indices, high_values_indices, ["< {}%".format(percentile), "< {}%".format(percentile)], metric_of_interest,
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, low_values_indices, high_values_indices, ["< {}%".format(percentile), "> {}%".format(percentile)], metric_of_interest,
                                                                  tunes_type="continuous", inspection_mode=True, save_plots_to=save_to),
-            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, low_values_indices, high_values_indices, ["< {}%".format(percentile), "< {}%".format(percentile)], metric_of_interest,
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, low_values_indices, high_values_indices, ["< {}%".format(percentile), "> {}%".format(percentile)], metric_of_interest,
                                                                   tunes_type="categorical", inspection_mode=True, save_plots_to=save_to)
         }
 
