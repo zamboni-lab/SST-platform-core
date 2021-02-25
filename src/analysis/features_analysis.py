@@ -1209,7 +1209,7 @@ if __name__ == "__main__":
         # CORRELATIONS FEATURES-TUNES
 
         metrics_tunes_analysis.assess_correlations_between_tunes_and_metrics(
-            features_cont, features_names_cont, tunes_cont, tunes_names_cont, tunes_type='continuous', method="pearson",
+            features_cont, features_names_cont, tunes_cont, tunes_names_cont, 'cont', method="pearson",
             inspection_mode=False
         )
 
