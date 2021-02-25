@@ -641,8 +641,10 @@ def calculate_MI(x, y):
     return mi / numpy.log(2)
 
 
-def compute_mutual_info_between_tunes_and_features(features_cont, features_names_cont, tunes, tunes_names, features_type='features', tunes_type='continuous', inspection_mode=False):
+def compute_mutual_info_between_tunes_and_features(features_cont, features_names_cont, tunes, tunes_names, tunes_type, features_type='features', inspection_mode=False, save_to=None):
     """ This method calculates mutual information between tunes and features. """
+
+    threshold = 0.9
 
     # create dataframe to store results
     df = pandas.DataFrame(numpy.empty([len(features_names_cont), len(tunes_names)]), index=features_names_cont)
@@ -660,8 +662,8 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
             mi = calculate_MI(features_cont[:, i], tunes[:, j])
             df.iloc[i, j] = mi
 
-            # look into variables closer if MI > 1 bit
-            if inspection_mode and mi > 1.:
+            # look into variables closer if MI > <threshold> bits
+            if inspection_mode and mi > threshold:
                 fig, ax = pyplot.subplots(figsize=(10, 5))
 
                 ax.scatter(tunes[:, j], features_cont[:, i])
@@ -674,18 +676,28 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
                 # removing top and right borders
                 ax.spines['top'].set_visible(False)
                 ax.spines['right'].set_visible(False)
-                pyplot.show()
+                pyplot.grid()
+                if save_to is None:
+                    pyplot.show()
+                else:
+                    pyplot.savefig(save_to + 'mi_{}_{}.pdf'.format(df.index[i], df.columns[j]))
 
-    print("number of pairs with MI > 0.9 bit:", numpy.sum(df.values > .9))
+    print("number of pairs with MI > {} bit:".format(threshold), numpy.sum(df.values > threshold))
     print("number of pairs with MI < 0.1 bit:", numpy.sum(df.values < 0.1))
 
     # get types and filter, depending on features / metrics
     if features_type == 'features':
+        df = df.iloc[numpy.where(df.values > threshold)[0], :]
         features_types = sorted(type_generator.get_feature_types(df.index))
-        df = df.iloc[numpy.where(df.values > 1.)[0], :]
+
+        first_occurencies = [features_types.index(x) for x in sorted(list(set(features_types)))]
+        y_labels = ['' for x in features_types]
+        for i in range(len(features_types)):
+            if i in first_occurencies:
+                y_labels[i] += features_types[i]
 
     elif features_type == 'metrics':
-        features_types = features_names_cont
+        y_labels = features_names_cont
         # filter out calibration coefs, as they are not informative at all
         df = df.loc[:, numpy.array([name for name in tunes_names if name[-1] not in '34567'])]
 
@@ -694,7 +706,8 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
 
     pyplot.figure(figsize=(10,6))
     ax = pyplot.axes()
-    res = seaborn.heatmap(df, xticklabels=df.columns, yticklabels=features_types, ax=ax)
+
+    res = seaborn.heatmap(df, xticklabels=df.columns, yticklabels=y_labels, ax=ax, vmin=0, vmax=1)
     # res.set_yticklabels(res.get_ymajorticklabels(), fontsize=6)
 
     if features_type == 'features':
@@ -705,12 +718,14 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
         raise ValueError('Unknown feature type')
 
     pyplot.tight_layout()
-    # pyplot.show()
-    pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/mi_{}_tunes_{}_with_types.pdf'.format(user, features_type, tunes_type))
-    pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/mi_{}_tunes_{}_with_types.png'.format(user, features_type, tunes_type))
+    if save_to is None:
+        pyplot.show()
+    else:
+        pyplot.savefig(save_to + 'mi_{}_tunes_{}_with_types.pdf'.format(features_type, tunes_type))
+        pyplot.savefig(save_to + 'mi_{}_tunes_{}_with_types.png'.format(features_type, tunes_type))
 
     if features_type == 'features':
-
+        # if it's features, plot additionally the heatmap with mass groups
         features_masses = type_generator.get_mass_types(df.index)
         # substitute tuples with the first element
         for i, mass_type in enumerate(features_masses):
@@ -718,16 +733,24 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
                 features_masses[i] = mass_type[0]
         features_masses = sorted(features_masses)
 
+        first_occurencies = [features_masses.index(x) for x in sorted(list(set(features_masses)))]
+        y_labels = ['' for x in features_masses]
+        for i in range(len(features_masses)):
+            if i in first_occurencies:
+                y_labels[i] += features_masses[i]
+
         pyplot.figure(figsize=(10,6))
         ax = pyplot.axes()
-        res = seaborn.heatmap(df, xticklabels=df.columns, yticklabels=features_masses, ax=ax)
+        res = seaborn.heatmap(df, xticklabels=df.columns, yticklabels=y_labels, ax=ax, vmin=0, vmax=1)
         # res.set_yticklabels(res.get_ymajorticklabels(), fontsize=6)
 
         ax.set_title("Mutual information: QC features vs machine settings")
         pyplot.tight_layout()
-        pyplot.show()
-        # pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/mi_{}_tunes_{}_with_masses.pdf'.format(user, features_type, tunes_type))
-        # pyplot.savefig('/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/mi_{}_tunes_{}_with_masses.png'.format(user, features_type, tunes_type))
+        if save_to is None:
+            pyplot.show()
+        else:
+            pyplot.savefig(save_to + 'mi_{}_tunes_{}_with_masses.pdf'.format(features_type, tunes_type))
+            pyplot.savefig(save_to + 'mi_{}_tunes_{}_with_masses.png'.format(features_type, tunes_type))
 
 
 def calc_MI(x, y, bins=None):
@@ -1223,15 +1246,19 @@ if __name__ == "__main__":
         #     inspection_mode=True
         # )
 
-    if False:
+    if True:
         # MUTUAL INFO FEATURES-TUNES
 
-        compute_mutual_info_between_tunes_and_features(
-            features_cont, features_names_cont, tunes_cont, tunes_names_cont, tunes_type='cont', inspection_mode=False
-        )
+        save_plots_to = '/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/mutual_informations/'.format(user)
+
+        # compute_mutual_info_between_tunes_and_features(
+        #     features_cont, features_names_cont, tunes_cont, tunes_names_cont, 'cont',
+        #     features_type='features', inspection_mode=False, save_to=save_plots_to
+        # )
 
         compute_mutual_info_between_tunes_and_features(
-            features_cont, features_names_cont, tunes_cat, tunes_names_cat, tunes_type='cat', inspection_mode=False
+            features_cont, features_names_cont, tunes_cat, tunes_names_cat, 'cat',
+            features_type='features', inspection_mode=False, save_to=save_plots_to
         )
 
     if False:

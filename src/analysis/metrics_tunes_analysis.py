@@ -785,8 +785,8 @@ if __name__ == "__main__":
         assess_cross_correlations(continuous_tunes, continuous_names, type='continuous', level=0.65)
         assess_cross_correlations(categorical_tunes, categorical_names, type='categorical', level=0.65)
 
-    if True:
-
+    if False:
+        # plot correlations between metrics (QC indicators) and tunes (machine settings)
         save_plots_to = '/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/metrics_tunes_corrs/'.format(user)
 
         # explore general correlations between tunes and metrics
@@ -805,11 +805,11 @@ if __name__ == "__main__":
     if False:
         # plot MI between metrics (QC indicators) and tunes (machine settings)
         features_analysis.compute_mutual_info_between_tunes_and_features(
-            metrics, metrics_names, continuous_tunes, continuous_names, features_type='metrics', tunes_type='cont', inspection_mode=False
+            metrics, metrics_names, continuous_tunes, continuous_names, 'cont', features_type='metrics', inspection_mode=True
         )
 
         features_analysis.compute_mutual_info_between_tunes_and_features(
-            metrics, metrics_names, categorical_tunes, categorical_names, features_type='metrics', tunes_type='cat', inspection_mode=False
+            metrics, metrics_names, categorical_tunes, categorical_names, 'cat', features_type='metrics', inspection_mode=True
         )
 
     if False:
