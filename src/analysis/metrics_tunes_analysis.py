@@ -861,7 +861,7 @@ if __name__ == "__main__":
         comparisons_for_metric_outliers = test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition, continuous_tunes, continuous_names, categorical_tunes, categorical_names,
                                                                                        inspection_mode=True)
 
-    if True:
+    if False:
         # # test tunes grouped by QC metrics values
 
         metric_of_interest = 's2b'

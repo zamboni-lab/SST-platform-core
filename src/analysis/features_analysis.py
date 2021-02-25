@@ -12,7 +12,7 @@ from matplotlib import pyplot
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from scipy.cluster.hierarchy import dendrogram
 from sklearn.metrics import silhouette_samples, silhouette_score, confusion_matrix
-from scipy.stats import ks_2samp, mannwhitneyu, kruskal
+from scipy.stats import ks_2samp, mannwhitneyu, kruskal, fisher_exact
 from scipy.stats import chi2_contingency
 from collections import Counter
 from statsmodels.stats.multitest import multipletests
@@ -870,7 +870,7 @@ if __name__ == "__main__":
         df = df.corr()
         df = df.fillna(0)
 
-        use_HDBSCAN = False
+        use_HDBSCAN = True
         save_to = '/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/correlation_cluster_enrichments/'.format(user)
 
         if use_HDBSCAN:
@@ -878,8 +878,8 @@ if __name__ == "__main__":
             # min_cluster_size, min_samples = get_hdbscan_best_parameters(df.values, print_info=True)
 
             # min_cluster_size, min_samples = (80, 10)  # -> 4 clusters, 29% of noise
-            # min_cluster_size, min_samples = (10, 1)  # -> 85 clusters, 34% of noise
-            min_cluster_size, min_samples = (80, 1)  # -> 7 clusters, 35% of noise
+            min_cluster_size, min_samples = (10, 1)  # -> 85 clusters, 34% of noise
+            # min_cluster_size, min_samples = (80, 1)  # -> 7 clusters, 35% of noise
 
             clusterer = HDBSCAN(metric='euclidean', min_samples=min_samples, min_cluster_size=min_cluster_size, allow_single_cluster=False)
             clusterer.fit(df)
@@ -907,8 +907,8 @@ if __name__ == "__main__":
             predictions = perform_best_clustering(features_names_cont, df[:], n_clusters, title="QC features cross-correlations", no_labels=True)
 
         all_types = sorted(list(set(type_generator.get_feature_types(features_names_cont))))
-        cluster_enrichments = pandas.DataFrame(columns=[x for x in predictions.keys()], index=all_types)
-        cluster_enrichments = cluster_enrichments.fillna(0)
+        cluster_counts = pandas.DataFrame(columns=[x for x in predictions.keys()], index=all_types)
+        cluster_counts = cluster_counts.fillna(0)
 
         medians = []
         groups = []
@@ -927,7 +927,32 @@ if __name__ == "__main__":
 
             for i, group_type in enumerate(unique_types):
                 # fill in the heatmap
-                cluster_enrichments.loc[group_type, group] += counts[i]
+                cluster_counts.loc[group_type, group] += counts[i]
+
+        # calculate enrichments with cluster counts
+        cluster_enrichments = cluster_counts[:]
+
+        for i in range(cluster_counts.shape[0]):
+            for j in range(cluster_counts.shape[1]):
+
+                in_group_in_cluster = cluster_counts.iloc[i,j]
+                in_group_not_in_cluster = cluster_counts.iloc[i,:].sum() - in_group_in_cluster
+                not_in_group_in_cluster = cluster_counts.iloc[:,j].sum() - in_group_in_cluster
+                not_in_group_not_in_cluster = cluster_counts.drop(cluster_counts.index[i]).drop(cluster_counts.columns[j], axis=1).sum().sum()
+
+                _, p_value = fisher_exact([[in_group_in_cluster, in_group_not_in_cluster],
+                                        [not_in_group_in_cluster, not_in_group_not_in_cluster]])
+
+                cluster_enrichments.iloc[i,j] = p_value
+
+        # correct for multiple hypothesis
+        adj_p_values = multipletests(cluster_enrichments.values.flatten(), method='bonferroni')[1]
+        # second time to account for the following masses comparisons
+        adj_p_values = multipletests(adj_p_values, method='bonferroni')[1]
+        # update the dataframe with adjusted values
+        for i in range(cluster_enrichments.shape[0]):
+            for j in range(cluster_enrichments.shape[1]):
+                cluster_enrichments.iloc[i,j] = -numpy.log10(adj_p_values[i * cluster_enrichments.shape[1] + j])
 
         # sort columns by increasing cross-correlation median
         sorted_groups = numpy.array([groups[medians.index(x)] for x in sorted(medians)])
@@ -936,7 +961,8 @@ if __name__ == "__main__":
         print('\ntotal sum =', cluster_enrichments.sum().sum())  # debug
 
         pyplot.figure(figsize=(12,6))
-        res = seaborn.heatmap(cluster_enrichments, xticklabels=cluster_enrichments.columns, yticklabels=cluster_enrichments.index)
+        res = seaborn.heatmap(cluster_enrichments, xticklabels=cluster_enrichments.columns, yticklabels=cluster_enrichments.index,
+                              cmap='rocket', vmin=0, vmax=15)
         res.set_xticklabels(res.get_xmajorticklabels(), fontsize=8)
         # seaborn.heatmap(cluster_enrichments, yticklabels=cluster_enrichments.index)
         pyplot.title("Cluster enrichments with types: features' cross-correlations")
@@ -970,7 +996,7 @@ if __name__ == "__main__":
             pyplot.savefig(save_to + 'cluster_corr_medians_NAP_{}.png'.format(n_clusters))
             pyplot.savefig(save_to + 'cluster_corr_medians_NAP_{}.pdf'.format(n_clusters))
 
-    if True:
+    if False:
         # CROSS CORRELATIONS FEATURES: CLUSTER ENRICHMENTS WITH MASS TYPES
 
         df = pandas.DataFrame(features_cont)
@@ -1016,8 +1042,8 @@ if __name__ == "__main__":
         all_types = [x for x in type_generator.get_mass_types(features_names_cont) if not isinstance(x, tuple)]
         all_types = sorted(list(set(all_types)))
 
-        cluster_enrichments = pandas.DataFrame(columns=[x for x in predictions.keys()], index=all_types)
-        cluster_enrichments = cluster_enrichments.fillna(0)
+        cluster_counts = pandas.DataFrame(columns=[x for x in predictions.keys()], index=all_types)
+        cluster_counts = cluster_counts.fillna(0)
 
         medians = []
         groups = []
@@ -1038,13 +1064,38 @@ if __name__ == "__main__":
 
                 if isinstance(group_type, str):
                     # fill in the heatmap
-                    cluster_enrichments.loc[group_type, group] += counts[i]
+                    cluster_counts.loc[group_type, group] += counts[i]
                 elif isinstance(group_type, tuple):
                     # fill in the heatmap for two types with half count for each
-                    cluster_enrichments.loc[group_type[0], group] += counts[i]
-                    cluster_enrichments.loc[group_type[1], group] += counts[i]
+                    cluster_counts.loc[group_type[0], group] += counts[i]
+                    cluster_counts.loc[group_type[1], group] += counts[i]
                 else:
                     raise ValueError('Unrecognized group type')
+
+        # calculate enrichments with cluster counts
+        cluster_enrichments = cluster_counts[:]
+
+        for i in range(cluster_counts.shape[0]):
+            for j in range(cluster_counts.shape[1]):
+                in_group_in_cluster = cluster_counts.iloc[i, j]
+                in_group_not_in_cluster = cluster_counts.iloc[i, :].sum() - in_group_in_cluster
+                not_in_group_in_cluster = cluster_counts.iloc[:, j].sum() - in_group_in_cluster
+                not_in_group_not_in_cluster = cluster_counts.drop(cluster_counts.index[i]).drop(
+                    cluster_counts.columns[j], axis=1).sum().sum()
+
+                _, p_value = fisher_exact([[in_group_in_cluster, in_group_not_in_cluster],
+                                           [not_in_group_in_cluster, not_in_group_not_in_cluster]])
+
+                cluster_enrichments.iloc[i, j] = p_value
+
+        # correct for multiple hypothesis
+        adj_p_values = multipletests(cluster_enrichments.values.flatten(), method='bonferroni')[1]
+        # second time to account for the following masses comparisons
+        adj_p_values = multipletests(adj_p_values, method='bonferroni')[1]
+        # update the dataframe with adjusted values
+        for i in range(cluster_enrichments.shape[0]):
+            for j in range(cluster_enrichments.shape[1]):
+                cluster_enrichments.iloc[i, j] = -numpy.log10(adj_p_values[i * cluster_enrichments.shape[1] + j])
 
         # sort columns by increasing cross-correlation median
         sorted_groups = numpy.array([groups[medians.index(x)] for x in sorted(medians)])
@@ -1053,7 +1104,8 @@ if __name__ == "__main__":
         print('\ntotal sum =', cluster_enrichments.sum().sum())  # debug
 
         pyplot.figure(figsize=(12,6))
-        res = seaborn.heatmap(cluster_enrichments, xticklabels=cluster_enrichments.columns, yticklabels=cluster_enrichments.index)
+        res = seaborn.heatmap(cluster_enrichments, xticklabels=cluster_enrichments.columns, yticklabels=cluster_enrichments.index,
+                              cmap='rocket', vmin=0, vmax=15)
         res.set_xticklabels(res.get_xmajorticklabels(), fontsize=8)
         # seaborn.heatmap(cluster_enrichments, yticklabels=cluster_enrichments.index)
         pyplot.title("Cluster enrichments with masses: features' cross-correlations")
