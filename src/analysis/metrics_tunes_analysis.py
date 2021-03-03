@@ -227,126 +227,89 @@ def get_correlation_ratio(categories, measurements):
     return eta
 
 
-def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes, tunes_names, tunes_type="continuous", method="", inspection_mode=False):
+def assess_correlations_between_tunes_and_metrics(metrics, metrics_names, tunes, tunes_names, tunes_type, method="", inspection_mode=False, save_to=None):
     """ This method calculates correlations between tunes and metrics. """
 
-    if tunes_type == "continuous":
+    threshold = 0.4
 
-        # create dataframe to store correlations
-        df = pandas.DataFrame(numpy.empty([len(metrics_names), len(tunes_names)]), index=metrics_names)
+    # create dataframe to store correlations
+    df = pandas.DataFrame(numpy.empty([len(metrics_names), len(tunes_names)]), index=metrics_names)
 
-        # change names for better display
-        for i in range(len(tunes_names)):
-            tunes_names[i] = tunes_names[i].replace("default", "").replace("traditional", "trad").replace("polynomial", "poly")
+    # change names for better display
+    for i in range(len(tunes_names)):
+        tunes_names[i] = tunes_names[i].replace("default", "").replace("traditional", "trad").replace("polynomial", "poly")
 
-        df.columns = tunes_names
+    df.columns = tunes_names
 
-        if method == "pearson":
-            # calculate correlations and fill the dataframe
-            for i in range(df.shape[0]):
-                for j in range(df.shape[1]):
-
-                    correlation = scipy.stats.pearsonr(metrics[:, i], tunes[:, j])[0]
-                    df.iloc[i, j] = correlation
-
-                    # look into variables closer if correlation is high
-                    if inspection_mode and abs(correlation) > 0.6:
-                        fig, ax = pyplot.subplots(figsize=(10, 5))
-
-                        ax.scatter(tunes[:, j], metrics[:, i])
-
-                        # adds a title and axes labels
-                        ax.set_title(df.index[i] + ' vs ' + df.columns[j] + ": r = " + str(correlation))
-                        ax.set_xlabel(df.columns[j])
-                        ax.set_ylabel(df.index[i])
-
-                        # removing top and right borders
-                        ax.spines['top'].set_visible(False)
-                        ax.spines['right'].set_visible(False)
-                        pyplot.show()
-
-        else:
-            # use spearman correlation coefficient
-            for i in range(df.shape[0]):
-                for j in range(df.shape[1]):
-
-                    correlation = scipy.stats.spearmanr(metrics[:, i], tunes[:, j])[0]
-                    df.iloc[i, j] = correlation
-
-                    # look into variables closer if correlation is high
-                    if inspection_mode and abs(correlation) > 0.6:
-                        fig, ax = pyplot.subplots(figsize=(10, 5))
-
-                        ax.scatter(tunes[:, j], metrics[:, i])
-
-                        # adds a title and axes labels
-                        ax.set_title(df.index[i] + ' vs ' + df.columns[j] + ": r = " + str(correlation))
-                        ax.set_xlabel(df.columns[j])
-                        ax.set_ylabel(df.index[i])
-
-                        # removing top and right borders
-                        ax.spines['top'].set_visible(False)
-                        ax.spines['right'].set_visible(False)
-                        pyplot.show()
-
-        print("number of pairs with correlation > 0.6:", numpy.sum(numpy.abs(df.values) > 0.6))
-
-        # plot a heatmap
-        plt.figure(figsize=(10, 6))
-        seaborn.heatmap(df, xticklabels=df.columns, yticklabels=df.index)
-        plt.title('Correlations: QC indicators vs machine settings')
-        pyplot.tight_layout()
-        pyplot.show()
-
-    else:
-        # tunes are categorical here
-
-        # create dataframe to store correlations
-        df = pandas.DataFrame(numpy.empty([len(metrics_names), len(tunes_names)]), index=metrics_names)
-
-        # change names for better display
-        for i in range(len(tunes_names)):
-            if len(tunes_names[i]) > 12:
-                # shorten too long names
-                elements = tunes_names[i].split("_")
-                shortened_name = "_".join([element[:3] for element in elements])
-                tunes_names[i] = shortened_name
-
-        df.columns = tunes_names
-
+    if method == "pearson":
         # calculate correlations and fill the dataframe
         for i in range(df.shape[0]):
             for j in range(df.shape[1]):
 
-                correlation_ratio = get_correlation_ratio(tunes[:, j], metrics[:, i])
+                correlation = scipy.stats.pearsonr(metrics[:, i], tunes[:, j])[0]
+                df.iloc[i, j] = correlation
 
                 # look into variables closer if correlation is high
-                if inspection_mode and correlation_ratio > 0.6:
-
+                if inspection_mode and abs(correlation) >= threshold:
                     fig, ax = pyplot.subplots(figsize=(10, 5))
 
                     ax.scatter(tunes[:, j], metrics[:, i])
 
                     # adds a title and axes labels
-                    ax.set_title(df.index[i] + ' vs ' + df.columns[j] + ": eta = " + str(correlation_ratio))
+                    ax.set_title(df.index[i] + ' vs ' + df.columns[j] + ": r = " + str(correlation))
                     ax.set_xlabel(df.columns[j])
                     ax.set_ylabel(df.index[i])
 
                     # removing top and right borders
                     ax.spines['top'].set_visible(False)
                     ax.spines['right'].set_visible(False)
-                    pyplot.show()
+                    pyplot.grid()
 
-                df.iloc[i, j] = correlation_ratio
+                    if save_to is None:
+                        pyplot.show()
+                    else:
+                        pyplot.savefig(save_to + 'r_{}_vs_{}.pdf'.format(df.index[i], df.columns[j]))
 
-        print("number of pairs with correlation ratio > 0.6:", numpy.sum(numpy.abs(df.values) > 0.6))
+    else:
+        # use spearman correlation coefficient
+        for i in range(df.shape[0]):
+            for j in range(df.shape[1]):
 
-        # plot a heatmap
-        plt.figure(figsize=(10,6))
-        seaborn.heatmap(df, xticklabels=df.columns, yticklabels=df.index)
-        plt.title('Correlations: QC indicators vs machine settings')
-        pyplot.tight_layout()
+                correlation = scipy.stats.spearmanr(metrics[:, i], tunes[:, j])[0]
+                df.iloc[i, j] = correlation
+
+                # look into variables closer if correlation is high
+                if inspection_mode and abs(correlation) >= threshold:
+                    fig, ax = pyplot.subplots(figsize=(10, 5))
+
+                    ax.scatter(tunes[:, j], metrics[:, i])
+
+                    # adds a title and axes labels
+                    ax.set_title(df.index[i] + ' vs ' + df.columns[j] + ": r = " + str(correlation))
+                    ax.set_xlabel(df.columns[j])
+                    ax.set_ylabel(df.index[i])
+
+                    # removing top and right borders
+                    ax.spines['top'].set_visible(False)
+                    ax.spines['right'].set_visible(False)
+
+                    if save_to is None:
+                        pyplot.show()
+                    else:
+                        pyplot.savefig(save_to + '{}_vs_{}.pdf'.format(df.index[i], df.columns[j]))
+
+    print("number of pairs with correlation > {}:".format(threshold), numpy.sum(numpy.abs(df.values) > threshold))
+
+    # plot a heatmap
+    pyplot.figure(figsize=(10, 6))
+    seaborn.heatmap(df, xticklabels=df.columns, yticklabels=df.index, cmap='vlag')
+    pyplot.title('Correlations: QC indicators vs machine settings')
+    pyplot.tight_layout()
+
+    if save_to is None:
         pyplot.show()
+    else:
+        pyplot.savefig(save_to + 'corrs_tunes_{}_metrics.pdf'.format(tunes_type))
 
 
 def plot_tunes_values_by_groups(tunes, index, group_1_indices, group_2_indices, group_names, metric_split_by, testing_result, max_p="", save_plots_to=""):
@@ -424,7 +387,7 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
 
         for i in range(df.shape[1]):
             if sum(df.iloc[:,i] <= level) >= 3:
-                max_p = str(round(numpy.max(df.iloc[:, i]), 3))
+                max_p = str(round(numpy.max(df.iloc[:, i]), 4))
                 boolean_result.iloc[0,i] = True
 
                 # look into variables closer if they are statistically different
@@ -463,7 +426,7 @@ def test_tunes_for_statistical_differences(tunes, tunes_names, group_1_indices, 
 
         for i in range(df.shape[1]):
             if round(df.iloc[0, i], 2) <= level:
-                max_p = str(round(df.iloc[0, i], 3))
+                max_p = str(round(df.iloc[0, i], 4))
                 boolean_result.iloc[0, i] = True
 
                 # look into variables closer if they are statistically different
@@ -796,7 +759,6 @@ if __name__ == "__main__":
                 # pyplot.show()
                 pyplot.savefig('/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/resolution-trend-correlation-with-tunes/{}.pdf'.format(continuous_names[i]))
 
-
     if False:
 
         # assess how imbalanced the categorical data is
@@ -824,27 +786,30 @@ if __name__ == "__main__":
         assess_cross_correlations(categorical_tunes, categorical_names, type='categorical', level=0.65)
 
     if False:
+        # plot correlations between metrics (QC indicators) and tunes (machine settings)
+        save_plots_to = '/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/metrics_tunes_corrs/'.format(user)
+
         # explore general correlations between tunes and metrics
         assess_correlations_between_tunes_and_metrics(metrics, metrics_names, continuous_tunes, continuous_names,
-                                                      tunes_type='continuous', method='spearman', inspection_mode=False)
-        assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names,
-                                                      tunes_type='categorical', inspection_mode=False)
+                                                      'cont', method='pearson', inspection_mode=True,
+                                                      save_to=save_plots_to)
+
+        # assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names,
+        #                                               tunes_type='categorical', inspection_mode=False)
 
         # feed "categorical" tunes to spearman correlation
         assess_correlations_between_tunes_and_metrics(metrics, metrics_names, categorical_tunes, categorical_names,
-                                                      tunes_type='continuous', method="spearman", inspection_mode=True)
+                                                      'cat', method="pearson", inspection_mode=True,
+                                                      save_to=save_plots_to)
 
-    if True:
+    if False:
         # plot MI between metrics (QC indicators) and tunes (machine settings)
-
-
-
         features_analysis.compute_mutual_info_between_tunes_and_features(
-            metrics, metrics_names, continuous_tunes, continuous_names, features_type='metrics', tunes_type='cont', inspection_mode=False
+            metrics, metrics_names, continuous_tunes, continuous_names, 'cont', features_type='metrics', inspection_mode=True
         )
 
         features_analysis.compute_mutual_info_between_tunes_and_features(
-            metrics, metrics_names, categorical_tunes, categorical_names, features_type='metrics', tunes_type='cat', inspection_mode=False
+            metrics, metrics_names, categorical_tunes, categorical_names, 'cat', features_type='metrics', inspection_mode=True
         )
 
     if False:
@@ -860,25 +825,30 @@ if __name__ == "__main__":
                                                                   tunes_type="categorical", inspection_mode=False)
         }
 
-    if True:
+    if False:
         # test tunes grouped by extreme metrics values
         comparisons_for_metric_outliers = test_tunes_grouped_by_extreme_metrics_values(metrics, quality, acquisition, continuous_tunes, continuous_names, categorical_tunes, categorical_names,
                                                                                        inspection_mode=True)
 
     if False:
-        # # test tunes grouped by a recent trend in resolution & baselines
-        # good_resolution_indices = (quality == '1') * (acquisition < "2020-03-04")
-        # bad_resolution_indices = (quality == '1') * (acquisition >= "2020-03-04")
+        # # test tunes grouped by QC metrics values
 
-        good_resolution_indices = metrics[:, 1] < numpy.percentile(metrics[:, 1], 90)
-        bad_resolution_indices = metrics[:, 1] >= numpy.percentile(metrics[:, 1], 90)
+        metric_of_interest = 's2b'
+        percentile = 20  # split in below and above this percentile
 
-        comparisons_for_resolution_trend = {
-            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, good_resolution_indices, bad_resolution_indices, ["good", "bad"], "mass\ accuracy",
-                                                                 tunes_type="continuous", inspection_mode=True),
-            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, good_resolution_indices, bad_resolution_indices,  ["good", "bad"], "mass\ accuracy",
-                                                                  tunes_type="categorical", inspection_mode=True)
+        save_to = '/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/statistical_comparisons/'.format(user)
+
+        low_values_indices = metrics[:, metrics_names.index(metric_of_interest)] < numpy.percentile(metrics[:, metrics_names.index(metric_of_interest)], percentile)
+        high_values_indices = metrics[:, metrics_names.index(metric_of_interest)] >= numpy.percentile(metrics[:, metrics_names.index(metric_of_interest)], percentile)
+
+        comparisons = {
+            "continuous": test_tunes_for_statistical_differences(continuous_tunes, continuous_names, low_values_indices, high_values_indices, ["< {}%".format(percentile), "> {}%".format(percentile)], metric_of_interest,
+                                                                 tunes_type="continuous", inspection_mode=True, save_plots_to=save_to),
+            "categorical": test_tunes_for_statistical_differences(categorical_tunes, categorical_names, low_values_indices, high_values_indices, ["< {}%".format(percentile), "> {}%".format(percentile)], metric_of_interest,
+                                                                  tunes_type="categorical", inspection_mode=True, save_plots_to=save_to)
         }
+
+        print(comparisons)
 
     if False:
         # this code I used to generate plots:
@@ -967,21 +937,3 @@ if __name__ == "__main__":
         }
 
     print()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
