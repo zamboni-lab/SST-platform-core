@@ -1,5 +1,5 @@
 
-msfe_version = '0.4.40'
+msfe_version = '0.4.41'
 chemical_mix_id = '20190522_4GHz'
 user = 'andreidm'
 
@@ -28,13 +28,13 @@ time_periods = [("one_month", 31), ("two_weeks", 14)]  # number of days
 """ MASS-SPEC FEATURE EXTRACTOR (MSFE) CONSTANTS """
 
 # qc_log_location = "/mnt/nas2/fiaqc-out/qc_logs.txt"
-qc_log_location = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_logs.txt"
+qc_log_location = "/Users/{}/ETH/projects/monitoring_system/res/qc_logs.txt".format(user)
 
 # tunings_matrix_file_path = "/mnt/nas2/fiaqc-out/t_matrix.json"  # TODO: remove completely
-tunings_matrix_file_path = "/Users/andreidm/ETH/projects/monitoring_system/res/tunings_matrix.json"
+tunings_matrix_file_path = "/Users/{}/ETH/projects/monitoring_system/res/tunings_matrix.json".format(user)
 
 # expected_peaks_file_path = "/home/nzadmin/msqc/msfe/data/expected_peaks_v1_" + chemical_mix_id + ".json"
-expected_peaks_file_path = "/Users/andreidm/ETH/projects/monitoring_system/data/expected_peaks_v1_" + chemical_mix_id + ".json"
+expected_peaks_file_path = "/Users/{}/ETH/projects/monitoring_system/data/expected_peaks_v1_".format(user) + chemical_mix_id + ".json"
 
 parser_comment_symbol = '#'
 parser_description_symbols = '()'
