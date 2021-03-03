@@ -408,4 +408,10 @@ def process_all_qc_runs_to_extract_tunes():
 
 if __name__ == "__main__":
 
+    from src.constants import expected_peaks_file_path
+
+    res1 = parse_expected_ions(expected_peaks_file_path, scan_type='normal')
+    res2 = parse_expected_ions(expected_peaks_file_path, scan_type='chemical_noise')
+    print(res1)
+
     pass
