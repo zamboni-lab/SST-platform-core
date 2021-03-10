@@ -185,7 +185,7 @@ def perform_pca(filter_dmso=True):
     else:
         file_mark = "with_dmso"
 
-    transformer = PCA(n_components=100)
+    transformer = PCA(n_components=10)
     scaler = StandardScaler()
 
     scaled_features = scaler.fit_transform(features)
@@ -197,7 +197,7 @@ def perform_pca(filter_dmso=True):
     # print(numpy.mean(transformer.components_ == 0))
 
     # percent of variance explained
-    print(transformer.explained_variance_ratio_ * 100)
+    print(sum(transformer.explained_variance_ratio_ * 100))
 
     # # pandas.DataFrame(transformer.components_).to_csv('/Users/dmitrav/ETH/projects/monitoring_system/res/nas2/sparse_pca_loadings_{}.csv'.format(file_mark), index=False)
     #
@@ -801,7 +801,7 @@ if __name__ == "__main__":
         perform_sparse_pca(filter_dmso=True)
 
     if False:
-        perform_pca(filter_dmso=False)
+        perform_pca(filter_dmso=True)
 
     if False:
         plot_pca_variance_explained(filter_dmso=True)
@@ -1207,15 +1207,14 @@ if __name__ == "__main__":
 
     if False:
         # CROSS CORRELATIONS FEATURES
-
         df = pandas.DataFrame(features_cont)
-        df = df.iloc[:, 800:1500]
+        # df = df.iloc[:, 800:1500]
 
         df = df.corr()
 
         """ some key observations:
-            1) ~97% of pairs correlate with r < 0.5, 
-            2) those pairs with r > 0.9 are related to "top 10 noisy peaks",
+            1) ~95% of pairs correlate with r < 0.5, 
+            2) 0.4% is with |r| > 0.9,
             3) those pairs with moderate correlation around 0.6 < r < 0.8 are related to frames features:
                (i.e. top peaks, num of peaks, int sums, percentiles, top percentiles...
                within frames 350-400 and 400-450, 950-1000 and 1000-1050, etc.),
@@ -1246,7 +1245,7 @@ if __name__ == "__main__":
         #     inspection_mode=True
         # )
 
-    if True:
+    if False:
         # MUTUAL INFO FEATURES-TUNES
 
         save_plots_to = '/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/mutual_informations/'.format(user)
