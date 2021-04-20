@@ -1,5 +1,5 @@
 
-msfe_version = '0.4.40'
+msfe_version = '0.4.44'
 chemical_mix_id = '20190522_4GHz'
 user = 'andreidm'
 
@@ -28,13 +28,13 @@ time_periods = [("one_month", 31), ("two_weeks", 14)]  # number of days
 """ MASS-SPEC FEATURE EXTRACTOR (MSFE) CONSTANTS """
 
 # qc_log_location = "/mnt/nas2/fiaqc-out/qc_logs.txt"
-qc_log_location = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_logs.txt"
+qc_log_location = "/Users/{}/ETH/projects/monitoring_system/res/qc_logs.txt".format(user)
 
 # tunings_matrix_file_path = "/mnt/nas2/fiaqc-out/t_matrix.json"  # TODO: remove completely
-tunings_matrix_file_path = "/Users/andreidm/ETH/projects/monitoring_system/res/tunings_matrix.json"
+tunings_matrix_file_path = "/Users/{}/ETH/projects/monitoring_system/res/tunings_matrix.json".format(user)
 
 # expected_peaks_file_path = "/home/nzadmin/msqc/msfe/data/expected_peaks_v1_" + chemical_mix_id + ".json"
-expected_peaks_file_path = "/Users/andreidm/ETH/projects/monitoring_system/data/expected_peaks_v1_" + chemical_mix_id + ".json"
+expected_peaks_file_path = "/Users/{}/ETH/projects/monitoring_system/data/expected_peaks_v1_".format(user) + chemical_mix_id + ".json"
 
 parser_comment_symbol = '#'
 parser_description_symbols = '()'
@@ -75,19 +75,24 @@ frame_intensity_percentiles = [25, 50, 75]
 
 """ NOTIFIER CONSTANTS"""
 gmail_sender = 'mass.spec.monitor@gmail.com'
-gmail_password = 'metabeta1'
-
 error_recipients = ['andreidm@ethz.ch']
 new_qcs_recipients = ['andreidm@ethz.ch', 'zamboni@imsb.biol.ethz.ch']
+
+GOOGLE_ACCOUNTS_BASE_URL = 'https://accounts.google.com'
+REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'
+
+GOOGLE_CLIENT_ID = '245697960977-dchrl7ethjeu9qjoapfkhrrp99hu2g9m.apps.googleusercontent.com'
+GOOGLE_CLIENT_SECRET = 'IaHubolq74Hq17sdhITpiWe-'
+GOOGLE_REFRESH_TOKEN = '1//09VMJeXdfZ9U_CgYIARAAGAkSNwF-L9Ir1ns60Gz8p6uIadVjFjNSGtiRqsXJC3tZAC8Qcdci0uKw4PX10PMMa32Jhkk6L7AxNAQ'
 
 
 """ QC METRICS GENERATOR (QCMG) CONSTANTS """
 
-qc_tunes_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_tunes_database.sqlite"
+qc_tunes_database_path = "/Users/{}/ETH/projects/monitoring_system/res/qc_tunes_database.sqlite".format(user)
 # qc_tunes_database_path = ""/mnt/nas2/fiaqc-out/qc_tunes_database.sqlite"
-qc_metrics_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_metrics_database.sqlite"
+qc_metrics_database_path = "/Users/{}/ETH/projects/monitoring_system/res/qc_metrics_database.sqlite".format(user)
 # qc_metrics_database_path = ""/mnt/nas2/fiaqc-out/qc_metrics_database.sqlite"
-qc_features_database_path = "/Users/andreidm/ETH/projects/monitoring_system/res/qc_features_database.sqlite"
+qc_features_database_path = "/Users/{}/ETH/projects/monitoring_system/res/qc_features_database.sqlite".format(user)
 # qc_features_database_path = ""/mnt/nas2/fiaqc-out/qc_features_database.sqlite"
 
 all_metrics = ['resolution_200', 'resolution_700', 'average_accuracy', 'chemical_dirt',
