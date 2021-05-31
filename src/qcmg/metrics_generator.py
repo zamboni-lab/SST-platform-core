@@ -400,7 +400,7 @@ def calculate_metrics_and_update_qc_databases(ms_run, in_debug_mode=False):
         # if the databases already exist
         db_connector.insert_new_qc_run(new_qc_run, in_debug_mode=in_debug_mode)
         logger.print_qc_info('QC databases have been updated\n')
-        notifier.send_new_qc_notification(metrics_qualities, info)
+        notifier.send_new_qc_notification(metrics_qualities, info, in_debug_mode=in_debug_mode)
 
 
 def create_and_fill_quality_table_using_percentiles(data):

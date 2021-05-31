@@ -2,12 +2,13 @@
 import smtplib, time, traceback, base64, imaplib, json
 import urllib.parse
 import urllib.request
+import requests
 import lxml.html
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from src.constants import gmail_sender as SENDER
-from src.constants import GOOGLE_CLIENT_ID, GOOGLE_REFRESH_TOKEN, GOOGLE_CLIENT_SECRET, GOOGLE_ACCOUNTS_BASE_URL, REDIRECT_URI
+from src.constants import GOOGLE_CLIENT_ID, REFRESH_TOKEN_PATH, GOOGLE_CLIENT_SECRET, GOOGLE_ACCOUNTS_BASE_URL, REDIRECT_URI
 from src.constants import error_recipients as ME
 from src.constants import new_qcs_recipients as RECIPIENTS
 from src import logger
@@ -99,32 +100,48 @@ def refresh_authorization(google_client_id, google_client_secret, refresh_token)
     return response['access_token'], response['expires_in']
 
 
+def get_actual_access_token():
+
+    # read
+    with open(REFRESH_TOKEN_PATH, 'r') as f:
+        creds = json.load(f)
+    return creds['access_token']
+
+
 def send_mail(fromaddr, toaddr, subject, message):
 
-   access_token, expires_in = refresh_authorization(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN)
-   auth_string = generate_oauth2_string(fromaddr, access_token, as_base64=True)
+    access_token = get_actual_access_token()
+    try:
+        access_token, expires_in = refresh_authorization(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, access_token)
+    except Exception:
+        # maybe token is expired -> try to refresh
+        refresh_token()
+        access_token = get_actual_access_token()
+        access_token, expires_in = refresh_authorization(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, access_token)
 
-   msg = MIMEMultipart('related')
-   msg['Subject'] = subject
-   msg['From'] = fromaddr
-   msg['To'] = ','.join(toaddr)
-   msg.preamble = 'This is a multi-part message in MIME format.'
-   msg_alternative = MIMEMultipart('alternative')
-   msg.attach(msg_alternative)
-   part_text = MIMEText(lxml.html.fromstring(message).text_content().encode('utf-8'), 'plain', _charset='utf-8')
-   part_html = MIMEText(message.encode('utf-8'), 'html', _charset='utf-8')
-   msg_alternative.attach(part_text)
-   msg_alternative.attach(part_html)
+    auth_string = generate_oauth2_string(fromaddr, access_token, as_base64=True)
 
-   server = smtplib.SMTP('smtp.gmail.com:587')
-   server.ehlo(GOOGLE_CLIENT_ID)
-   server.starttls()
-   server.docmd('AUTH', 'XOAUTH2 ' + auth_string)
-   server.sendmail(fromaddr, toaddr, msg.as_string())
-   server.quit()
+    msg = MIMEMultipart('related')
+    msg['Subject'] = subject
+    msg['From'] = fromaddr
+    msg['To'] = ','.join(toaddr)
+    msg.preamble = 'This is a multi-part message in MIME format.'
+    msg_alternative = MIMEMultipart('alternative')
+    msg.attach(msg_alternative)
+    part_text = MIMEText(lxml.html.fromstring(message).text_content().encode('utf-8'), 'plain', _charset='utf-8')
+    part_html = MIMEText(message.encode('utf-8'), 'html', _charset='utf-8')
+    msg_alternative.attach(part_text)
+    msg_alternative.attach(part_html)
+
+    server = smtplib.SMTP('smtp.gmail.com:587')
+    server.ehlo(GOOGLE_CLIENT_ID)
+    server.starttls()
+    server.docmd('AUTH', 'XOAUTH2 ' + auth_string)
+    server.sendmail(fromaddr, toaddr, msg.as_string())
+    server.quit()
 
 
-def send_new_qc_notification(qualities, info):
+def send_new_qc_notification(qualities, info, in_debug_mode=False):
     """ This method sends a notification of a successful execution on a new QC file."""
 
     SUBJECT = 'New QC added'
@@ -138,7 +155,10 @@ def send_new_qc_notification(qualities, info):
            '<br><br>Cheers,<br>' \
            'Mass Spec Monitor'
     try:
-        send_mail(SENDER, RECIPIENTS, SUBJECT, TEXT)
+        if in_debug_mode:
+            send_mail(SENDER, ME, SUBJECT, TEXT)
+        else:
+            send_mail(SENDER, RECIPIENTS, SUBJECT, TEXT)
     except Exception:
         logger.print_qc_info("Notification failed!")
         logger.print_qc_info(traceback.format_exc())
@@ -161,6 +181,30 @@ def send_error_notification(filename, trace):
         logger.print_qc_info(traceback.format_exc())
 
 
+def refresh_token():
+    """ This method updates an access token. """
+
+    with open(REFRESH_TOKEN_PATH, 'r') as f:
+        creds = json.load(f)
+
+    base64_encoded_clientid_clientsecret = base64.b64encode(str.encode(f'{GOOGLE_CLIENT_ID}:{GOOGLE_CLIENT_SECRET}'))  # concatenate with : and encode in base64
+    base64_encoded_clientid_clientsecret = base64_encoded_clientid_clientsecret.decode('ascii')  # turn bytes object into ascii string
+
+    url = f"{GOOGLE_ACCOUNTS_BASE_URL}/o/oauth2/token"
+    headers = {'Content-Type': "application/x-www-form-urlencoded", 'Authorization': f'Basic {base64_encoded_clientid_clientsecret}'}
+    data = {'grant_type': 'refresh_token', 'redirect_uri': REDIRECT_URI, 'refresh_token': creds['access_token']}
+
+    r = requests.post(url, headers=headers, data=data)
+    response = r.json()
+
+    if response.get('access_token'):
+        with open(REFRESH_TOKEN_PATH, 'w') as f:
+            json.dump(response, f, indent=4)
+    else:
+        print('There was an error refreshing your access token.')
+        print(r.text)
+
+
 if __name__ == "__main__":
 
     start_time = time.time()
@@ -168,3 +212,9 @@ if __name__ == "__main__":
     # send_new_qc_notification(fake_qualities, {'buffer': 'IPA', 'total_qcs': 100})
     send_error_notification("new_file", "Value error")
     print("sending e-mail takes", time.time() - start_time, "s")
+
+    # refresh_token()
+
+    # refresh_token, access_token, expires_in = get_authorization(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
+    # print('Set the following as your GOOGLE_REFRESH_TOKEN:', refresh_token)
+    # exit()

@@ -164,7 +164,7 @@ def run_msfe_in_test_mode():
     # chemical_standard = '/Users/{}/ETH/projects/monitoring_system/data/nas2_bug/2020-04-19T105645/raw.mzXML'.format(user)
 
     # test run on home mac
-    chemical_standard = '/Users/{}/ETH/projects/monitoring_system/data/CsI_NaI_best_conc_mzXML/CsI_NaI_neg_08.mzXML'.format(user)
+    chemical_standard = '/Users/andreidm/ETH/projects/monitoring_system/data/test/CsI_NaI_neg_08.mzXML'
 
     spectra = list(mzxml.read(chemical_standard))
     print(time.time() - start_time, " seconds elapsed for reading", sep="")
