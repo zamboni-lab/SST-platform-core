@@ -110,14 +110,9 @@ def get_actual_access_token():
 
 def send_mail(fromaddr, toaddr, subject, message):
 
+    refresh_token()
     access_token = get_actual_access_token()
-    try:
-        access_token, expires_in = refresh_authorization(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, access_token)
-    except Exception:
-        # maybe token is expired -> try to refresh
-        refresh_token()
-        access_token = get_actual_access_token()
-        access_token, expires_in = refresh_authorization(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, access_token)
+    access_token, expires_in = refresh_authorization(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, access_token)
 
     auth_string = generate_oauth2_string(fromaddr, access_token, as_base64=True)
 
@@ -205,6 +200,12 @@ def refresh_token():
         print(r.text)
 
 
+def update_token_manually():
+    refresh_token, access_token, expires_in = get_authorization(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
+    print('Set the following as your GOOGLE_REFRESH_TOKEN:', refresh_token)
+    exit()
+
+
 if __name__ == "__main__":
 
     start_time = time.time()
@@ -212,9 +213,3 @@ if __name__ == "__main__":
     # send_new_qc_notification(fake_qualities, {'buffer': 'IPA', 'total_qcs': 100})
     send_error_notification("new_file", "Value error")
     print("sending e-mail takes", time.time() - start_time, "s")
-
-    # refresh_token()
-
-    # refresh_token, access_token, expires_in = get_authorization(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
-    # print('Set the following as your GOOGLE_REFRESH_TOKEN:', refresh_token)
-    # exit()
