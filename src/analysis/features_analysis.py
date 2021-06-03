@@ -225,7 +225,7 @@ def get_features_data(path="/Users/{}/ETH/projects/monitoring_system/res/nas2/qc
     features_2 = numpy.array(database_2)
 
     meta = features_1[:, :4]
-    features = numpy.hstack([features_1[:, 4:].astype(numpy.float), features_2[:, 4:].astype(numpy.float)])
+    features = numpy.hstack([features_1[:, 4:].astype(float), features_2[:, 4:].astype(float)])
     colnames = [*colnames_1, *colnames_2[4:]]
 
     return meta, features, colnames
@@ -383,7 +383,7 @@ def get_tunes_and_names(path="/Users/{}/ETH/projects/monitoring_system/res/nas2/
     indices.extend([i for i in range(18, 151)])
 
     # compose arrays
-    tunes = numpy.vstack([tunes[:, i].astype(numpy.float) for i in indices]).T
+    tunes = numpy.vstack([tunes[:, i].astype(float) for i in indices]).T
     colnames = numpy.array(colnames)[indices]
 
     # remove nans
@@ -644,7 +644,7 @@ def calculate_MI(x, y):
 def compute_mutual_info_between_tunes_and_features(features_cont, features_names_cont, tunes, tunes_names, tunes_type, features_type='features', inspection_mode=False, save_to=None):
     """ This method calculates mutual information between tunes and features. """
 
-    threshold = 0.9
+    threshold = 0.8
 
     # create dataframe to store results
     df = pandas.DataFrame(numpy.empty([len(features_names_cont), len(tunes_names)]), index=features_names_cont)
@@ -706,6 +706,10 @@ def compute_mutual_info_between_tunes_and_features(features_cont, features_names
 
     pyplot.figure(figsize=(10,6))
     ax = pyplot.axes()
+
+    # filter out chemical background
+    df = df[numpy.array(features_types) != 'chemical_bg']
+    y_labels = [y_labels[i] for i in range(len(y_labels)) if features_types[i] != 'chemical_bg']
 
     res = seaborn.heatmap(df, xticklabels=df.columns, yticklabels=y_labels, ax=ax, vmin=0, vmax=1)
     # res.set_yticklabels(res.get_ymajorticklabels(), fontsize=6)
@@ -1245,15 +1249,15 @@ if __name__ == "__main__":
         #     inspection_mode=True
         # )
 
-    if False:
+    if True:
         # MUTUAL INFO FEATURES-TUNES
 
-        save_plots_to = '/Users/{}/ETH/projects/monitoring_system/res/analysis/v7_img/mutual_informations/'.format(user)
+        save_plots_to = '/Users/andreidm/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/v8/mi_plots/'
 
-        # compute_mutual_info_between_tunes_and_features(
-        #     features_cont, features_names_cont, tunes_cont, tunes_names_cont, 'cont',
-        #     features_type='features', inspection_mode=False, save_to=save_plots_to
-        # )
+        compute_mutual_info_between_tunes_and_features(
+            features_cont, features_names_cont, tunes_cont, tunes_names_cont, 'cont',
+            features_type='features', inspection_mode=False, save_to=save_plots_to
+        )
 
         compute_mutual_info_between_tunes_and_features(
             features_cont, features_names_cont, tunes_cat, tunes_names_cat, 'cat',

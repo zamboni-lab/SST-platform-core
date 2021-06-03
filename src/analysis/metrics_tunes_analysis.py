@@ -2,9 +2,12 @@ import numpy, pandas, scipy, seaborn, math
 
 from src.qcmg import db_connector
 from src.analysis import features_analysis
-from src.constants import user
+from src.constants import user, all_metrics
 
 from sklearn.decomposition import SparsePCA
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression
+from datetime import datetime, timedelta
 from matplotlib import pyplot
 from scipy.stats import ks_2samp, mannwhitneyu, kruskal
 from scipy.stats import chi2_contingency
@@ -481,7 +484,7 @@ def get_tunes_and_names(path, no_filter=False):
     indices.extend([i for i in range(18, 151)])
 
     # compose arrays
-    tunes = numpy.vstack([tunes[:, i].astype(numpy.float) for i in indices]).T
+    tunes = numpy.vstack([tunes[:, i].astype(float) for i in indices]).T
     colnames = numpy.array(colnames)[indices]
 
     # remove nans
@@ -534,7 +537,7 @@ def get_metrics_data(path):
     metrics_names = colnames[4:]
 
     # convert to float
-    metrics = metrics.astype(numpy.float)
+    metrics = metrics.astype(float)
 
     return metrics, metrics_names, acquisition, quality
 
@@ -652,7 +655,89 @@ if __name__ == "__main__":
     metrics = metrics[ipa_h20_indices, :]
     acquisition = acquisition[ipa_h20_indices]
     quality = quality[ipa_h20_indices]
-    
+
+    if True:
+        """ scan for the trends in QC metrics """
+
+        time_interval_days = 60
+
+        dates = full_meta_data['acquisition_date'][ipa_h20_indices].values
+        dates = [date[:10] for date in dates]
+
+        df = pandas.DataFrame(metrics, columns=metrics_names)
+        df.insert(0, 'date', dates)
+        df = df.sort_values(by=['date'])
+
+        for qc_indicator in all_metrics:
+
+            print('\n{}:\n'.format(qc_indicator.upper()))
+
+            # filter out missing values
+            df = df.loc[df[qc_indicator] != -1, :]
+
+            # keep only single QC per date
+            u_dates = df['date'].unique()
+            for date in u_dates:
+                if qc_indicator in ['resolution_200', 'resolution_700', 'signal', 's2b', 's2n']:
+                    # for these, pick the min (as the worst)
+                    single_date_value = df.loc[df['date'] == date, qc_indicator].min()
+                elif qc_indicator in ['average_accuracy', 'chemical_dirt', 'instrument_noise', 'baseline_25_150',
+                                      'baseline_50_150', 'baseline_25_650', 'baseline_50_650']:
+                    # for these, pick the max (as the worst)
+                    single_date_value = df.loc[df['date'] == date, qc_indicator].max()
+                elif qc_indicator in ['isotopic_presence', 'transmission', 'fragmentation_305', 'fragmentation_712']:
+                    # for these, pick the median
+                    single_date_value = df.loc[df['date'] == date, qc_indicator].median()
+                else:
+                    raise ValueError("Unknown QC indicator")
+
+                idx_to_drop = df[(df['date'] == date) & (df[qc_indicator] != single_date_value)].index
+                df = df.drop(idx_to_drop)
+
+            for i in range(df.shape[0]):
+                # scan for the trends for a qc indicator
+                date_from = str(datetime.fromisoformat(df['date'].values[i]))[:10]
+                date_till = str(datetime.fromisoformat(df['date'].values[i]) + timedelta(days=time_interval_days))[:10]
+                # select records for specified time period
+                subset = df[(df['date'] >= date_from) & (df['date'] <= date_till)]
+
+                if subset.shape[0] < 2:
+                    continue
+                else:
+
+                    # convert dates to X (= number of days since 0 time point)
+                    dates = [datetime.fromisoformat(date) for date in subset['date'].values]
+                    x = [0]
+
+                    for i in range(1, len(dates)):
+                        delta = dates[i] - dates[i - 1]
+                        delta_in_days = delta.days + delta.seconds / 3600 / 24
+                        x.append(x[i - 1] + delta_in_days)
+
+                    x = numpy.array(x).reshape(-1,1)
+
+                    y = subset[qc_indicator].values.reshape(-1,1)
+                    y = StandardScaler().fit_transform(y)
+
+                    reg = LinearRegression().fit(x, y)
+
+                    score = round(reg.score(x, y), 4)
+                    coef = round(reg.coef_[0][0], 4)
+
+                    if score < 0.01:
+                        trend_value = "unchanged"
+                    else:
+                        if abs(coef) < 0.05:
+                            trend_value = "unchanged"
+                        else:
+                            if coef < 0:
+                                trend_value = "decreasing"
+                            else:
+                                trend_value = "increasing"
+
+                    if trend_value != 'unchanged' and score > 0.5 and subset.shape[0] > 2:
+                        print('from {} till {}: {}, r2={}, coef={}, size={}'.format(date_from, date_till, trend_value, score, coef, subset.shape[0]))
+
     if False:
         """ plot all resolution_200 values over time, filtering out missing values """
 
@@ -664,9 +749,18 @@ if __name__ == "__main__":
         df = df.sort_values(by=['date'])
 
         # some filtering for better visualisation
-        df = df.iloc[40:, :]
-        df = df.loc[df['date'] != '2020-02-16', :]
         df = df.loc[df['resolution_200'] != -1, :]
+        df = df.iloc[20:, :]
+        df = df.loc[df['date'] != '2020-02-16', :]
+
+        # keep only single QC per date
+        u_dates = df['date'].unique()
+        for date in u_dates:
+            min_res = df.loc[df['date'] == date, 'resolution_200'].min()
+            idx_to_drop = df[(df['date'] == date) & (df['resolution_200'] != min_res)].index
+            df = df.drop(idx_to_drop)
+
+        df = df[df['date'] <= '2020-03-14']
 
         y = df.loc[:, 'resolution_200'].values
         x = [j for j in range(len(y))]
@@ -675,17 +769,17 @@ if __name__ == "__main__":
         pyplot.figure(figsize=(10,6))
         pyplot.plot(x, y, '-o', color='black', label='values')
 
-        y_trend = df.loc[(df['date'] >= '2020-02-22') & (df['date'] <= '2020-03-14'), 'resolution_200'].values[:-1]
+        y_trend = df.loc[(df['date'] >= '2020-02-22'), 'resolution_200'].values
         x_trend = [j for j in range(len(y)) if y[j] in y_trend]
-
         pyplot.plot(x_trend, y_trend, '.', color='lightblue', label='negative trend')
+
         pyplot.xticks(ticks=x, labels=labels, rotation='vertical')
         pyplot.title('resolution_200')
         pyplot.legend()
         pyplot.grid()
         pyplot.tight_layout()
-        pyplot.show()
-        # pyplot.savefig('/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/trends_in_metrics/resolution_200.pdf')
+        # pyplot.show()
+        pyplot.savefig('/Users/andreidm/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/v8/resolution_trend.pdf')
 
     if False:
         """ plot all s2n values over time, highlighting outliers """
@@ -732,32 +826,49 @@ if __name__ == "__main__":
 
         df = pandas.DataFrame(metrics, columns=metrics_names)
         df.insert(0, 'date', dates)
-
         df = df.sort_values(['date'])
 
-        falling_res200 = df.loc[(df['date'] >= '2020-02-22') & (df['date'] <= '2020-03-14'), 'resolution_200'].values[:-1]
+        # keep only single QC per date
+        idx_to_drop = []
+        u_dates = df['date'].unique()
+        for date in u_dates:
+            min_res = df.loc[df['date'] == date, 'resolution_200'].min()
+            idx_to_drop.extend(list(df[(df['date'] == date) & (df['resolution_200'] != min_res)].index))
+        df = df.drop(idx_to_drop)
+
+        picked_dates = (df['date'] >= '2020-02-22') & (df['date'] <= '2020-03-14')
+
+        falling_res200 = df.loc[picked_dates, 'resolution_200'].values
 
         df = pandas.DataFrame(continuous_tunes, columns=continuous_names)
         df.insert(0, 'date', dates)
         df = df.sort_values(['date'])
+        df = df.drop(idx_to_drop)
 
+        pyplot.figure(figsize=(10,6))
         for i in range(len(continuous_names)):
 
-            tune_vals = df.loc[(df['date'] >= '2020-02-22') & (df['date'] <= '2020-03-14'), continuous_names[i]].values[:-1]
+            tune_vals = df.loc[picked_dates, continuous_names[i]].values
 
             r, p = scipy.stats.pearsonr(falling_res200, tune_vals)
             p = p * (len(continuous_names) - 8)  # bonferroni adjusted to this case
 
+            pyplot.plot(r, -numpy.log10(p), 'ko')
             if abs(r) > 0.5 and p < 0.05:
-
+                pyplot.plot(r, -numpy.log10(p), 'o', label=continuous_names[i])
                 print('correlation with {}: {}'.format(continuous_names[i], r))
 
-                pyplot.figure()
-                pyplot.plot(tune_vals, falling_res200, 'o')
-                pyplot.grid()
-                pyplot.title('resolution_200 vs {}: r={}, p={}'.format(continuous_names[i], round(r,3) , round(p,3)))
-                # pyplot.show()
-                pyplot.savefig('/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/resolution-trend-correlation-with-tunes/{}.pdf'.format(continuous_names[i]))
+        pyplot.axvline(x=0.6, ls='--')
+        pyplot.axvline(x=-0.6, ls='--')
+        pyplot.axhline(y=-numpy.log10(0.05), ls='--')
+        pyplot.xlabel('Pearson correlation')
+        pyplot.ylabel('-log10(p)')
+        pyplot.grid()
+        pyplot.legend(bbox_to_anchor=(1.01, 1))
+        pyplot.title('resolution_200 vs machine settings')
+        pyplot.tight_layout()
+        # pyplot.show()
+        pyplot.savefig('/Users/andreidm/Library/Mobile Documents/com~apple~CloudDocs/ETHZ/papers_posters/monitoring_system/v8/trend_tunes_corrs_volcano.pdf')
 
     if False:
 

@@ -8,7 +8,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from src.constants import gmail_sender as SENDER
-from src.constants import GOOGLE_CLIENT_ID, REFRESH_TOKEN_PATH, GOOGLE_CLIENT_SECRET, GOOGLE_ACCOUNTS_BASE_URL, REDIRECT_URI
+from src.constants import GOOGLE_CLIENT_ID, REFRESH_TOKEN_PATH, ACCESS_TOKEN_PATH, GOOGLE_CLIENT_SECRET, GOOGLE_ACCOUNTS_BASE_URL, REDIRECT_URI
 from src.constants import error_recipients as ME
 from src.constants import new_qcs_recipients as RECIPIENTS
 from src import logger
@@ -95,24 +95,29 @@ def get_authorization(google_client_id, google_client_secret):
     return response['refresh_token'], response['access_token'], response['expires_in']
 
 
-def refresh_authorization(google_client_id, google_client_secret, refresh_token):
+def refresh_authorization(google_client_id, google_client_secret):
+    refresh_token = get_actual_token('refresh')
     response = call_refresh_token(google_client_id, google_client_secret, refresh_token)
     return response['access_token'], response['expires_in']
 
 
-def get_actual_access_token():
-
+def get_actual_token(type):
     # read
-    with open(REFRESH_TOKEN_PATH, 'r') as f:
-        creds = json.load(f)
-    return creds['access_token']
+    if type == 'access':
+        with open(ACCESS_TOKEN_PATH, 'r') as f:
+            creds = json.load(f)
+        return creds['access_token']
+    elif type == 'refresh':
+        with open(REFRESH_TOKEN_PATH, 'r') as f:
+            creds = json.load(f)
+        return creds['refresh_token']
 
 
 def send_mail(fromaddr, toaddr, subject, message):
 
+    access_token, expires_in = refresh_authorization(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
+
     refresh_token()
-    access_token = get_actual_access_token()
-    access_token, expires_in = refresh_authorization(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, access_token)
 
     auth_string = generate_oauth2_string(fromaddr, access_token, as_base64=True)
 

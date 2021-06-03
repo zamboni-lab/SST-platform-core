@@ -1,5 +1,5 @@
 
-msfe_version = '0.4.46'
+msfe_version = '0.4.47'
 chemical_mix_id = '20190522_4GHz'
 user = 'andreidm'
 
@@ -83,7 +83,8 @@ REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'
 
 GOOGLE_CLIENT_ID = '245697960977-dchrl7ethjeu9qjoapfkhrrp99hu2g9m.apps.googleusercontent.com'
 GOOGLE_CLIENT_SECRET = 'IaHubolq74Hq17sdhITpiWe-'
-REFRESH_TOKEN_PATH = '/Users/{}/ETH/projects/monitoring_system/data/creds.json'.format(user)
+ACCESS_TOKEN_PATH = '/Users/{}/ETH/projects/monitoring_system/data/access.json'.format(user)
+REFRESH_TOKEN_PATH = '/Users/{}/ETH/projects/monitoring_system/data/refresh.json'.format(user)
 
 """ QC METRICS GENERATOR (QCMG) CONSTANTS """
 
