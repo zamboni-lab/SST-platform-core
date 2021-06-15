@@ -529,3 +529,25 @@ def insert_new_qc_metrics(qc_run, in_debug_mode=False):
         print("mysql: inserted 1 row at position: meta:", last_row_number_1, 'metrics:', last_row_number_2, 'qualities:', last_row_number_5)
 
 
+def update_qc_metrics_with_qualities(quality_table, metrics_data):
+    """ Adapted from sqlite_connector.py:
+        as of June 15, 2021, we don't push features and tunes to the MySQL db.
+
+        This methods updates the quality column (summed over all metrics) and qualities for each QC metric
+        in QC metrics (quality indicators) database. """
+
+    meta_ids = [int(x) for x in metrics_data['meta_id'].tolist()]
+    main_qualities = [int(x) for x in quality_table['quality'].tolist()]
+
+    # connect to all dbs
+    metrics_db = create_mysql_connection()
+
+    # update qc_metrics_qualities table in qc_metrics database
+    for metric_name in all_metrics:
+        # make a list of qualities for this metric (excluding the last run for now)
+        metric_qualities = [int(x) for x in quality_table[metric_name].tolist()]
+        update_column_in_database(metrics_db, "qc_metrics_qualities", metric_name, metric_qualities, "meta_id", meta_ids)
+
+    # update all tables with qualities
+    update_column_in_database(metrics_db, "qc_meta", "quality", main_qualities, "id", meta_ids)
+    update_column_in_database(metrics_db, "qc_metrics", "quality", main_qualities, "meta_id", meta_ids)

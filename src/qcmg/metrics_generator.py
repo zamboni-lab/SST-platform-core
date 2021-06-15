@@ -503,6 +503,7 @@ def recompute_quality_table_and_predict_new_qualities(last_run_metrics, metrics_
         # recompute quality table for old runs and predict new qualities based on that
         quality_table, new_metrics_qualities = estimate_qualities_using_iforest(last_run_metrics, previous_metrics_data)
         sqlite_connector.update_all_databases_with_qualities(quality_table, previous_metrics_data)
+        mysql_connector.update_qc_metrics_with_qualities(quality_table, previous_metrics_data)
 
     else:
         # this method doesn't recompute quality table, it relies on first N records to to compute new metrics qualities
@@ -637,6 +638,7 @@ def assign_metrics_qualities(last_run_metrics, metrics_names, last_ms_run, in_de
             quality_table = recompute_quality_table_for_all_runs(last_run_metrics, metrics_data)
 
             sqlite_connector.update_all_databases_with_qualities(quality_table, metrics_data)
+            mysql_connector.update_qc_metrics_with_qualities(quality_table, metrics_data)
 
             # last run metrics qualities are in the last row of quality table now
             qualities = list(quality_table.iloc[-1, 1:])
