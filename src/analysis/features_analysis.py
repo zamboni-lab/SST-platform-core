@@ -1,6 +1,6 @@
 
 import numpy, pandas, scipy, seaborn, math, time, umap
-from src.qcmg import db_connector
+from src.qcmg import sqlite_connector
 from src.constants import user
 from src.analysis import metrics_tunes_analysis
 from src.msfe import type_generator
@@ -214,12 +214,12 @@ def get_features_data(path="/Users/{}/ETH/projects/monitoring_system/res/nas2/qc
     """ This method read metrics database,
         returns a matrix with metrics, metrics names, arrays of quality and acquisitions dates. """
 
-    conn = db_connector.create_connection(path)
+    conn = sqlite_connector.create_connection(path)
     if conn is None:
         raise ValueError("Database connection unsuccessful. Check out path. ")
 
-    database_1, colnames_1 = db_connector.fetch_table(conn, "qc_features_1")
-    database_2, colnames_2 = db_connector.fetch_table(conn, "qc_features_2")
+    database_1, colnames_1 = sqlite_connector.fetch_table(conn, "qc_features_1")
+    database_2, colnames_2 = sqlite_connector.fetch_table(conn, "qc_features_2")
 
     features_1 = numpy.array(database_1)
     features_2 = numpy.array(database_2)
@@ -235,11 +235,11 @@ def get_meta_data(path="/Users/{}/ETH/projects/monitoring_system/res/nas2/qc_fea
     """ This method read metrics database,
         returns a matrix with metrics, metrics names, arrays of quality and acquisitions dates. """
 
-    conn = db_connector.create_connection(path)
+    conn = sqlite_connector.create_connection(path)
     if conn is None:
         raise ValueError("Database connection unsuccessful. Check out path.")
 
-    meta_data, colnames = db_connector.fetch_table(conn, "qc_meta")
+    meta_data, colnames = sqlite_connector.fetch_table(conn, "qc_meta")
 
     return pandas.DataFrame(meta_data, columns=colnames)
 
@@ -371,10 +371,10 @@ def get_tunes_and_names(path="/Users/{}/ETH/projects/monitoring_system/res/nas2/
     """ This method reads a database with tunes, makes some preprocessing and returns
         categorical and continuous tunes with names. """
 
-    conn = db_connector.create_connection(path)
+    conn = sqlite_connector.create_connection(path)
     if conn is None:
         raise ValueError("Database connection unsuccessful. Check out path. ")
-    database, colnames = db_connector.fetch_table(conn, "qc_tunes")
+    database, colnames = sqlite_connector.fetch_table(conn, "qc_tunes")
 
     tunes = numpy.array(database)
 
@@ -1376,11 +1376,6 @@ if __name__ == "__main__":
                                                     filled=True, rounded=True,
                                                     special_characters=True)
                     graph = graphviz.Source(dot_data)
-
-                    # TODO: I can parse and edit graph representation to add classes in multiclass cases:
-                    #   - find nodes with entropy or gini == 0,
-                    #   - convert value representation to class (where it's [0 N], index of this array is the class)
-                    #   Easy, but haven't tried or tested.
 
                     graph.render('/Users/andreidm/ETH/projects/monitoring_system/res/analysis/decision_trees/{}.gv.pdf'.format(tunes_names_cat[i]), view=False)
 

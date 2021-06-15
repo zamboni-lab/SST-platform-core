@@ -1,6 +1,6 @@
 import numpy, pandas, scipy, seaborn, math
 
-from src.qcmg import db_connector
+from src.qcmg import sqlite_connector
 from src.analysis import features_analysis
 from src.constants import user, all_metrics
 
@@ -469,8 +469,8 @@ def get_tunes_and_names(path, no_filter=False):
     """ This method reads a database with tunes, makes some preprocessing and returns
         categorical and continuous tunes with names. """
 
-    conn = db_connector.create_connection(path)
-    database, colnames = db_connector.fetch_table(conn, "qc_tunes")
+    conn = sqlite_connector.create_connection(path)
+    database, colnames = sqlite_connector.fetch_table(conn, "qc_tunes")
 
     tunes = numpy.array(database)
     tunes = tunes[tunes[:, 2].argsort()]
@@ -525,8 +525,8 @@ def get_metrics_data(path):
         returns a matrix with metrics, metrics names, arrays of quality and acquisitions dates. """
 
     # read qc metrics
-    conn = db_connector.create_connection(path)
-    database, colnames = db_connector.fetch_table(conn, "qc_metrics")
+    conn = sqlite_connector.create_connection(path)
+    database, colnames = sqlite_connector.fetch_table(conn, "qc_metrics")
 
     metrics = numpy.array(database)
     quality = metrics[:, 3]
@@ -656,7 +656,7 @@ if __name__ == "__main__":
     acquisition = acquisition[ipa_h20_indices]
     quality = quality[ipa_h20_indices]
 
-    if True:
+    if False:
         """ scan for the trends in QC metrics """
 
         time_interval_days = 60
@@ -817,7 +817,7 @@ if __name__ == "__main__":
         pyplot.show()
         # pyplot.savefig('/Users/dmitrav/ETH/projects/monitoring_system/res/analysis/trends_in_metrics/s2n.pdf')
 
-    if False:
+    if True:
 
         """ look for correlation between decreasing resolution_200 trend and the tunes """
 
@@ -858,8 +858,8 @@ if __name__ == "__main__":
                 pyplot.plot(r, -numpy.log10(p), 'o', label=continuous_names[i])
                 print('correlation with {}: {}'.format(continuous_names[i], r))
 
-        pyplot.axvline(x=0.6, ls='--')
-        pyplot.axvline(x=-0.6, ls='--')
+        pyplot.axvline(x=0.7, ls='--')
+        pyplot.axvline(x=-0.7, ls='--')
         pyplot.axhline(y=-numpy.log10(0.05), ls='--')
         pyplot.xlabel('Pearson correlation')
         pyplot.ylabel('-log10(p)')

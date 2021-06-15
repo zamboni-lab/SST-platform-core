@@ -13,8 +13,8 @@ from src.constants import min_number_of_metrics_to_assess_quality as min_number_
 from src.constants import percent_of_good_metrics_for_good_quality as percent_of_good
 from src.constants import all_metrics
 from src.analysis import anomaly_detector
-from src import logger, notifier
-from src.qcmg import qcm_validator, db_connector
+from src import logger
+from src.qcmg import qcm_validator, sqlite_connector, mysql_connector
 
 
 def add_resolution_metrics(qc_values, qc_names, ms_run, in_debug_mode=False):
@@ -331,7 +331,7 @@ def calculate_and_save_qc_matrix(path=None, output='sqlite'):
             json.dump(qc_matrix, output)
 
     elif output == 'sqlite':
-        db_connector.create_and_fill_qc_databases(qc_matrix, in_debug_mode=True)
+        sqlite_connector.create_and_fill_qc_databases(qc_matrix, in_debug_mode=True)
 
     else:
         pass
@@ -394,13 +394,14 @@ def calculate_metrics_and_update_qc_databases(ms_run, in_debug_mode=False):
             or os.path.isfile(qc_tunes_database_path)):
 
         # if there's yet no databases
-        db_connector.create_and_fill_qc_databases(new_qc_run, in_debug_mode=in_debug_mode)
-        logger.print_qc_info('New QC databases have been created (SQLite)\n')
+        sqlite_connector.create_and_fill_qc_databases(new_qc_run, in_debug_mode=in_debug_mode)
+        mysql_connector.create_and_fill_qc_metrics_database(new_qc_run, in_debug_mode=in_debug_mode)
+        logger.print_qc_info('New QC databases have been created\n')
     else:
         # if the databases already exist
-        db_connector.insert_new_qc_run(new_qc_run, in_debug_mode=in_debug_mode)
+        sqlite_connector.insert_new_qc_run(new_qc_run, in_debug_mode=in_debug_mode)
+        mysql_connector.insert_new_qc_metrics(new_qc_run, in_debug_mode=in_debug_mode)
         logger.print_qc_info('QC databases have been updated\n')
-        notifier.send_new_qc_notification(metrics_qualities, info, in_debug_mode=in_debug_mode)
 
 
 def create_and_fill_quality_table_using_percentiles(data):
@@ -501,7 +502,7 @@ def recompute_quality_table_and_predict_new_qualities(last_run_metrics, metrics_
     if anomaly_detection_method == "iforest":
         # recompute quality table for old runs and predict new qualities based on that
         quality_table, new_metrics_qualities = estimate_qualities_using_iforest(last_run_metrics, previous_metrics_data)
-        db_connector.update_all_databases_with_qualities(quality_table, previous_metrics_data)
+        sqlite_connector.update_all_databases_with_qualities(quality_table, previous_metrics_data)
 
     else:
         # this method doesn't recompute quality table, it relies on first N records to to compute new metrics qualities
@@ -607,21 +608,21 @@ def assign_metrics_qualities(last_run_metrics, metrics_names, last_ms_run, in_de
         total_qcs += 1
 
     else:
-        metrics_db = db_connector.create_connection(qc_metrics_database_path)
+        metrics_db = sqlite_connector.create_connection(qc_metrics_database_path)
 
-        meta_data, colnames = db_connector.fetch_table(metrics_db, "qc_meta")
+        meta_data, colnames = sqlite_connector.fetch_table(metrics_db, "qc_meta")
         meta_data = pandas.DataFrame(meta_data, columns=colnames)
         # get meta_ids of all runs corresponding to the same buffer
         meta_ids = meta_data.loc[meta_data['buffer_id'] == buffer, 'id']
         total_qcs = meta_ids.shape[0] + 1
 
         # get metrics data with meta_ids corresponding to the same buffer
-        metrics_data, colnames = db_connector.fetch_table(metrics_db, "qc_metrics")
+        metrics_data, colnames = sqlite_connector.fetch_table(metrics_db, "qc_metrics")
         metrics_data = pandas.DataFrame(metrics_data, columns=colnames)
         metrics_data = metrics_data[metrics_data['meta_id'].isin(meta_ids)]
 
         # get metrics data with meta_ids corresponding to the same buffer
-        qualities_data, _ = db_connector.fetch_table(metrics_db, "qc_metrics_qualities")
+        qualities_data, _ = sqlite_connector.fetch_table(metrics_db, "qc_metrics_qualities")
         qualities_data = pandas.DataFrame(qualities_data, columns=colnames)
         qualities_data = qualities_data[qualities_data['meta_id'].isin(meta_ids)]
 
@@ -635,7 +636,7 @@ def assign_metrics_qualities(last_run_metrics, metrics_names, last_ms_run, in_de
             # compute quality table for the first time
             quality_table = recompute_quality_table_for_all_runs(last_run_metrics, metrics_data)
 
-            db_connector.update_all_databases_with_qualities(quality_table, metrics_data)
+            sqlite_connector.update_all_databases_with_qualities(quality_table, metrics_data)
 
             # last run metrics qualities are in the last row of quality table now
             qualities = list(quality_table.iloc[-1, 1:])
@@ -649,8 +650,6 @@ def assign_metrics_qualities(last_run_metrics, metrics_names, last_ms_run, in_de
 
 
 if __name__ == '__main__':
-
-    # TODO: refactoring: split (metrics generation), (working with databases) and (old methods)
     pass
 
 

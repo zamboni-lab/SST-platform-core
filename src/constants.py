@@ -1,5 +1,5 @@
 
-msfe_version = '0.4.47'
+msfe_version = '0.5.0'
 chemical_mix_id = '20190522_4GHz'
 user = 'andreidm'
 
@@ -29,9 +29,6 @@ time_periods = [("one_month", 31), ("two_weeks", 14)]  # number of days
 
 # qc_log_location = "/mnt/nas2/fiaqc-out/qc_logs.txt"
 qc_log_location = "/Users/{}/ETH/projects/monitoring_system/res/qc_logs.txt".format(user)
-
-# tunings_matrix_file_path = "/mnt/nas2/fiaqc-out/t_matrix.json"  # TODO: remove completely
-tunings_matrix_file_path = "/Users/{}/ETH/projects/monitoring_system/res/tunings_matrix.json".format(user)
 
 # expected_peaks_file_path = "/home/nzadmin/msqc/msfe/data/expected_peaks_v1_" + chemical_mix_id + ".json"
 expected_peaks_file_path = "/Users/{}/ETH/projects/monitoring_system/data/expected_peaks_v1_".format(user) + chemical_mix_id + ".json"
@@ -72,19 +69,6 @@ number_of_top_noisy_peaks_to_consider = 10
 no_signal_intensity_value = 0.
 frame_intensity_percentiles = [25, 50, 75]
 
-
-""" NOTIFIER CONSTANTS"""
-gmail_sender = 'mass.spec.monitor@gmail.com'
-error_recipients = ['andreidm@ethz.ch']
-new_qcs_recipients = ['andreidm@ethz.ch', 'zamboni@imsb.biol.ethz.ch']
-
-GOOGLE_ACCOUNTS_BASE_URL = 'https://accounts.google.com'
-REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'
-
-GOOGLE_CLIENT_ID = '245697960977-dchrl7ethjeu9qjoapfkhrrp99hu2g9m.apps.googleusercontent.com'
-GOOGLE_CLIENT_SECRET = 'IaHubolq74Hq17sdhITpiWe-'
-ACCESS_TOKEN_PATH = '/Users/{}/ETH/projects/monitoring_system/data/access.json'.format(user)
-REFRESH_TOKEN_PATH = '/Users/{}/ETH/projects/monitoring_system/data/refresh.json'.format(user)
 
 """ QC METRICS GENERATOR (QCMG) CONSTANTS """
 

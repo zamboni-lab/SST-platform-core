@@ -1,7 +1,7 @@
 
 import pandas, numpy
 from matplotlib import pyplot
-from src.qcmg import metrics_generator, db_connector
+from src.qcmg import metrics_generator, sqlite_connector
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.ensemble import IsolationForest
 from PyAstronomy import pyasl
@@ -17,15 +17,15 @@ def explore_linear_trends_in_data():
 
     last_ms_run = {'buffer_id': 'IPA_H2O_DMSO'}  # for testing here
 
-    metrics_db = db_connector.create_connection(qc_metrics_database_path)
+    metrics_db = sqlite_connector.create_connection(qc_metrics_database_path)
 
-    meta_data, colnames = db_connector.fetch_table(metrics_db, "qc_meta")
+    meta_data, colnames = sqlite_connector.fetch_table(metrics_db, "qc_meta")
     meta_data = pandas.DataFrame(meta_data, columns=colnames)
     # get meta_ids of all runs corresponding to the same buffer
     meta_ids = meta_data.loc[meta_data['buffer_id'] == last_ms_run['buffer_id'], 'id']
 
     # get metrics data with meta_ids corresponding to the same buffer
-    metrics_data, colnames = db_connector.fetch_table(metrics_db, "qc_metrics")
+    metrics_data, colnames = sqlite_connector.fetch_table(metrics_db, "qc_metrics")
     metrics_data = pandas.DataFrame(metrics_data, columns=colnames)
     metrics_data = metrics_data[metrics_data['meta_id'].isin(meta_ids)]
 
@@ -137,8 +137,8 @@ def compare_outlier_prediction_methods():
 
     metrics_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_metrics_database.sqlite"
 
-    conn = db_connector.create_connection(metrics_path)
-    metrics_data, colnames = db_connector.fetch_table(conn, "qc_metrics")
+    conn = sqlite_connector.create_connection(metrics_path)
+    metrics_data, colnames = sqlite_connector.fetch_table(conn, "qc_metrics")
 
     # convert to dataframes for convenience
     metrics_data = pandas.DataFrame(metrics_data, columns=colnames)
@@ -221,8 +221,8 @@ def test_outliers_prediction():
 
     metrics_path = "/Users/andreidm/ETH/projects/monitoring_system/res/nas2/qc_metrics_database.sqlite"
 
-    conn = db_connector.create_connection(metrics_path)
-    metrics_data, colnames = db_connector.fetch_table(conn, "qc_metrics")
+    conn = sqlite_connector.create_connection(metrics_path)
+    metrics_data, colnames = sqlite_connector.fetch_table(conn, "qc_metrics")
 
     # convert to dataframes for convenience
     metrics_data = pandas.DataFrame(metrics_data, columns=colnames)

@@ -3,7 +3,7 @@ import os, numpy, pandas
 from src.constants import min_number_of_metrics_to_assess_quality as min_number_of_runs
 from src.constants import percent_of_good_metrics_for_good_quality as percent_of_good
 from src.constants import anomaly_detection_method, all_metrics
-from src.qcmg import metrics_generator, db_connector
+from src.qcmg import metrics_generator, sqlite_connector
 from src.analysis import features_analysis, metrics_tunes_analysis
 
 # a few constants here
@@ -32,21 +32,21 @@ def assign_metrics_qualities_for_local_db(last_run_metrics, metrics_names, buffe
         total_qcs += 1
 
     else:
-        metrics_db = db_connector.create_connection(new_metrics_database_path)
+        metrics_db = sqlite_connector.create_connection(new_metrics_database_path)
 
-        meta_data, colnames = db_connector.fetch_table(metrics_db, "qc_meta")
+        meta_data, colnames = sqlite_connector.fetch_table(metrics_db, "qc_meta")
         meta_data = pandas.DataFrame(meta_data, columns=colnames)
         # get meta_ids of all runs corresponding to the same buffer
         meta_ids = meta_data.loc[meta_data['buffer_id'] == buffer, 'id']
         total_qcs = meta_ids.shape[0] + 1
 
         # get metrics data with meta_ids corresponding to the same buffer
-        metrics_data, colnames = db_connector.fetch_table(metrics_db, "qc_metrics")
+        metrics_data, colnames = sqlite_connector.fetch_table(metrics_db, "qc_metrics")
         metrics_data = pandas.DataFrame(metrics_data, columns=colnames)
         metrics_data = metrics_data[metrics_data['meta_id'].isin(meta_ids)]
 
         # get metrics data with meta_ids corresponding to the same buffer
-        qualities_data, _ = db_connector.fetch_table(metrics_db, "qc_metrics_qualities")
+        qualities_data, _ = sqlite_connector.fetch_table(metrics_db, "qc_metrics_qualities")
         qualities_data = pandas.DataFrame(qualities_data, columns=colnames)
         qualities_data = qualities_data[qualities_data['meta_id'].isin(meta_ids)]
 
@@ -60,10 +60,10 @@ def assign_metrics_qualities_for_local_db(last_run_metrics, metrics_names, buffe
             # compute quality table for the first time
             quality_table = metrics_generator.recompute_quality_table_for_all_runs(last_run_metrics, metrics_data)
 
-            db_connector.update_all_databases_with_qualities(quality_table, metrics_data,
-                                                             metrics_db_path=new_metrics_database_path,
-                                                             features_db_path=new_features_database_path,
-                                                             tunes_db_path=new_tunes_database_path)
+            sqlite_connector.update_all_databases_with_qualities(quality_table, metrics_data,
+                                                                 metrics_db_path=new_metrics_database_path,
+                                                                 features_db_path=new_features_database_path,
+                                                                 tunes_db_path=new_tunes_database_path)
 
             # last run metrics qualities are in the last row of quality table now
             qualities = list(quality_table.iloc[-1, 1:])
@@ -73,10 +73,10 @@ def assign_metrics_qualities_for_local_db(last_run_metrics, metrics_names, buffe
             # and predict qualities of this run, based on previous runs
             quality_table, qualities = metrics_generator.estimate_qualities_using_iforest(last_run_metrics, metrics_data)
 
-            db_connector.update_all_databases_with_qualities(quality_table, metrics_data,
-                                                             metrics_db_path=new_metrics_database_path,
-                                                             features_db_path=new_features_database_path,
-                                                             tunes_db_path=new_tunes_database_path)
+            sqlite_connector.update_all_databases_with_qualities(quality_table, metrics_data,
+                                                                 metrics_db_path=new_metrics_database_path,
+                                                                 features_db_path=new_features_database_path,
+                                                                 tunes_db_path=new_tunes_database_path)
 
     return qualities, {'buffer': buffer, 'total_qcs': total_qcs}
 
@@ -154,29 +154,29 @@ def split_databases():
                 or os.path.isfile(new_tunes_database_path)):
 
             # if there's yet no databases
-            db_connector.create_and_fill_qc_databases(new_qc_run,
-                                                      metrics_db_path=new_metrics_database_path,
-                                                      features_db_path=new_features_database_path,
-                                                      tunes_db_path=new_tunes_database_path,
-                                                      in_debug_mode=in_debug_mode)
+            sqlite_connector.create_and_fill_qc_databases(new_qc_run,
+                                                          metrics_db_path=new_metrics_database_path,
+                                                          features_db_path=new_features_database_path,
+                                                          tunes_db_path=new_tunes_database_path,
+                                                          in_debug_mode=in_debug_mode)
             print('New QC databases have been created (SQLite)')
         else:
             # if the databases already exist
-            db_connector.insert_new_qc_run(new_qc_run,
-                                           metrics_db_path=new_metrics_database_path,
-                                           features_db_path=new_features_database_path,
-                                           tunes_db_path=new_tunes_database_path,
-                                           in_debug_mode=in_debug_mode)
+            sqlite_connector.insert_new_qc_run(new_qc_run,
+                                               metrics_db_path=new_metrics_database_path,
+                                               features_db_path=new_features_database_path,
+                                               tunes_db_path=new_tunes_database_path,
+                                               in_debug_mode=in_debug_mode)
             print('QC databases have been updated')
 
         # REMOVE from the old db
         run_id = str(full_meta_data['id'].values[i])
 
         if run_id not in ['157', '158', '159', '242', '249', '250']:
-            db_connector.remove_row_from_all_databases_by_id(run_id,
-                                                             metrics_db_path=qc_metrics_database_path,
-                                                             features_db_path=qc_features_database_path,
-                                                             tunes_db_path=qc_tunes_database_path)
+            sqlite_connector.remove_row_from_all_databases_by_id(run_id,
+                                                                 metrics_db_path=qc_metrics_database_path,
+                                                                 features_db_path=qc_features_database_path,
+                                                                 tunes_db_path=qc_tunes_database_path)
             print('Run ID {} has been removed from old databases\n'.format(run_id))
 
 

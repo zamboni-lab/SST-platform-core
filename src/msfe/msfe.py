@@ -18,7 +18,7 @@ from src.constants import chemical_noise_features_scans_indexes, instrument_nois
 from src.constants import expected_peaks_file_path
 from src.constants import minimal_background_peak_intensity as min_bg_peak_intensity
 from lmfit.models import GaussianModel
-from src.qcmg import db_connector
+from src.qcmg import sqlite_connector
 from src.constants import qc_metrics_database_path
 
 
@@ -760,8 +760,8 @@ def validate_input_data(spectra, normal_scans_indexes, ms_run_ids, in_test_mode=
         md5_hash = ms_run_ids['md5']
         acquisition_date = ms_run_ids['acquisition_date']
         # fetch database to look for entry with the same run id
-        conn = db_connector.create_connection(qc_metrics_database_path)
-        database, _ = db_connector.fetch_table(conn, "qc_meta")
+        conn = sqlite_connector.create_connection(qc_metrics_database_path)
+        database, _ = sqlite_connector.fetch_table(conn, "qc_meta")
 
         # look for the same acquisiton_date in the database
         for run in database:
@@ -891,7 +891,6 @@ def extract_features_from_ms_run(spectra, ms_run_ids, tunes, in_test_mode=False)
         except Exception:
             logger.print_qc_info("Unexpected error occured!")
             logger.print_qc_info(traceback.format_exc() + "File " + ms_run_ids['original_filename'] + " omitted\n")
-            notifier.send_error_notification(ms_run_ids['original_filename'], traceback.format_exc())
 
     print(time.time() - start_time, " seconds elapsed for processing in total\n", sep='')
 

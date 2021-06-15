@@ -166,8 +166,6 @@ def find_closest_centroids(mz_spectrum, centroids_indexes, expected_ions_info):
 def find_expected_isotopes_and_fragments(expected_peak_mz, isotopes_mz_lists, fragments_mz_lists, isotopic_ratios_lists):
     """ This method returns a list of expected isotopes and a list of expected fragments if there are any. """
 
-    # TODO: review & refactor: method was revisited since v.0.2.15, may be redundant now
-
     isotopes, fragments, ratios = [], [], []
 
     for isotope_list in isotopes_mz_lists:
