@@ -1,5 +1,5 @@
 
-msfe_version = '0.5.1'
+msfe_version = '0.5.2'
 chemical_mix_id = '20190522_4GHz'
 user = 'andreidm'
 
@@ -30,7 +30,7 @@ time_periods = [("one_month", 31), ("two_weeks", 14)]  # number of days
 # qc_log_location = "/mnt/nas2/fiaqc-out/qc_logs.txt"
 qc_log_location = "/Users/{}/ETH/projects/monitoring_system/res/qc_logs.txt".format(user)
 
-# expected_peaks_file_path = "/home/nzadmin/msqc/msfe/data/expected_peaks_v1_" + chemical_mix_id + ".json"
+# expected_peaks_file_path = "/home/nzadmin/msqc/monitoring_system/data/expected_peaks_v1_" + chemical_mix_id + ".json"
 expected_peaks_file_path = "/Users/{}/ETH/projects/monitoring_system/data/expected_peaks_v1_".format(user) + chemical_mix_id + ".json"
 
 parser_comment_symbol = '#'
