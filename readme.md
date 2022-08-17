@@ -7,4 +7,4 @@ The broad coverage of untargeted metabolomics poses fundamental challenges for t
 
 ![Monitoring system snapshot](https://github.com/dmitrav/monitoring_system/blob/master/img/snapshot.png)
 
-The code of the Shiny app can be found [here](https://github.com/zamboni-lab/SST-platform-shiny).
+The QC database and the code of the Shiny app can be found [here](https://github.com/zamboni-lab/SST-platform-shiny).
